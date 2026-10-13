@@ -1,0 +1,62 @@
+---
+import "@fontsource-variable/mona-sans/wdth.css";
+import "lenis/dist/lenis.css";
+import "../styles/global.css";
+import Kopf from "../components/Kopf.astro";
+import Fuss from "../components/Fuss.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  startseite?: boolean;
+}
+
+const { title, description, startseite = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f1f1f3" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="de_DE" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {
+      startseite && (
+        <script is:inline>
+          // Animation vorbereiten, bevor die Seite sichtbar wird. Startet das
+          // Hauptskript nicht, wird nach 2,5 s alles normal angezeigt.
+          (function () {
+            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              var root = document.documentElement;
+              root.classList.add("bewegung");
+              setTimeout(function () {
+                if (!window.__belegGestartet) root.classList.remove("bewegung");
+              }, 2500);
+            }
+          })();
+        </script>
+      )
+    }
+  </head>
+  <body>
+    <a class="sprung" href="#inhalt">Zum Inhalt springen</a>
+    <Kopf />
+    <main id="inhalt">
+      <slot />
+    </main>
+    <Fuss />
+    <script>
+      import "../scripts/seite";
+    </script>
+  </body>
+</html>

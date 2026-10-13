@@ -1,0 +1,189 @@
+---
+import Base from "../layouts/Base.astro";
+import Beleg from "../components/Beleg.astro";
+import Checkliste from "../components/Checkliste.astro";
+import { kontakt, mailBetreff } from "../data/kontakt";
+
+const mailLink = `mailto:${kontakt.email}?subject=${encodeURIComponent(mailBetreff)}`;
+
+const leistungen = [
+  {
+    titel: "Individuelle Software",
+    text: "Wenn Standardsoftware nicht zu Ihren Abläufen passt, baue ich Programme, die so arbeiten wie Ihr Betrieb.",
+  },
+  {
+    titel: "ERP- und CRM-Systeme",
+    text: "Kunden, Angebote, Aufträge und Rechnungen in einem System statt verteilt auf Excel, E-Mail und Papier.",
+  },
+  {
+    titel: "Prozessautomatisierung",
+    text: "Wiederkehrende Schritte laufen von selbst, von der eingehenden Anfrage bis zur fertigen Rechnung. Ihre Programme tauschen Daten direkt aus.",
+  },
+  {
+    titel: "KI-Automationen",
+    text: "KI übernimmt Routine, etwa E-Mails vorsortieren, Dokumente auslesen und Antworten vorbereiten. Was rausgeht, entscheiden Sie.",
+  },
+];
+
+const schritte = [
+  {
+    titel: "Erstgespräch",
+    text: "30 Minuten am Telefon oder bei Ihnen vor Ort. Wir klären, wo es hakt und ob sich ein Projekt lohnt.",
+  },
+  {
+    titel: "Abläufe aufnehmen",
+    text: "Ich schaue mir an, wie die Arbeit heute wirklich läuft, und schreibe ein Konzept mit Aufwand und Preis.",
+  },
+  {
+    titel: "Umsetzen",
+    text: "In Etappen mit lauffähigen Zwischenständen. Sie sehen früh, was entsteht, und können nachsteuern.",
+  },
+  {
+    titel: "Betreiben",
+    text: "Ich übergebe, schule Ihr Team und bleibe für Wartung und Weiterentwicklung ansprechbar.",
+  },
+];
+---
+
+<Base
+  title="JTK Consulting | Software und Prozessautomatisierung für den Mittelstand"
+  description="Individuelle Software, ERP- und CRM-Systeme und Prozessautomatisierung für mittelständische Unternehmen in NRW. Julian Koch, Düsseldorf."
+  startseite
+>
+  <section class="hero" aria-labelledby="hero-titel">
+    <div class="innen raster">
+      <div class="hero__text">
+        <h1 id="hero-titel">Software für alles, was in Ihrem Betrieb noch von Hand läuft.</h1>
+        <p class="hero__lead">
+          Ich entwickle individuelle Software, ERP- und CRM-Systeme und automatisiere Abläufe für mittelständische
+          Unternehmen in NRW.
+        </p>
+        <div class="hero__aktionen">
+          <a class="knopf knopf--voll" href={mailLink}>E-Mail schreiben</a>
+          <p class="hero__telefon">
+            oder anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+          </p>
+        </div>
+      </div>
+      <Beleg />
+    </div>
+  </section>
+
+  <Checkliste />
+
+  <section class="abschnitt" id="leistungen" aria-labelledby="leistungen-titel">
+    <div class="innen raster">
+      <div class="abschnitt__kopf">
+        <h2 id="leistungen-titel">Was ich baue</h2>
+      </div>
+      <div class="abschnitt__inhalt">
+        <dl class="leistungen">
+          {
+            leistungen.map((l) => (
+              <div>
+                <dt>{l.titel}</dt>
+                <dd>{l.text}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="abschnitt" id="projekte" aria-labelledby="projekte-titel">
+    <div class="innen raster">
+      <div class="abschnitt__kopf">
+        <h2 id="projekte-titel">Projekte</h2>
+      </div>
+      <div class="abschnitt__inhalt projekte">
+        <article class="projekt">
+          <div class="projekt__kopf">
+            <h3>Tennismehl GmbH</h3>
+            <p class="projekt__kontext">Lieferant für Tennisplatzbeläge, Giebelstadt. Seit 2026.</p>
+          </div>
+          <div class="projekt__text">
+            <p>
+              Als Mitgesellschafter verantworte ich die Digitalisierung. Herzstück ist ein eigenes Portal mit
+              ERP-Funktionen, das ich Schritt für Schritt ausbaue:
+            </p>
+            <ul>
+              <li>Anfragen von der Website laufen direkt ins Portal statt ins Postfach.</li>
+              <li>Bestellt ein Kunde Produkte eines Partners, geht die Bestellung dort automatisch ein.</li>
+              <li>Rechnungen entstehen im System und gehen als E-Rechnung raus.</li>
+              <li>
+                Im Werk bekommt die Absackanlage für 40-kg-Säcke statt reiner Pneumatik eine programmierbare
+                Steuerung.
+              </li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="projekt">
+          <div class="projekt__kopf">
+            <h3>Anfrage-Plattform</h3>
+            <p class="projekt__kontext">Mandantenfähige Webplattform. 2026.</p>
+          </div>
+          <div class="projekt__text">
+            <p>
+              Ein Anfrage-Service und ein Energie-Service werden zu einer Plattform zusammengeführt. Eine gemeinsame
+              Codebasis bedient mehrere Mandanten, jeden unter eigener Subdomain. Abläufe im Hintergrund steuert n8n.
+            </p>
+            <p class="projekt__technik">Next.js, Vercel und n8n</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
+    <div class="innen raster">
+      <div class="abschnitt__kopf">
+        <h2 id="ablauf-titel">So arbeiten wir zusammen</h2>
+      </div>
+      <ol class="ablauf">
+        {
+          schritte.map((s) => (
+            <li>
+              <h3>{s.titel}</h3>
+              <p>{s.text}</p>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="abschnitt" id="ueber-mich" aria-labelledby="ueber-titel">
+    <div class="innen raster">
+      <div class="abschnitt__kopf">
+        <h2 id="ueber-titel">Über mich</h2>
+      </div>
+      <div class="abschnitt__inhalt ueber">
+        <p>
+          Ich bin Julian Koch, Fachinformatiker für Anwendungsentwicklung aus Düsseldorf. Bei Cognex war ich
+          Software-Architekt und Sales Engineer für industrielle Bildverarbeitung.
+        </p>
+        <p>
+          Seit 2026 bin ich Mitgesellschafter der Tennismehl GmbH. Dort sehe ich jeden Tag, wo im Mittelstand Zeit
+          verloren geht, von der Lohnabrechnung bis zur Tourenplanung.
+        </p>
+        <p>Ich arbeite allein und direkt. Sie sprechen immer mit dem, der Ihre Software baut.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="abschnitt kontakt" id="kontakt" aria-labelledby="kontakt-titel">
+    <div class="innen raster">
+      <h2 class="kontakt__titel" id="kontakt-titel">Was soll bei Ihnen als Nächstes von selbst laufen?</h2>
+      <div class="kontakt__wege">
+        <div class="kontakt__mail">
+          <a class="kontakt__gross" href={mailLink} data-mail>{kontakt.email}</a>
+          <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
+        </div>
+        <a class="kontakt__gross" href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+        <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
+      </div>
+    </div>
+  </section>
+</Base>

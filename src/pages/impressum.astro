@@ -1,0 +1,37 @@
+---
+import Base from "../layouts/Base.astro";
+import { kontakt } from "../data/kontakt";
+---
+
+<Base title="Impressum | JTK Consulting" description="Impressum von JTK Consulting, Düsseldorf.">
+  <section class="innen">
+    <div class="recht">
+      <h1>Impressum</h1>
+
+      <p class="platzhalter">
+        Platzhalter: Vor dem Livegang mit den richtigen Angaben füllen und prüfen lassen. Maßgeblich ist die
+        Rechtsform, unter der die Seite betrieben wird (Einzelunternehmen, e.K. oder GmbH).
+      </p>
+
+      <h2>Angaben gemäß § 5 DDG</h2>
+      <p>
+        [Firmenname und Rechtsform]<br />
+        {kontakt.name}<br />
+        [Straße und Hausnummer]<br />
+        [PLZ] {kontakt.ort}
+      </p>
+
+      <h2>Kontakt</h2>
+      <p>
+        Telefon: {kontakt.telefonAnzeige}<br />
+        E-Mail: {kontakt.email}
+      </p>
+
+      <h2>Registereintrag</h2>
+      <p>[Registergericht und Registernummer, sobald eingetragen]</p>
+
+      <h2>Umsatzsteuer-ID</h2>
+      <p>[Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG, falls vorhanden]</p>
+    </div>
+  </section>
+</Base>

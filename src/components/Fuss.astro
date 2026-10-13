@@ -1,0 +1,16 @@
+---
+import { kontakt } from "../data/kontakt";
+const jahr = new Date().getFullYear();
+---
+
+<footer class="fuss">
+  <div class="innen">
+    <div class="fuss__innen">
+      <p>© {jahr} {kontakt.firma}, {kontakt.ort}</p>
+      <ul class="fuss__links">
+        <li><a href="/impressum">Impressum</a></li>
+        <li><a href="/datenschutz">Datenschutz</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>

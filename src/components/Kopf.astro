@@ -1,0 +1,26 @@
+---
+const links = [
+  { href: "/#leistungen", text: "Leistungen" },
+  { href: "/#projekte", text: "Projekte" },
+  { href: "/#ablauf", text: "Ablauf" },
+  { href: "/#ueber-mich", text: "Über mich" },
+];
+---
+
+<header class="kopf">
+  <div class="innen kopf__innen">
+    <a class="marke" href="/"><strong>JTK</strong> Consulting</a>
+    <nav class="kopf__nav" aria-label="Hauptnavigation">
+      <ul>
+        {
+          links.map((link) => (
+            <li class="nav-optional">
+              <a href={link.href}>{link.text}</a>
+            </li>
+          ))
+        }
+        <li><a class="kopf__kontakt" href="/#kontakt">Kontakt</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>

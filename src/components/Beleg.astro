@@ -1,0 +1,154 @@
+---
+// Hero-Motiv: ein Durchschreibesatz (Original, gelbe und rosa Kopie), dessen
+// Felder sich selbst ausfüllen und der am Ende gestempelt wird.
+// Alle Beträge sind nachgerechnet: 170,00 + 214,50 + 45,00 = 429,50 netto,
+// 19 % USt. = 81,61, gesamt 511,11.
+const heute = new Date();
+const datum = heute.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const monate = ["JAN.", "FEB.", "MÄRZ", "APR.", "MAI", "JUNI", "JULI", "AUG.", "SEP.", "OKT.", "NOV.", "DEZ."];
+const stempelDatum = `${heute.getDate()}. ${monate[heute.getMonth()]} ${heute.getFullYear()}`;
+const jahr = heute.getFullYear();
+
+const positionen = [
+  { pos: "1", text: "Wartung Lüftungsanlage", menge: "2 Std.", betrag: "170,00" },
+  { pos: "2", text: "Filtersatz F7", menge: "1 Stk.", betrag: "214,50" },
+  { pos: "3", text: "Anfahrtspauschale", menge: "1", betrag: "45,00" },
+];
+---
+
+<figure class="beleg">
+  <div
+    class="beleg__stapel"
+    data-beleg
+    role="img"
+    aria-label="Beispielrechnung, die sich selbst ausfüllt und den Stempel „Erledigt“ bekommt"
+  >
+    <div class="beleg__kopie beleg__kopie--rosa" aria-hidden="true"></div>
+    <div class="beleg__kopie beleg__kopie--gelb" aria-hidden="true"></div>
+    <div class="beleg__bogen" aria-hidden="true">
+      <p class="beleg__absender">Muster Haustechnik GmbH, Musterweg 3, 40878 Ratingen</p>
+      <p class="beleg__titel">Rechnung</p>
+
+      <dl class="beleg__meta">
+        <div>
+          <dt>Rechnungs-Nr.</dt>
+          <dd><span data-wert data-rechnungsnr>{jahr}-0418</span></dd>
+        </div>
+        <div>
+          <dt>Datum</dt>
+          <dd><span data-wert data-datum>{datum}</span></dd>
+        </div>
+        <div>
+          <dt>Kunden-Nr.</dt>
+          <dd><span data-wert>10482</span></dd>
+        </div>
+      </dl>
+
+      <div class="beleg__empfaenger">
+        <span>Empfänger</span>
+        <span><span data-wert>Mustermann Gebäudeservice GmbH</span></span>
+        <span><span data-wert>Musterstraße 12, 41460 Neuss</span></span>
+      </div>
+
+      <table class="beleg__tabelle">
+        <thead>
+          <tr>
+            <th scope="col">Pos.</th>
+            <th scope="col">Bezeichnung</th>
+            <th scope="col" class="rechts">Menge</th>
+            <th scope="col" class="rechts">Betrag €</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            positionen.map((p) => (
+              <tr>
+                <td><span data-wert>{p.pos}</span></td>
+                <td><span data-wert>{p.text}</span></td>
+                <td class="rechts"><span data-wert>{p.menge}</span></td>
+                <td class="rechts"><span data-wert>{p.betrag}</span></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+
+      <dl class="beleg__summen">
+        <div>
+          <dt>Netto</dt>
+          <dd><span data-wert>429,50</span></dd>
+        </div>
+        <div>
+          <dt>USt. 19 %</dt>
+          <dd><span data-wert>81,61</span></dd>
+        </div>
+        <div class="gesamt">
+          <dt>Gesamt</dt>
+          <dd><span data-wert>511,11 €</span></dd>
+        </div>
+      </dl>
+
+      <div class="beleg__fuss">
+        <span>Zahlbar innerhalb von 14 Tagen ohne Abzug.</span>
+        <span class="beleg__format">E-Rechnung (ZUGFeRD)</span>
+      </div>
+
+      <svg class="stempel" viewBox="0 0 260 104" focusable="false">
+        <defs>
+          <filter
+            id="stempel-tinte"
+            x="-6%"
+            y="-12%"
+            width="112%"
+            height="124%"
+            color-interpolation-filters="sRGB"
+          >
+            <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="4" result="fein"></feTurbulence>
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="fein"
+              scale="2.6"
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="rau"></feDisplacementMap>
+            <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed="11" result="flecken"
+            ></feTurbulence>
+            <feColorMatrix
+              in="flecken"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
+              result="maske"></feColorMatrix>
+            <feComposite in="rau" in2="maske" operator="in"></feComposite>
+          </filter>
+        </defs>
+        <g filter="url(#stempel-tinte)">
+          <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"></rect>
+          <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <text
+            x="130"
+            y="60"
+            text-anchor="middle"
+            fill="currentColor"
+            font-size="44"
+            font-weight="800"
+            letter-spacing="3">ERLEDIGT</text
+          >
+          <text
+            x="130"
+            y="82"
+            text-anchor="middle"
+            fill="currentColor"
+            font-size="12.5"
+            font-weight="650"
+            letter-spacing="2.5"
+            data-stempel-datum>{stempelDatum}</text
+          >
+        </g>
+      </svg>
+    </div>
+  </div>
+  <figcaption>
+    <span id="beleg-beschreibung">Beispielrechnung: automatisch erstellt und als E-Rechnung verschickt.</span>
+    <button type="button" class="beleg__nochmal" data-beleg-nochmal hidden>Noch einmal ausfüllen</button>
+  </figcaption>
+</figure>
