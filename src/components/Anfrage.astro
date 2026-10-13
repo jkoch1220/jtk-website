@@ -1,0 +1,88 @@
+---
+// StoryBrand: direkter Handlungsaufruf. Das Formular sendet an PUBLIC_ANFRAGE_URL,
+// falls gesetzt, sonst öffnet es das E-Mail-Programm mit der fertigen Nachricht.
+import Fenster from "./Fenster.astro";
+import { kontakt, mailBetreff, anfrageUrl } from "../data/kontakt";
+---
+
+<section class="abschnitt kontakt" id="kontakt" aria-labelledby="kontakt-titel">
+  <div class="innen raster">
+    <div class="kontakt__kopf">
+      <h2 id="kontakt-titel">Lassen Sie uns herausfinden, was bei Ihnen von selbst laufen kann.</h2>
+      <p class="kontakt__erklaerung">
+        Sie haben einen Betrieb aufgebaut, der funktioniert. Damit er wachsen kann, ohne dass das Büro mitwächst,
+        braucht er Abläufe, die von selbst laufen. Im Erstgespräch finden wir in 30 Minuten heraus, wo Sie anfangen
+        sollten.
+      </p>
+      <div class="kontakt__wege">
+        <p>Lieber direkt?</p>
+        <div class="kontakt__mail">
+          <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
+          <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
+        </div>
+        <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+        <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
+      </div>
+    </div>
+
+    <Fenster titel="Neue Anfrage" class="kontakt__formular">
+      <form
+        data-anfrage
+        data-email={kontakt.email}
+        data-betreff={mailBetreff}
+        data-ziel={anfrageUrl}
+        novalidate
+      >
+        <div class="anfrage__felder">
+          <div class="feld">
+            <label for="a-name">Name</label>
+            <input id="a-name" name="name" type="text" autocomplete="name" required />
+          </div>
+          <div class="feld">
+            <label for="a-firma">Firma <span class="optional">(optional)</span></label>
+            <input id="a-firma" name="firma" type="text" autocomplete="organization" />
+          </div>
+          <div class="feld">
+            <label for="a-email">E-Mail</label>
+            <input id="a-email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="feld">
+            <label for="a-telefon">Telefon <span class="optional">(optional)</span></label>
+            <input id="a-telefon" name="telefon" type="tel" autocomplete="tel" />
+          </div>
+          <div class="feld feld--breit">
+            <label for="a-nachricht">Worum geht es? <span class="optional">(optional)</span></label>
+            <textarea id="a-nachricht" name="nachricht" rows="6"></textarea>
+            <p class="feld__hilfe">Ein, zwei Sätze reichen. Das Ergebnis aus dem Zeitfresser-Check landet hier von selbst.</p>
+          </div>
+          <div class="honig" aria-hidden="true">
+            <label for="a-website">Website</label>
+            <input id="a-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+        </div>
+
+        <p class="anfrage__hinweis">
+          Ihre Angaben nutze ich nur, um Ihre Anfrage zu beantworten. Mehr dazu unter <a href="/datenschutz"
+            >Datenschutz</a
+          >.
+        </p>
+
+        <div class="anfrage__knoepfe">
+          <button type="submit" class="retro-knopf retro-knopf--voll">Anfrage senden</button>
+          <button type="button" class="retro-knopf" data-anfrage-kopieren>Text kopieren</button>
+        </div>
+        <label class="sr-only" for="a-text">Anfragetext zum Kopieren</label>
+        <textarea class="anfrage__text" id="a-text" data-anfrage-text readonly hidden></textarea>
+      </form>
+
+      <div class="anfrage__danke" data-anfrage-danke hidden tabindex="-1">
+        <p class="anfrage__danke-titel">Danke, Ihre Anfrage ist angekommen.</p>
+        <p>Ich melde mich bei Ihnen, um einen Termin für das Erstgespräch zu finden.</p>
+      </div>
+
+      <Fragment slot="status">
+        <span data-anfrage-status role="status">Bereit</span>
+      </Fragment>
+    </Fenster>
+  </div>
+</section>

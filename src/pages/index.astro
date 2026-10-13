@@ -1,92 +1,126 @@
 ---
+// Aufbau nach StoryBrand (siehe docs/brandscript.md):
+// Kopf mit klarem Angebot, Problem und Folgen, weicher Handlungsaufruf (Check),
+// Erfolg, Begleiter (Empathie und Erfahrung), Plan, direkter Handlungsaufruf.
 import Base from "../layouts/Base.astro";
 import Beleg from "../components/Beleg.astro";
-import Checkliste from "../components/Checkliste.astro";
-import { kontakt, mailBetreff } from "../data/kontakt";
+import Problem from "../components/Problem.astro";
+import Zeitfresser from "../components/Zeitfresser.astro";
+import Persoenlich from "../components/Persoenlich.astro";
+import Anfrage from "../components/Anfrage.astro";
+import { kontakt } from "../data/kontakt";
 
-const mailLink = `mailto:${kontakt.email}?subject=${encodeURIComponent(mailBetreff)}`;
-
-const leistungen = [
+const erfolge = [
   {
-    titel: "Individuelle Software",
-    text: "Wenn Standardsoftware nicht zu Ihren Abläufen passt, baue ich Programme, die so arbeiten wie Ihr Betrieb.",
+    titel: "Anfragen landen direkt im System",
+    text: "Keine E-Mail geht mehr unter. Aus jeder Anfrage wird mit wenigen Klicks ein Angebot.",
   },
   {
-    titel: "ERP- und CRM-Systeme",
-    text: "Kunden, Angebote, Aufträge und Rechnungen in einem System statt verteilt auf Excel, E-Mail und Papier.",
+    titel: "Rechnungen schreiben sich selbst",
+    text: "Aus dem Auftrag entsteht die Rechnung und geht als E-Rechnung raus, so wie es ab 2027 bzw. 2028 Pflicht ist.",
   },
   {
-    titel: "Prozessautomatisierung",
-    text: "Wiederkehrende Schritte laufen von selbst, von der eingehenden Anfrage bis zur fertigen Rechnung. Ihre Programme tauschen Daten direkt aus.",
+    titel: "Ihre Programme sprechen miteinander",
+    text: "Shop, Warenwirtschaft und Buchhaltung tauschen Daten selbst aus. Auch alte Programme bekommen Anschluss.",
   },
   {
-    titel: "KI-Automationen",
-    text: "KI übernimmt Routine, etwa E-Mails vorsortieren, Dokumente auslesen und Antworten vorbereiten. Was rausgeht, entscheiden Sie.",
+    titel: "Routine übernimmt die KI",
+    text: "E-Mails vorsortieren, Dokumente auslesen, Antworten vorbereiten. Was rausgeht, entscheiden Sie.",
   },
 ];
 
 const schritte = [
   {
-    titel: "Erstgespräch",
-    text: "30 Minuten am Telefon oder bei Ihnen vor Ort. Wir klären, wo es hakt und ob sich ein Projekt lohnt.",
+    titel: "Erstgespräch vereinbaren",
+    text: "30 Minuten am Telefon oder bei Ihnen vor Ort. Wir klären, wo Ihr Betrieb Zeit verliert.",
   },
   {
-    titel: "Abläufe aufnehmen",
-    text: "Ich schaue mir an, wie die Arbeit heute wirklich läuft, und schreibe ein Konzept mit Aufwand und Preis.",
+    titel: "Plan mit Preis erhalten",
+    text: "Ich schaue mir Ihre Abläufe an und zeige, was sich lohnt. Sie kennen Aufwand und Preis, bevor es losgeht.",
   },
   {
-    titel: "Umsetzen",
-    text: "In Etappen mit lauffähigen Zwischenständen. Sie sehen früh, was entsteht, und können nachsteuern.",
-  },
-  {
-    titel: "Betreiben",
-    text: "Ich übergebe, schule Ihr Team und bleibe für Wartung und Weiterentwicklung ansprechbar.",
+    titel: "Zeit zurückgewinnen",
+    text: "Ich setze in Etappen um und schule Ihr Team. Danach bleibe ich für Wartung und Weiterentwicklung ansprechbar.",
   },
 ];
 ---
 
 <Base
   title="JTK Consulting | Software und Prozessautomatisierung für den Mittelstand"
-  description="Individuelle Software, ERP- und CRM-Systeme und Prozessautomatisierung für mittelständische Unternehmen in NRW. Julian Koch, Düsseldorf."
+  description="Software, die Ihrem Betrieb die Büroarbeit abnimmt: Anfragen, Angebote, Rechnungen und E-Rechnung laufen von selbst, auch mit alten Programmen. Julian Koch, Düsseldorf."
   startseite
 >
   <section class="hero" aria-labelledby="hero-titel">
     <div class="innen raster">
       <div class="hero__text">
-        <h1 id="hero-titel">Software für alles, was in Ihrem Betrieb noch von Hand läuft.</h1>
+        <h1 id="hero-titel">Software, die Ihrem Betrieb die Büroarbeit abnimmt.</h1>
         <p class="hero__lead">
-          Ich entwickle individuelle Software, ERP- und CRM-Systeme und automatisiere Abläufe für mittelständische
+          Anfragen, Angebote und Rechnungen laufen von selbst, auch mit Ihren alten Programmen. Für mittelständische
           Unternehmen in NRW.
         </p>
         <div class="hero__aktionen">
-          <a class="knopf knopf--voll" href={mailLink}>E-Mail schreiben</a>
-          <p class="hero__telefon">
-            oder anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
-          </p>
+          <a class="knopf knopf--voll" href="#kontakt">Erstgespräch vereinbaren</a>
+          <a class="knopf" href="#check">Zeitfresser-Check machen</a>
         </div>
+        <p class="hero__telefon">
+          Oder direkt anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+        </p>
       </div>
       <Beleg />
     </div>
   </section>
 
-  <Checkliste />
+  <Problem />
+
+  <Zeitfresser />
 
   <section class="abschnitt" id="leistungen" aria-labelledby="leistungen-titel">
     <div class="innen raster">
       <div class="abschnitt__kopf">
-        <h2 id="leistungen-titel">Was ich baue</h2>
+        <h2 id="leistungen-titel">So läuft es danach</h2>
+        <p>Ihr Team hat wieder Zeit für Kunden, und Sie haben jederzeit den Überblick.</p>
       </div>
       <div class="abschnitt__inhalt">
         <dl class="leistungen">
           {
-            leistungen.map((l) => (
+            erfolge.map((e) => (
               <div>
-                <dt>{l.titel}</dt>
-                <dd>{l.text}</dd>
+                <dt>{e.titel}</dt>
+                <dd>{e.text}</dd>
               </div>
             ))
           }
         </dl>
+        <p class="leistungen__fuss">
+          Dafür baue ich individuelle Software, ERP- und CRM-Systeme, Schnittstellen und KI-Automationen.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="abschnitt begleiter" id="ueber-mich" aria-labelledby="ueber-titel">
+    <div class="innen raster">
+      <div class="abschnitt__kopf">
+        <h2 id="ueber-titel">Ich kenne das Problem von innen</h2>
+        <div class="begleiter__bild">
+          <Persoenlich />
+        </div>
+      </div>
+      <div class="abschnitt__inhalt ueber">
+        <p>
+          Als Mitgesellschafter der Tennismehl GmbH erlebe ich jeden Tag, wo im Mittelstand Zeit verloren geht, von
+          der Lohnabrechnung bis zur Tourenplanung. Genau diese Abläufe automatisiere ich, für mein eigenes
+          Unternehmen und für Ihres.
+        </p>
+        <p>
+          Ich bin Julian Koch, Fachinformatiker für Anwendungsentwicklung. Bei Cognex war ich Software-Architekt und
+          Sales Engineer für industrielle Bildverarbeitung. Heute arbeite ich allein und direkt: Sie sprechen immer
+          mit dem, der Ihre Software baut.
+        </p>
+        <p class="ueber__privat">
+          Wenn ich nicht am Rechner sitze, bin ich in den Bergen. 2026 bin ich den Düsseldorf-Marathon gelaufen, der
+          Mont Blanc steht noch auf meiner Liste.
+        </p>
       </div>
     </div>
   </section>
@@ -94,7 +128,7 @@ const schritte = [
   <section class="abschnitt" id="projekte" aria-labelledby="projekte-titel">
     <div class="innen raster">
       <div class="abschnitt__kopf">
-        <h2 id="projekte-titel">Projekte</h2>
+        <h2 id="projekte-titel">Woran ich gerade arbeite</h2>
       </div>
       <div class="abschnitt__inhalt projekte">
         <article class="projekt">
@@ -138,8 +172,8 @@ const schritte = [
 
   <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
     <div class="innen raster">
-      <div class="abschnitt__kopf">
-        <h2 id="ablauf-titel">So arbeiten wir zusammen</h2>
+      <div class="abschnitt__kopf ablauf__kopf">
+        <h2 id="ablauf-titel">In drei Schritten zu weniger Büroarbeit</h2>
       </div>
       <ol class="ablauf">
         {
@@ -151,39 +185,15 @@ const schritte = [
           ))
         }
       </ol>
-    </div>
-  </section>
-
-  <section class="abschnitt" id="ueber-mich" aria-labelledby="ueber-titel">
-    <div class="innen raster">
-      <div class="abschnitt__kopf">
-        <h2 id="ueber-titel">Über mich</h2>
-      </div>
-      <div class="abschnitt__inhalt ueber">
+      <div class="ablauf__zusage">
         <p>
-          Ich bin Julian Koch, Fachinformatiker für Anwendungsentwicklung aus Düsseldorf. Bei Cognex war ich
-          Software-Architekt und Sales Engineer für industrielle Bildverarbeitung.
+          Ihre alten Programme dürfen bleiben, wenn sie ihren Dienst tun. Ich binde sie an, statt alles neu zu
+          machen.
         </p>
-        <p>
-          Seit 2026 bin ich Mitgesellschafter der Tennismehl GmbH. Dort sehe ich jeden Tag, wo im Mittelstand Zeit
-          verloren geht, von der Lohnabrechnung bis zur Tourenplanung.
-        </p>
-        <p>Ich arbeite allein und direkt. Sie sprechen immer mit dem, der Ihre Software baut.</p>
+        <a class="knopf knopf--voll" href="#kontakt">Erstgespräch vereinbaren</a>
       </div>
     </div>
   </section>
 
-  <section class="abschnitt kontakt" id="kontakt" aria-labelledby="kontakt-titel">
-    <div class="innen raster">
-      <h2 class="kontakt__titel" id="kontakt-titel">Was soll bei Ihnen als Nächstes von selbst laufen?</h2>
-      <div class="kontakt__wege">
-        <div class="kontakt__mail">
-          <a class="kontakt__gross" href={mailLink} data-mail>{kontakt.email}</a>
-          <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
-        </div>
-        <a class="kontakt__gross" href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
-        <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
-      </div>
-    </div>
-  </section>
+  <Anfrage />
 </Base>

@@ -6,6 +6,10 @@
   Der einzige laute Moment ist der Stempel im Hero. Bewusst nur ein helles
   Erscheinungsbild: Papier ist hell.
 
+  Retro-Fenster (Pixelschrift, harte Schatten) zeigen die Welt der Altsysteme
+  und rahmen die Werkzeuge der Seite (Check, Anfrage). Alles andere bleibt
+  ruhig und modern: Das ist der Zustand danach.
+
   Farbe
     papier       #F1F1F3  Seitengrund, kühles Grau mit leichtem Blaustich
     bogen        #FFFFFF  das Original im Durchschreibesatz
@@ -19,6 +23,7 @@
     Display  Breite 125 %, Gewicht 520, enge Laufweite
     Text     Breite 100 %, Gewicht 400
     Feld     Breite 87,5 %, Gewicht 500, Tabellenziffern (ausgefüllte Werte)
+  Pixel: Jersey 10 (klare Ziffern), nur für Fensterleisten, Retro-Knöpfe und Statuszeilen
 
   Raster: 12 Spalten, Überschrift Spalte 1–4, Inhalt Spalte 6–12.
 */
@@ -36,6 +41,7 @@
   --stempel: #c9283a;
 
   --schrift: "Mona Sans Variable", "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --pixel: "Jersey 10", ui-monospace, "Courier New", monospace;
   --breit: 125%;
   --halbbreit: 112.5%;
   --schmal: 87.5%;
@@ -137,6 +143,10 @@ a:hover {
 ::selection {
   background: var(--tinte);
   color: var(--papier);
+}
+
+[hidden] {
+  display: none !important;
 }
 
 .sr-only {
@@ -336,8 +346,14 @@ a:hover {
   text-decoration: none;
 }
 
-@media (max-width: 880px) {
+@media (max-width: 1080px) {
   .nav-optional {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .kopf__lang {
     display: none;
   }
 }
@@ -369,12 +385,18 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem 1.75rem;
+  gap: 0.75rem 1rem;
   margin-top: clamp(2rem, 1.5rem + 1vw, 2.75rem);
 }
 
 .hero__telefon {
+  margin-top: 1.25rem;
+  color: var(--tinte-matt);
   font-size: 1rem;
+}
+
+.hero__telefon a {
+  color: var(--tinte);
   white-space: nowrap;
 }
 
@@ -651,14 +673,349 @@ a:hover {
   transform: none;
 }
 
-/* Checkliste ------------------------------------------------------------- */
+/* Retro-Fenster ----------------------------------------------------------- */
 
-.checkliste fieldset {
+.fenster {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 2px solid var(--tinte);
+  background: var(--bogen);
+  box-shadow: 5px 5px 0 var(--tinte);
+}
+
+.fenster[hidden] {
+  display: none;
+}
+
+.fenster__titel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 34px;
+  padding: 4px 6px 4px 12px;
+  background: var(--tinte);
+  color: var(--bogen);
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.fenster__titeltext {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fenster__zu {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0 0 2px;
+  border: 2px solid var(--bogen);
+  border-radius: 0;
+  background: var(--tinte);
+  color: var(--bogen);
+  font-family: var(--pixel);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fenster__zu:hover {
+  background: var(--bogen);
+  color: var(--tinte);
+}
+
+.fenster__zu:focus-visible {
+  outline: 2px solid var(--bogen);
+  outline-offset: 2px;
+}
+
+.fenster__inhalt {
+  min-width: 0;
+  padding: clamp(16px, 2.4vw, 26px);
+}
+
+.fenster__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 5px 12px;
+  border-top: 2px solid var(--tinte);
+  background: var(--papier);
+  font-family: var(--pixel);
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.retro-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 6px 16px;
+  border: 2px solid var(--tinte);
+  border-radius: 0;
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--tinte);
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.06s ease;
+}
+
+.retro-knopf:hover {
+  background: var(--papier);
+}
+
+.retro-knopf:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--tinte);
+}
+
+.retro-knopf--voll,
+.retro-knopf--voll:hover {
+  background: var(--tinte);
+  color: var(--bogen);
+}
+
+.retro-knopf:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 var(--tinte);
+}
+
+.pixel-icon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+/* Problem: Meldungen auf dem Schreibtisch --------------------------------- */
+
+.problem__titel {
+  grid-column: 1 / span 8;
+}
+
+.schreibtisch {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(24px, 3vw, 44px);
+  align-items: start;
+  margin-top: clamp(2rem, 1.5rem + 2vw, 3.5rem);
+  padding: clamp(24px, 4vw, 56px) clamp(20px, 4vw, 56px) clamp(36px, 5vw, 72px);
+  border: 2px solid var(--tinte);
+  background-color: var(--papier);
+  background-image: conic-gradient(var(--hauch) 25%, transparent 0 50%, var(--hauch) 0 75%, transparent 0);
+  background-size: 4px 4px;
+}
+
+.meldung--2 {
+  margin-top: clamp(0px, 4vw, 56px);
+}
+
+.meldung--3 {
+  margin-top: clamp(0px, 1.6vw, 22px);
+}
+
+.meldung--leer {
+  grid-column: 1 / -1;
+  justify-self: start;
+  max-width: 560px;
+  margin-top: 0;
+}
+
+.meldung__text {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.meldung__text p {
+  min-width: 0;
+}
+
+.meldung__knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+@media (max-width: 900px) {
+  .schreibtisch {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meldung--2,
+  .meldung--3 {
+    margin-top: 0;
+  }
+
+  .meldung--2 {
+    margin-left: 18px;
+  }
+
+  .meldung--3 {
+    margin-left: 6px;
+  }
+}
+
+.problem__folgen {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--spalt);
+  row-gap: 1.5rem;
+  margin-top: clamp(2.5rem, 2rem + 2vw, 4rem);
+}
+
+.problem__satz {
+  grid-column: 1 / span 6;
+  font-size: var(--t-h2);
+  font-stretch: var(--breit);
+  font-weight: 520;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.problem__text {
+  grid-column: 8 / -1;
+  align-self: end;
+  max-width: 46ch;
+  color: var(--tinte-matt);
+}
+
+@media (max-width: 960px) {
+  .problem__satz,
+  .problem__text {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Zeitfresser-Check ----------------------------------------------------- */
+
+.check__gruppe {
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
+
+.check__gruppe + .check__gruppe {
+  margin-top: 28px;
+}
+
+.check__gruppe legend {
+  margin-bottom: 10px;
+  padding: 0;
+  font-size: 1.0625rem;
+  font-stretch: var(--halbbreit);
+  font-weight: 600;
+}
+
+.zeitwahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.zeitwahl input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.zeitwahl label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 14px;
+  border: 2px solid var(--tinte);
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--tinte);
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.06s ease;
+}
+
+.zeitwahl label:hover {
+  background: var(--papier);
+}
+
+.zeitwahl input:checked + label {
+  background: var(--tinte);
+  color: var(--bogen);
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--tinte);
+}
+
+.zeitwahl input:focus-visible + label {
+  outline: 2px solid var(--tinte);
+  outline-offset: 4px;
+}
+
+.check__ergebnis {
+  display: grid;
+  gap: 6px;
+  margin-top: 28px;
+  padding: 16px 18px;
+  border: 2px dashed var(--linie-stark);
+  background: var(--papier);
+}
+
+.check__zahl {
+  font-size: var(--t-h3);
+  font-stretch: var(--breit);
+  font-weight: 560;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.check__ergebnis.ist-fertig .check__zahl {
+  font-size: var(--t-h2);
+  line-height: 1.05;
+}
+
+.check__erklaerung {
+  color: var(--tinte-matt);
+}
+
+.check__aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+/* Checkliste im Check ------------------------------------------------------ */
 
 .checkliste__liste {
   display: grid;
@@ -753,38 +1110,139 @@ a:hover {
   outline-offset: 3px;
 }
 
-.checkliste__fuss {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.25rem 2rem;
-  margin-top: 2rem;
+/* Anfrageformular --------------------------------------------------------- */
+
+.anfrage__felder {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
 }
 
-.checkliste__stand {
+.feld {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+}
+
+.feld--breit {
+  grid-column: 1 / -1;
+}
+
+.feld label {
+  font-size: var(--t-klein);
+  font-weight: 600;
+}
+
+.optional {
   color: var(--tinte-matt);
-  font-variant-numeric: tabular-nums;
+  font-weight: 400;
 }
 
-.checkliste__aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.checkliste__text {
+.feld input,
+.feld textarea,
+.anfrage__text {
   width: 100%;
-  min-height: 12rem;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border: 1px solid var(--linie-stark);
-  border-radius: 2px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 2px solid var(--tinte);
+  border-radius: 0;
   background: var(--bogen);
+  box-shadow: inset 2px 2px 0 var(--hauch);
   color: var(--tinte);
   font: inherit;
-  font-size: var(--t-klein);
+  font-size: 1rem;
+}
+
+.feld textarea,
+.anfrage__text {
+  min-height: 150px;
   resize: vertical;
+  line-height: 1.5;
+}
+
+.feld input:focus-visible,
+.feld textarea:focus-visible {
+  outline: 2px solid var(--tinte);
+  outline-offset: 2px;
+}
+
+.feld [aria-invalid="true"] {
+  border-color: var(--stempel);
+  box-shadow: inset 0 0 0 1px var(--stempel);
+}
+
+.feld__hilfe {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.honig {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.anfrage__hinweis {
+  margin-top: 18px;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.anfrage__knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.anfrage__text {
+  margin-top: 18px;
+  font-size: var(--t-klein);
+}
+
+.anfrage__danke {
+  display: grid;
+  gap: 8px;
+}
+
+.anfrage__danke-titel {
+  font-size: var(--t-h3);
+  font-stretch: var(--breit);
+  font-weight: 560;
+}
+
+@media (max-width: 600px) {
+  .anfrage__felder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Persönliches Bild ------------------------------------------------------- */
+
+.bild-fenster .fenster__inhalt {
+  padding: 0;
+}
+
+.bild-fenster .fenster__inhalt {
+  background: var(--bogen);
+}
+
+/* Breite und Höhe setzt das Skript als ganzes Vielfaches der Kunstpixel */
+.bild-fenster canvas {
+  display: block;
+  max-width: 100%;
+  background: var(--bogen);
+  image-rendering: pixelated;
+}
+
+.leise-knopf.leise-knopf--pixel {
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 18px;
+  letter-spacing: 0.02em;
 }
 
 /* Leistungen ------------------------------------------------------------- */
@@ -807,6 +1265,14 @@ a:hover {
 .leistungen dd {
   max-width: 40ch;
   margin: 0.75rem 0 0;
+  color: var(--tinte-matt);
+}
+
+.leistungen__fuss {
+  max-width: 60ch;
+  margin-top: clamp(2.5rem, 2rem + 1.5vw, 3.5rem);
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linie);
   color: var(--tinte-matt);
 }
 
@@ -886,10 +1352,14 @@ a:hover {
 
 /* Ablauf ----------------------------------------------------------------- */
 
+.abschnitt__kopf.ablauf__kopf {
+  grid-column: 1 / span 7;
+}
+
 .ablauf {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2.5rem var(--spalt);
   margin: clamp(2.5rem, 2rem + 2vw, 4rem) 0 0;
   padding: 0;
@@ -921,63 +1391,119 @@ a:hover {
   color: var(--tinte-matt);
 }
 
-@media (max-width: 1000px) {
-  .ablauf {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 560px) {
+@media (max-width: 860px) {
   .ablauf {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Über mich -------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .abschnitt__kopf.ablauf__kopf {
+    grid-column: 1 / -1;
+  }
+}
+
+.ablauf__zusage {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem 2rem;
+  margin-top: clamp(2.5rem, 2rem + 2vw, 4rem);
+  padding: clamp(20px, 2.5vw, 28px) clamp(20px, 2.5vw, 32px);
+  border: 1.5px solid var(--tinte);
+  background: var(--bogen);
+}
+
+.ablauf__zusage p {
+  max-width: 52ch;
+  font-size: var(--t-lead);
+  line-height: 1.45;
+}
+
+/* Über mich (Begleiter) ----------------------------------------------------- */
+
+.begleiter__bild {
+  max-width: 420px;
+  margin-top: clamp(1.5rem, 1rem + 1.5vw, 2.5rem);
+}
 
 .ueber {
   display: grid;
   gap: 1.25rem;
+  align-content: start;
   max-width: 58ch;
   font-size: var(--t-lead);
   line-height: 1.5;
 }
 
+.ueber__privat {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linie);
+  color: var(--tinte-matt);
+  font-size: var(--t-text);
+  line-height: 1.6;
+}
+
 /* Kontakt ---------------------------------------------------------------- */
 
-.kontakt__titel {
-  grid-column: 1 / span 10;
-  font-size: clamp(2.25rem, 1.1rem + 4.2vw, 5.25rem);
-  line-height: 1.02;
-  letter-spacing: -0.03em;
+.kontakt__kopf {
+  grid-column: 1 / span 5;
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+}
+
+.kontakt__kopf h2 {
+  font-size: var(--t-h2);
+}
+
+.kontakt__erklaerung {
+  max-width: 44ch;
+  color: var(--tinte-matt);
 }
 
 .kontakt__wege {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 1.5rem clamp(2rem, 1rem + 4vw, 5rem);
-  margin-top: clamp(2.5rem, 2rem + 2vw, 4rem);
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--linie);
+}
+
+.kontakt__wege > p:first-child {
+  font-weight: 600;
 }
 
 .kontakt__mail {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.5rem 1rem;
+  gap: 0.25rem 1rem;
 }
 
-.kontakt__gross {
-  font-size: var(--t-h3);
-  font-stretch: var(--breit);
-  font-weight: 540;
-  letter-spacing: -0.01em;
+.kontakt__wege a {
   overflow-wrap: anywhere;
 }
 
 .kontakt__ort {
   color: var(--tinte-matt);
+}
+
+.kontakt__formular {
+  grid-column: 7 / -1;
+}
+
+@media (max-width: 1000px) {
+  .kontakt__kopf,
+  .kontakt__formular {
+    grid-column: 1 / -1;
+  }
+
+  .kontakt__formular {
+    margin-top: 2.5rem;
+  }
 }
 
 .leise-knopf {
@@ -995,12 +1521,6 @@ a:hover {
 
 .leise-knopf:hover {
   color: var(--tinte);
-}
-
-@media (max-width: 960px) {
-  .kontakt__titel {
-    grid-column: 1 / -1;
-  }
 }
 
 /* Fußzeile --------------------------------------------------------------- */

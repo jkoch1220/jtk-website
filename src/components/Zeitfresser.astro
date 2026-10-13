@@ -1,0 +1,94 @@
+---
+// StoryBrand: weicher Handlungsaufruf. Der Check rechnet die geschätzte Zeit
+// in Stunden pro Jahr um und übergibt das Ergebnis an das Anfrageformular.
+import Fenster from "./Fenster.astro";
+
+const punkte = [
+  "Anfragen aus E-Mails in Listen übertragen",
+  "Angebote aus alten Vorlagen zusammenkopieren",
+  "Aufträge per Hand an Lieferanten weitergeben",
+  "Lieferscheine und Rechnungen abtippen",
+  "Die E-Rechnung einführen (Pflicht ab 2027 bzw. 2028)",
+  "Excel-Listen pflegen, die nur eine Person versteht",
+  "Daten zwischen zwei Programmen hin- und herkopieren",
+  "Dieselben Kundenfragen jeden Tag neu beantworten",
+];
+
+const zeiten = [
+  { minuten: 15, text: "15 Min." },
+  { minuten: 30, text: "30 Min." },
+  { minuten: 60, text: "1 Std." },
+  { minuten: 120, text: "2 Std." },
+  { minuten: 240, text: "4 Std." },
+];
+---
+
+<section class="abschnitt check" id="check" aria-labelledby="check-titel">
+  <div class="innen raster">
+    <div class="abschnitt__kopf">
+      <h2 id="check-titel">Was kostet Sie die Handarbeit?</h2>
+      <p>
+        Der Zeitfresser-Check dauert zwei Minuten. Kreuzen Sie an, was bei Ihnen noch von Hand läuft, und schätzen
+        Sie die Zeit. Sie sehen sofort, was das im Jahr ausmacht.
+      </p>
+    </div>
+
+    <Fenster titel="Zeitfresser-Check" class="abschnitt__inhalt check__fenster">
+      <form data-check novalidate>
+        <fieldset class="check__gruppe">
+          <legend>Was läuft bei Ihnen noch von Hand?</legend>
+          <ul class="checkliste__liste">
+            {
+              punkte.map((punkt, i) => (
+                <li>
+                  <input class="checkliste__box" type="checkbox" id={`punkt-${i + 1}`} name="punkt" value={punkt} />
+                  <label for={`punkt-${i + 1}`}>
+                    <span class="kreuz" aria-hidden="true">
+                      <svg viewBox="0 0 20 20">
+                        <path d="M4 4 L16 16" />
+                        <path d="M16 4 L4 16" />
+                      </svg>
+                    </span>
+                    <span>{punkt}</span>
+                  </label>
+                </li>
+              ))
+            }
+          </ul>
+        </fieldset>
+
+        <fieldset class="check__gruppe">
+          <legend>Wie viel Zeit kostet das Ihr Team zusammen pro Tag?</legend>
+          <div class="zeitwahl">
+            {
+              zeiten.map((z) => (
+                <>
+                  <input type="radio" name="zeit" id={`zeit-${z.minuten}`} value={z.minuten} />
+                  <label for={`zeit-${z.minuten}`}>{z.text}</label>
+                </>
+              ))
+            }
+          </div>
+        </fieldset>
+
+        <div class="check__ergebnis" aria-live="polite">
+          <p class="check__zahl" data-ergebnis-zahl>Ihr Ergebnis erscheint hier</p>
+          <p class="check__erklaerung" data-ergebnis-text>
+            Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.
+          </p>
+        </div>
+
+        <div class="check__aktionen">
+          <button type="button" class="retro-knopf retro-knopf--voll" data-check-besprechen disabled>
+            Ergebnis mit mir besprechen
+          </button>
+        </div>
+      </form>
+
+      <Fragment slot="status">
+        <span data-check-stand>Noch nichts angekreuzt</span>
+        <span>Gerechnet mit 220 Arbeitstagen</span>
+      </Fragment>
+    </Fenster>
+  </div>
+</section>

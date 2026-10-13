@@ -1,0 +1,32 @@
+---
+// Persönliches Element: gerasterte Berglandschaft, die sich neu zeichnen lässt.
+// Liegt ein Foto unter public/julian.jpg, erscheint stattdessen das Foto, ebenfalls gerastert.
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import Fenster from "./Fenster.astro";
+
+// Der Build läuft im Projektordner, daher relativ zu dessen Wurzel prüfen
+const hatFoto = existsSync(join(process.cwd(), "public", "julian.jpg"));
+---
+
+{
+  hatFoto ? (
+    <Fenster titel="julian.jpg" class="bild-fenster">
+      <canvas width="240" height="300" data-foto="/julian.jpg" role="img" aria-label="Foto von Julian Koch, gerastert" />
+      <Fragment slot="status">
+        <span>Julian Koch</span>
+        <span data-bild-groesse>2 Farben</span>
+      </Fragment>
+    </Fenster>
+  ) : (
+    <Fenster titel="berge.bmp" class="bild-fenster">
+      <canvas width="240" height="150" data-berge role="img" aria-label="Gezeichnete Berglandschaft mit einem Wanderer am Gipfel" />
+      <Fragment slot="status">
+        <span data-bild-groesse>2 Farben</span>
+        <button type="button" class="leise-knopf leise-knopf--pixel" data-berge-neu>
+          Neu zeichnen
+        </button>
+      </Fragment>
+    </Fenster>
+  )
+}

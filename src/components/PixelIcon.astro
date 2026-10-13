@@ -1,0 +1,37 @@
+---
+// Kleine Symbole im Pixel-Look (16 × 16 Raster, ohne Kantenglättung).
+interface Props {
+  name: "info" | "warnung" | "fehler";
+}
+const { name } = Astro.props;
+---
+
+<svg class="pixel-icon" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+  {
+    name === "info" && (
+      <>
+        <circle cx="8" cy="8" r="7.5" fill="var(--tinte)" />
+        <rect x="7" y="3" width="2" height="2" fill="var(--bogen)" />
+        <rect x="7" y="6" width="2" height="7" fill="var(--bogen)" />
+      </>
+    )
+  }
+  {
+    name === "warnung" && (
+      <>
+        <polygon points="8,0.5 15.5,15 0.5,15" fill="var(--kopie-gelb)" stroke="var(--tinte)" stroke-width="1" />
+        <rect x="7" y="5" width="2" height="5" fill="var(--tinte)" />
+        <rect x="7" y="11" width="2" height="2" fill="var(--tinte)" />
+      </>
+    )
+  }
+  {
+    name === "fehler" && (
+      <>
+        <circle cx="8" cy="8" r="7.5" fill="var(--stempel)" />
+        <rect x="4" y="7" width="8" height="2" fill="var(--bogen)" transform="rotate(45 8 8)" />
+        <rect x="4" y="7" width="8" height="2" fill="var(--bogen)" transform="rotate(-45 8 8)" />
+      </>
+    )
+  }
+</svg>

@@ -1,0 +1,36 @@
+---
+// Retro-Fenster: Titelleiste, Inhalt, optionale Statusleiste.
+// Eigenes Design in den Farben der Seite, kein Nachbau eines echten Betriebssystems.
+interface Props {
+  titel: string;
+  schliessen?: string;
+  class?: string;
+  [attribut: string]: unknown;
+}
+
+const { titel, schliessen, class: klasse = "", ...rest } = Astro.props;
+const hatStatus = Astro.slots.has("status");
+---
+
+<div class:list={["fenster", klasse]} {...rest}>
+  <div class="fenster__titel">
+    <span class="fenster__titeltext">{titel}</span>
+    {
+      schliessen && (
+        <button type="button" class="fenster__zu" data-meldung-zu aria-label={schliessen}>
+          ×
+        </button>
+      )
+    }
+  </div>
+  <div class="fenster__inhalt">
+    <slot />
+  </div>
+  {
+    hatStatus && (
+      <div class="fenster__status">
+        <slot name="status" />
+      </div>
+    )
+  }
+</div>

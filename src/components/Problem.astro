@@ -1,0 +1,77 @@
+---
+// StoryBrand: Problem und was auf dem Spiel steht.
+// Die Meldungen zeigen die Welt der Altsysteme und lassen sich wegklicken.
+import Fenster from "./Fenster.astro";
+import PixelIcon from "./PixelIcon.astro";
+
+const meldungen = [
+  {
+    titel: "Lagerprogramm",
+    icon: "fehler" as const,
+    text: "Dieses Programm läuft nur noch auf dem alten XP-Rechner im Lager. Bitte nicht ausschalten, nicht aktualisieren, nicht anfassen.",
+    knopf: "OK",
+  },
+  {
+    titel: "Kundenliste_FINAL_2.xlsx",
+    icon: "warnung" as const,
+    text: "Die Datei ist gerade bei einem Kollegen geöffnet. Bitte warten Sie, bis er Feierabend hat.",
+    knopf: "Warten",
+  },
+  {
+    titel: "E-Rechnung",
+    icon: "info" as const,
+    text: "Ab 2027 bzw. 2028 müssen Sie Rechnungen elektronisch verschicken. Ihr System kann das noch nicht.",
+    knopf: "Später erinnern",
+  },
+];
+---
+
+<section class="abschnitt problem" id="problem" aria-labelledby="problem-titel">
+  <div class="innen raster">
+    <h2 class="problem__titel" id="problem-titel">Kommt Ihnen das bekannt vor?</h2>
+
+    <div class="schreibtisch" data-meldungen>
+      {
+        meldungen.map((m, i) => (
+          <Fenster
+            titel={m.titel}
+            class={`meldung meldung--${i + 1}`}
+            schliessen="Meldung schließen"
+            data-meldung
+            role="group"
+            aria-label={`Beispielmeldung: ${m.titel}`}
+          >
+            <div class="meldung__text">
+              <PixelIcon name={m.icon} />
+              <p>{m.text}</p>
+            </div>
+            <div class="meldung__knoepfe">
+              <button type="button" class="retro-knopf" data-meldung-zu>
+                {m.knopf}
+              </button>
+            </div>
+          </Fenster>
+        ))
+      }
+      <Fenster titel="Hinweis" class="meldung meldung--leer" data-meldungen-leer hidden>
+        <div class="meldung__text">
+          <PixelIcon name="info" />
+          <p>Alle Meldungen weggeklickt. Im echten Betrieb dauert das etwas länger, aber es geht.</p>
+        </div>
+        <div class="meldung__knoepfe">
+          <a class="retro-knopf retro-knopf--voll" href="#check">Zeitfresser-Check machen</a>
+          <button type="button" class="retro-knopf" data-meldungen-zurueck>Meldungen zurückholen</button>
+        </div>
+      </Fenster>
+    </div>
+
+    <div class="problem__folgen">
+      <p class="problem__satz">Ihre Leute sind zu gut, um ihre Zeit mit Abtippen zu verbringen.</p>
+      <p class="problem__text">
+        Jeder dieser Momente kostet Zeit und Nerven. Daten werden doppelt getippt, Fehler fallen erst beim Kunden
+        auf, und das Wissen über das alte System hängt an einer einzigen Person. Je länger das so bleibt, desto
+        teurer wird der Umstieg.
+      </p>
+    </div>
+  </div>
+</section>
