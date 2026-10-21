@@ -1,5 +1,5 @@
 ---
-// StoryBrand: Problem und was auf dem Spiel steht.
+// StoryBrand: Problem (außen, innen, grundsätzlich) und was auf dem Spiel steht.
 // Die Meldungen zeigen die Welt der Altsysteme und lassen sich wegklicken.
 import Fenster from "./Fenster.astro";
 import PixelIcon from "./PixelIcon.astro";
@@ -20,7 +20,7 @@ const meldungen = [
   {
     titel: "E-Rechnung",
     icon: "info" as const,
-    text: "Ab 2027 bzw. 2028 müssen Sie Rechnungen elektronisch verschicken. Ihr System kann das noch nicht.",
+    text: "Ab 2027 müssen Sie Rechnungen an Firmenkunden elektronisch verschicken, wenn Ihr Vorjahresumsatz über 800.000 € lag. Ab 2028 gilt das für fast alle Betriebe. Ihr System kann das noch nicht.",
     knopf: "Später erinnern",
   },
 ];
@@ -66,12 +66,18 @@ const meldungen = [
     </div>
 
     <div class="problem__folgen">
-      <p class="problem__satz">Ihre Leute sind zu gut, um ihre Zeit mit Abtippen zu verbringen.</p>
-      <p class="problem__text">
-        Jeder dieser Momente kostet Zeit und Nerven. Daten werden doppelt getippt, Fehler fallen erst beim Kunden
-        auf, und das Wissen über das alte System hängt an einer einzigen Person. Je länger das so bleibt, desto
-        teurer wird der Umstieg.
-      </p>
+      <p class="problem__satz">Sie und Ihre Leute sind zu gut, um Ihre Zeit mit Abtippen zu verbringen.</p>
+      <div class="problem__text">
+        <p>
+          Sie wissen, dass es besser ginge. Aber nicht, wo Sie anfangen sollen. Und ein IT-Projekt, das teuer wird und
+          nie fertig, wollen Sie sich nicht ans Bein binden.
+        </p>
+        <p>
+          Also bleibt es, wie es ist: Daten werden doppelt getippt, Fehler fallen erst beim Kunden auf, und abends
+          sitzen Sie noch über Rechnungen. Fällt die eine Kollegin aus, die das alte System versteht, stehen die
+          Bestellungen still.
+        </p>
+      </div>
     </div>
   </div>
 </section>

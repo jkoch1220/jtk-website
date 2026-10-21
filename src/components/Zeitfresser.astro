@@ -1,17 +1,50 @@
 ---
 // StoryBrand: weicher Handlungsaufruf. Der Check rechnet die geschätzte Zeit
-// in Stunden pro Jahr um und übergibt das Ergebnis an das Anfrageformular.
+// in Stunden, Stellen und Euro pro Jahr um, zeigt zu jedem Kreuz einen ersten
+// Schritt und übergibt das Ergebnis an das Anfrageformular.
 import Fenster from "./Fenster.astro";
 
 const punkte = [
-  "Anfragen aus E-Mails in Listen übertragen",
-  "Angebote aus alten Vorlagen zusammenkopieren",
-  "Aufträge per Hand an Lieferanten weitergeben",
-  "Lieferscheine und Rechnungen abtippen",
-  "Die E-Rechnung einführen (Pflicht ab 2027 bzw. 2028)",
-  "Excel-Listen pflegen, die nur eine Person versteht",
-  "Daten zwischen zwei Programmen hin- und herkopieren",
-  "Dieselben Kundenfragen jeden Tag neu beantworten",
+  {
+    text: "Anfragen aus E-Mails in Listen übertragen",
+    schritt: "Sie bekommen jede Anfrage direkt ins System und machen mit wenigen Klicks ein Angebot daraus.",
+  },
+  {
+    text: "Angebote aus alten Vorlagen zusammenkopieren",
+    schritt: "Sie stellen Angebote aus Ihren Artikeln und Preisen zusammen statt aus alten Kopien.",
+  },
+  {
+    text: "Aufträge per Hand an Lieferanten weitergeben",
+    schritt: "Sie geben den Auftrag frei, und die Bestellung geht automatisch an den Lieferanten.",
+  },
+  {
+    text: "Lieferscheine und Rechnungen abtippen",
+    schritt: "Sie bekommen Lieferschein und Rechnung direkt aus dem Auftrag, ohne etwas neu zu tippen.",
+  },
+  {
+    text: "Stundenzettel und Wartungstermine übertragen",
+    schritt: "Sie erhalten Stunden und Termine digital und rechnen sie direkt ab.",
+  },
+  {
+    text: "Die E-Rechnung einführen (Pflicht ab 2027 bzw. 2028)",
+    schritt: "Sie verschicken E-Rechnungen, in vielen Fällen sogar aus Ihrem bisherigen Programm.",
+  },
+  {
+    text: "Excel-Listen pflegen, die nur eine Person versteht",
+    schritt: "Sie machen aus der Liste ein System, das jeder im Team bedienen kann.",
+  },
+  {
+    text: "Daten zwischen zwei Programmen hin- und herkopieren",
+    schritt: "Sie tippen nichts mehr hinüber, Ihre Programme gleichen die Daten selbst ab.",
+  },
+  {
+    text: "Dieselben Kundenfragen jeden Tag neu beantworten",
+    schritt: "Sie lassen die KI Antworten vorbereiten, Ihr Team prüft und schickt sie ab.",
+  },
+  {
+    text: "Nachfragen, wie es um offene Angebote steht",
+    schritt: "Sie sehen auf einen Blick, welche Angebote offen sind und wo es hakt.",
+  },
 ];
 
 const zeiten = [
@@ -20,6 +53,7 @@ const zeiten = [
   { minuten: 60, text: "1 Std." },
   { minuten: 120, text: "2 Std." },
   { minuten: 240, text: "4 Std." },
+  { minuten: 480, text: "8 Std." },
 ];
 ---
 
@@ -29,7 +63,7 @@ const zeiten = [
       <h2 id="check-titel">Was kostet Sie die Handarbeit?</h2>
       <p>
         Der Zeitfresser-Check dauert zwei Minuten. Kreuzen Sie an, was bei Ihnen noch von Hand läuft, und schätzen
-        Sie die Zeit. Sie sehen sofort, was das im Jahr ausmacht.
+        Sie die Zeit. Sie sehen sofort, was das im Jahr ausmacht und wo Sie anfangen können.
       </p>
     </div>
 
@@ -41,7 +75,14 @@ const zeiten = [
             {
               punkte.map((punkt, i) => (
                 <li>
-                  <input class="checkliste__box" type="checkbox" id={`punkt-${i + 1}`} name="punkt" value={punkt} />
+                  <input
+                    class="checkliste__box"
+                    type="checkbox"
+                    id={`punkt-${i + 1}`}
+                    name="punkt"
+                    value={punkt.text}
+                    data-schritt={punkt.schritt}
+                  />
                   <label for={`punkt-${i + 1}`}>
                     <span class="kreuz" aria-hidden="true">
                       <svg viewBox="0 0 20 20">
@@ -49,7 +90,7 @@ const zeiten = [
                         <path d="M16 4 L4 16" />
                       </svg>
                     </span>
-                    <span>{punkt}</span>
+                    <span>{punkt.text}</span>
                   </label>
                 </li>
               ))
@@ -76,18 +117,22 @@ const zeiten = [
           <p class="check__erklaerung" data-ergebnis-text>
             Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.
           </p>
+          <div class="check__schritte" data-ergebnis-schritte hidden>
+            <p class="check__schritte-titel">Hier können Sie anfangen</p>
+            <ul data-ergebnis-liste></ul>
+          </div>
         </div>
 
         <div class="check__aktionen">
           <button type="button" class="retro-knopf retro-knopf--voll" data-check-besprechen disabled>
-            Ergebnis mit mir besprechen
+            Meinen Startpunkt besprechen
           </button>
         </div>
       </form>
 
       <Fragment slot="status">
         <span data-check-stand>Noch nichts angekreuzt</span>
-        <span>Gerechnet mit 220 Arbeitstagen</span>
+        <span>Gerechnet mit 220 Arbeitstagen und 45 € pro Stunde</span>
       </Fragment>
     </Fenster>
   </div>

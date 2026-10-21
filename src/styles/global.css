@@ -901,8 +901,14 @@ a:hover {
 .problem__text {
   grid-column: 8 / -1;
   align-self: end;
+  display: grid;
+  gap: 1rem;
   max-width: 46ch;
   color: var(--tinte-matt);
+}
+
+.problem__text p:first-child {
+  color: var(--tinte);
 }
 
 @media (max-width: 960px) {
@@ -1006,6 +1012,37 @@ a:hover {
 
 .check__erklaerung {
   color: var(--tinte-matt);
+}
+
+.check__schritte {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--linie-stark);
+}
+
+.check__schritte-titel {
+  margin-bottom: 6px;
+  font-stretch: var(--halbbreit);
+  font-weight: 600;
+}
+
+.check__schritte ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check__schritte li {
+  position: relative;
+  padding-left: 1.25em;
+}
+
+.check__schritte li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
 }
 
 .check__aktionen {
@@ -1268,6 +1305,17 @@ a:hover {
   color: var(--tinte-matt);
 }
 
+.leistungen__wandel {
+  max-width: 34ch;
+  margin-top: clamp(2.5rem, 2rem + 1.5vw, 3.5rem);
+  font-size: var(--t-h3);
+  font-stretch: var(--breit);
+  font-weight: 540;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
 .leistungen__fuss {
   max-width: 60ch;
   margin-top: clamp(2.5rem, 2rem + 1.5vw, 3.5rem);
@@ -1339,10 +1387,6 @@ a:hover {
   border-top: 1.5px solid var(--tinte);
 }
 
-.projekt__technik {
-  color: var(--tinte-matt);
-  font-size: var(--t-klein);
-}
 
 @media (max-width: 680px) {
   .projekt {

@@ -169,6 +169,10 @@ function meldungenEinrichten(): void {
 
 const ARBEITSTAGE = 220;
 const STUNDEN_PRO_WOCHE = 40;
+const STUNDEN_PRO_JAHR_VOLLZEIT = ARBEITSTAGE * 8;
+const EURO_PRO_STUNDE = 45;
+// Mehr erste Schritte würden das Ergebnis zur Liste machen, der Rest kommt ins Erstgespräch
+const SCHRITTE_MAX = 3;
 
 function zeitfresserEinrichten(): void {
   const formular = document.querySelector<HTMLFormElement>("[data-check]");
@@ -179,25 +183,48 @@ function zeitfresserEinrichten(): void {
   const ergebnis = formular.querySelector<HTMLElement>(".check__ergebnis");
   const zahl = formular.querySelector<HTMLElement>("[data-ergebnis-zahl]");
   const erklaerung = formular.querySelector<HTMLElement>("[data-ergebnis-text]");
+  const schritte = formular.querySelector<HTMLElement>("[data-ergebnis-schritte]");
+  const schrittListe = formular.querySelector<HTMLUListElement>("[data-ergebnis-liste]");
   const knopf = formular.querySelector<HTMLButtonElement>("[data-check-besprechen]");
   const stand = document.querySelector<HTMLElement>("[data-check-stand]");
 
   const ganzzahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
   const kommazahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
+  // minimumFractionDigits ausdrücklich, ältere Safari werfen sonst einen RangeError
+  const euro = new Intl.NumberFormat("de-DE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 
   const zustand = () => {
-    const punkte = boxen.filter((b) => b.checked).map((b) => b.value);
+    const angekreuzt = boxen.filter((b) => b.checked);
     const gewaehlt = zeiten.find((z) => z.checked);
     const minuten = Number(gewaehlt?.value ?? 0);
     const stunden = Math.round((minuten * ARBEITSTAGE) / 60);
     return {
-      punkte,
+      punkte: angekreuzt.map((b) => b.value),
+      schritte: angekreuzt.map((b) => b.dataset.schritt ?? "").filter(Boolean),
       minuten,
       stunden,
-      wochen: stunden / STUNDEN_PRO_WOCHE,
+      stellen: stunden / STUNDEN_PRO_JAHR_VOLLZEIT,
+      // Auf 100 € gerundet, alles andere wäre Scheingenauigkeit
+      euro: Math.round((stunden * EURO_PRO_STUNDE) / 100) * 100,
       zeitText: gewaehlt?.labels?.[0]?.textContent?.trim() ?? "",
     };
   };
+
+  // Im Dativ, passend zu „Das entspricht …“. Unter einer halben Stelle sind Arbeitswochen
+  // greifbarer als „0,1 Vollzeitstellen“.
+  const umfang = (z: ReturnType<typeof zustand>) => {
+    const ungefaehr = (wert: number, ziel: number) => Math.abs(wert - ziel) < 0.05;
+    if (ungefaehr(z.stellen, 0.5)) return "einer halben Vollzeitstelle";
+    if (ungefaehr(z.stellen, 1)) return "einer ganzen Vollzeitstelle";
+    if (z.stellen >= 0.5) return `etwa ${kommazahl.format(z.stellen)} Vollzeitstellen`;
+    return `etwa ${kommazahl.format(z.stunden / STUNDEN_PRO_WOCHE)} Arbeitswochen`;
+  };
+  let letzteSchritte = "";
 
   const aktualisieren = () => {
     const z = zustand();
@@ -213,7 +240,7 @@ function zeitfresserEinrichten(): void {
     if (zahl && erklaerung) {
       if (fertig) {
         zahl.textContent = `Rund ${ganzzahl.format(z.stunden)} Stunden im Jahr`;
-        erklaerung.textContent = `Das sind etwa ${kommazahl.format(z.wochen)} Arbeitswochen, die Ihr Team jedes Jahr mit Handarbeit verbringt.`;
+        erklaerung.textContent = `Das entspricht ${umfang(z)}: Zeit, die Ihrem Team für Kunden und Wachstum fehlt. Bei ${EURO_PRO_STUNDE} € pro Stunde kostet Sie die Handarbeit rund ${euro.format(z.euro)} im Jahr.`;
       } else if (z.punkte.length > 0) {
         zahl.textContent = "Fast geschafft";
         erklaerung.textContent = "Wählen Sie noch, wie viel Zeit das pro Tag kostet.";
@@ -226,14 +253,38 @@ function zeitfresserEinrichten(): void {
       }
     }
 
+    if (schritte && schrittListe) {
+      schritte.hidden = !fertig;
+      if (fertig) {
+        const rest = z.schritte.length - SCHRITTE_MAX;
+        const eintraege = z.schritte.slice(0, SCHRITTE_MAX);
+        if (rest === 1) eintraege.push("Und ein weiterer Ansatzpunkt, den wir im Erstgespräch durchgehen.");
+        if (rest > 1) eintraege.push(`Und ${rest} weitere Ansatzpunkte, die wir im Erstgespräch durchgehen.`);
+        // Nur neu aufbauen, wenn sich etwas ändert, sonst liest der Screenreader die Liste bei jedem Kreuz vor
+        const neu = eintraege.join("\n");
+        if (neu !== letzteSchritte) {
+          letzteSchritte = neu;
+          schrittListe.replaceChildren(
+            ...eintraege.map((text) => {
+              const li = document.createElement("li");
+              li.textContent = text;
+              return li;
+            }),
+          );
+        }
+      }
+    }
+
     if (knopf) knopf.disabled = !fertig;
   };
 
   knopf?.addEventListener("click", () => {
     const z = zustand();
+    // Die letzte Zeile muss auf „Stunden im Jahr.“ enden, das Anfrageformular ersetzt den Block daran
     const text = [
       "Ergebnis aus dem Zeitfresser-Check:",
       ...z.punkte.map((p) => `- ${p}`),
+      `Gegenwert: entspricht ${umfang(z)}, rund ${euro.format(z.euro)} im Jahr bei ${EURO_PRO_STUNDE} € pro Stunde.`,
       `Zeitaufwand im Team: ${z.zeitText} pro Tag, rund ${ganzzahl.format(z.stunden)} Stunden im Jahr.`,
     ].join("\n");
     window.dispatchEvent(new CustomEvent<string>("anfrage:vorbelegen", { detail: text }));
