@@ -84,8 +84,12 @@ import { kontakt } from "../data/kontakt";
           Kampagnen-Kennzeichen aus der Adresse, falls ein Link welche enthält (utm_source, utm_medium,
           utm_campaign)
         </li>
-        <li>Gerätetyp, Browser und Betriebssystem (grob, aus der Browserkennung abgeleitet)</li>
-        <li>bevorzugte Sprache (aus der Angabe, die Ihr Browser bei jedem Aufruf ohnehin mitschickt)</li>
+        <li>Gerätetyp, Browser und Betriebssystem mit Version (aus der Browserkennung abgeleitet)</li>
+        <li>bevorzugte Sprachen (aus der Angabe, die Ihr Browser bei jedem Aufruf ohnehin mitschickt)</li>
+        <li>
+          ungefährer Standort (Land, Region, Stadt) und Name des Netzbetreibers, aus der IP-Adresse abgeleitet
+          (siehe unten)
+        </li>
         <li>Verweildauer und Scrolltiefe</li>
         <li>angesehene Abschnitte und Klicks auf Schaltflächen und Links</li>
         <li>Nutzung und Angaben des Zeitfresser-Checks (welche Aufgaben noch von Hand laufen, eingetragene Mengen, Richtwerte, geschätzter Auftragswert, gewählte Wünsche und Teamgröße)</li>
@@ -94,7 +98,8 @@ import { kontakt } from "../data/kontakt";
       <p>
         Dafür liest ein kleines Skript in Ihrem Browser einige Angaben aus und schickt sie an meinen Server: die
         Herkunftsseite (gekürzt auf die Domain), wie weit Sie scrollen, wie lange die Seite sichtbar ist, welche
-        Abschnitte angezeigt werden und was Sie anklicken. Auf Ihrem Gerät gespeichert wird dabei nichts.
+        Abschnitte angezeigt werden und was Sie anklicken. Auf Ihrem Gerät gespeichert wird dabei nichts, außer
+        Sie schalten die Messung ab (siehe unten).
       </p>
       <p>
         IP-Adressen werden nicht gespeichert. Um Besuche zählen zu können, ohne Sie wiederzuerkennen, bildet der
@@ -106,13 +111,26 @@ import { kontakt } from "../data/kontakt";
         nichts davon gespeichert.
       </p>
       <p>
+        Außerdem schlägt der Server die IP-Adresse beim Aufruf in einer Datenbank nach, die auf meinem eigenen
+        Server liegt (IP-Geodaten von DB-IP.com; an DB-IP wird dabei nichts übermittelt). Gespeichert wird nur das
+        Ergebnis: der ungefähre Standort (Land, Region, Stadt) und der Name des Netzes, über das Sie surfen,
+        meist Ihr Internetanbieter, bei Firmennetzen auch der Name der Firma. Die IP-Adresse selbst wird danach
+        verworfen. Im Mobilfunk ist der Standort oft nur grob, etwa der Ort eines Netzknotens.
+      </p>
+      <p>
         Rechtsgrundlage für die Auswertung ist Art. 6 Abs. 1 lit. f DSGVO; mein berechtigtes Interesse liegt darin,
         die Website zu verbessern und ihre Reichweite zu kennen. Für das Auslesen der genannten Angaben im Browser
         stütze ich mich auf § 25 Abs. 2 Nr. 2 TDDDG, weil die Messung datensparsam auf meinem eigenen Server
-        läuft, nichts auf Ihrem Gerät speichert und Sie nicht über Tage wiedererkennt. Ob für eine solche
+        läuft, nichts auf Ihrem Gerät speichert (außer auf Ihren Wunsch den Vermerk, nicht zu messen) und Sie nicht
+        über Tage wiedererkennt. Ob für eine solche
         Messung eine Einwilligung nötig ist, beurteilen Aufsichtsbehörden nicht einheitlich. Die Daten werden nach
         25 Monaten automatisch gelöscht. Sie können der Messung jederzeit widersprechen; eine formlose E-Mail an
         <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a> genügt.
+      </p>
+      <p>
+        Sie können die Messung auch selbst abschalten: <a href="?nicht-zaehlen">Messung in diesem Browser
+        abschalten</a>. Ihr Browser merkt sich das mit einem einzigen Eintrag im lokalen Speicher (kein Cookie),
+        bis Sie ihn löschen oder die Messung <a href="?zaehlen">wieder zulassen</a>.
       </p>
 
       <h3>Zeitfresser-Check</h3>

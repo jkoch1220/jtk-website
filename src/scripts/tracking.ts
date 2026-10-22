@@ -1,5 +1,6 @@
 /* Reichweitenmessung ohne Cookies. Nichts wird im Browser gespeichert: Die
    Aufruf-ID lebt nur im Speicher dieser Seite und ist beim nächsten Laden neu.
+   Einzige Ausnahme ist der Abschalter (?nicht-zaehlen), siehe unten.
    Ziel ist /api/e auf derselben Domain (Koch-Plattform, siehe README).
    Fehler hier dürfen die Seite nie stören, deshalb ist alles abgefangen.
    Bewusst sparsam: keine Geräteeigenschaften wie Sprache oder Bildschirmbreite, die Sprache
@@ -24,6 +25,56 @@ function zufallsId(): string {
 }
 
 const id = zufallsId();
+
+/* Eigene Besuche nicht zählen ------------------------------------------------
+   ?nicht-zaehlen schaltet die Messung für diesen Browser ab, ?zaehlen wieder an. Gemerkt wird das
+   als einziger Eintrag im localStorage — nur auf ausdrücklichen Wunsch, sonst bleibt der Speicher leer. */
+
+const AUS_SCHLUESSEL = "kc-nicht-zaehlen";
+
+function hinweisZeigen(text: string): void {
+  const kasten = document.createElement("div");
+  kasten.textContent = text;
+  kasten.setAttribute("role", "status");
+  kasten.style.cssText =
+    "position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483647;max-width:calc(100% - 32px);" +
+    "padding:10px 16px;border-radius:8px;background:#111;color:#fff;font:14px/1.4 system-ui,sans-serif;" +
+    "box-shadow:0 4px 16px rgba(0,0,0,.25)";
+  const zeigen = () => {
+    document.body.appendChild(kasten);
+    window.setTimeout(() => kasten.remove(), 6000);
+  };
+  if (document.body) zeigen();
+  else document.addEventListener("DOMContentLoaded", zeigen, { once: true });
+}
+
+function messungAbgeschaltet(): boolean {
+  try {
+    const adresse = new URL(window.location.href);
+    const p = adresse.searchParams;
+    if (p.has("nicht-zaehlen") || p.has("zaehlen")) {
+      const aus = p.has("nicht-zaehlen");
+      if (aus) window.localStorage.setItem(AUS_SCHLUESSEL, "1");
+      else window.localStorage.removeItem(AUS_SCHLUESSEL);
+      // Schalter aus der Adresse nehmen, damit ein geteilter Link niemanden mit abschaltet
+      p.delete("nicht-zaehlen");
+      p.delete("zaehlen");
+      const rest = p.toString();
+      window.history.replaceState(window.history.state, "", adresse.pathname + (rest ? `?${rest}` : "") + adresse.hash);
+      hinweisZeigen(
+        aus
+          ? "Ihre Besuche werden in diesem Browser nicht mehr gezählt."
+          : "Ihre Besuche werden in diesem Browser wieder gezählt.",
+      );
+    }
+    return window.localStorage.getItem(AUS_SCHLUESSEL) === "1";
+  } catch {
+    // Ohne Speicher (privates Fenster, gesperrt) gilt der Wunsch nur für diesen Aufruf
+    return new URLSearchParams(window.location.search).has("nicht-zaehlen");
+  }
+}
+
+const abgeschaltet = messungAbgeschaltet();
 
 /** Zeitpunkt des Seitenstarts in ms seit 1970 */
 export const seitenStart: number = Math.round(performance.timeOrigin || Date.now() - performance.now());
@@ -77,6 +128,7 @@ function leeren(): void {
 }
 
 function melden(t: string, felder: Record<string, unknown> = {}): void {
+  if (abgeschaltet) return;
   try {
     stapel.push({ t, id, ...felder });
     if (stapel.length >= STAPEL_MAX) leeren();
