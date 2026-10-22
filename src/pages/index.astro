@@ -9,6 +9,8 @@ import Problem from "../components/Problem.astro";
 import Zeitfresser from "../components/Zeitfresser.astro";
 import Persoenlich from "../components/Persoenlich.astro";
 import Anfrage from "../components/Anfrage.astro";
+import Rand from "../components/Rand.astro";
+import Rasterkante from "../components/Rasterkante.astro";
 import { kontakt } from "../data/kontakt";
 
 const erfolge = [
@@ -37,7 +39,7 @@ const erfolge = [
 const schritte = [
   {
     titel: "Kostenloses Erstgespräch",
-    text: "30 Minuten am Telefon oder bei Ihnen vor Ort, unverbindlich. Danach wissen Sie, wo Ihr Betrieb Zeit verliert und wo Sie anfangen sollten.",
+    text: "15 Minuten per Google Meet oder am Telefon, unverbindlich. Danach wissen Sie, wo Ihr Betrieb Zeit verliert und wo Sie anfangen sollten.",
   },
   {
     titel: "Ihr Plan mit Festpreis",
@@ -56,22 +58,26 @@ const schritte = [
   startseite
 >
   <section class="hero" aria-labelledby="hero-titel">
-    <div class="innen raster">
-      <div class="hero__text">
-        <h1 id="hero-titel">Wachsen Sie, ohne dass Ihr Büro mitwachsen muss.</h1>
-        <p class="hero__lead">
-          Sie haben einen Betrieb aufgebaut, der funktioniert. Mit Software, die Ihnen Anfragen, Angebote und Rechnungen
-          abnimmt, bringen Sie ihn weiter, auch mit Ihren alten Programmen.
-        </p>
-        <div class="hero__aktionen">
-          <a class="knopf knopf--voll" href="#kontakt">Kostenloses Erstgespräch vereinbaren</a>
-          <a class="knopf" href="#check">Zeitfresser-Check machen</a>
+    <div class="bogen band--papier">
+      <Rand nr="01" titel="JTK Consulting" />
+      <div class="satz hero__satz">
+        <div class="hero__text">
+          <h1 id="hero-titel">Wachsen Sie, ohne dass Ihr Büro mitwachsen muss.</h1>
+          <p class="hero__lead">
+            Sie haben einen Betrieb aufgebaut, der funktioniert. Mit Software, die Ihnen Anfragen, Angebote und Rechnungen
+            abnimmt, bringen Sie ihn weiter, auch mit Ihren alten Programmen.
+          </p>
+          <div class="hero__aktionen">
+            <a class="knopf knopf--voll" href="#kontakt">Kostenloses Erstgespräch vereinbaren</a>
+            <a class="knopf" href="#check">Zeitfresser-Check machen</a>
+          </div>
+          <p class="hero__telefon">
+            Oder direkt anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+          </p>
         </div>
-        <p class="hero__telefon">
-          Oder direkt anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
-        </p>
+        <Beleg />
       </div>
-      <Beleg />
+      <Rasterkante von="#f1f1f3" nach="#15144a" />
     </div>
   </section>
 
@@ -79,16 +85,19 @@ const schritte = [
 
   <Zeitfresser />
 
-  <section class="abschnitt" id="leistungen" aria-labelledby="leistungen-titel">
-    <div class="innen raster">
-      <div class="abschnitt__kopf">
-        <h2 id="leistungen-titel">So läuft Ihr Betrieb danach</h2>
-        <p>
-          Sie nehmen mehr Aufträge an, ohne dass das Büro mitwächst. Ihr Team hat wieder Zeit für Kunden, und Sie sehen
-          jederzeit, wo Ihr Betrieb steht, ohne nachzufragen.
-        </p>
-      </div>
-      <div class="abschnitt__inhalt">
+  <section class="leistungen-abschnitt" id="leistungen" aria-labelledby="leistungen-titel">
+    <div class="bogen band--bogen">
+      <Rand nr="04" titel="Ihr Betrieb danach" />
+      <span class="riesenziffer riesenziffer--r" aria-hidden="true">04</span>
+      <div class="satz">
+        <div class="leistungen__kopf">
+          <p class="kicker" aria-hidden="true">04 · Ihr Betrieb danach</p>
+          <h2 id="leistungen-titel">So läuft Ihr Betrieb danach</h2>
+          <p>
+            Sie nehmen mehr Aufträge an, ohne dass das Büro mitwächst. Ihr Team hat wieder Zeit für Kunden, und Sie sehen
+            jederzeit, wo Ihr Betrieb steht, ohne nachzufragen.
+          </p>
+        </div>
         <dl class="leistungen">
           {
             erfolge.map((e) => (
@@ -111,92 +120,118 @@ const schritte = [
     </div>
   </section>
 
-  <section class="abschnitt begleiter" id="ueber-mich" aria-labelledby="ueber-titel">
-    <div class="innen raster">
-      <div class="abschnitt__kopf">
+  <section class="begleiter" id="ueber-mich" aria-labelledby="ueber-titel">
+    <div class="bogen band--bogen ueber-band">
+      <Rand nr="05" titel="Ihr Ansprechpartner" />
+      <div class="satz">
+        <p class="kicker" aria-hidden="true">05 · Ihr Ansprechpartner</p>
         <h2 id="ueber-titel">Sie brauchen jemanden, der Ihren Alltag kennt</h2>
-        <div class="begleiter__bild">
-          <Persoenlich />
+      </div>
+      <div class="panorama voll">
+        <Persoenlich />
+      </div>
+      <Rasterkante von="#15144a" nach="#f1f1f3" />
+    </div>
+    <div class="bogen band--papier ueber-unten">
+      <div class="satz">
+        <article class="ueber-bogen ueber">
+          <Persoenlich variante="foto" />
+          <p>
+            Ich weiß, wie es ist, wenn das Büro den Betrieb ausbremst. Bei der Tennismehl GmbH bin ich Mitgesellschafter
+            und führe die Geschäfte. Ich erlebe also jeden Tag, wo im Mittelstand Zeit verloren geht, von der
+            Lohnabrechnung bis zur Tourenplanung. Genau diese Abläufe automatisiere ich, für mein eigenes Unternehmen und
+            für Ihres.
+          </p>
+          <p>
+            Ich bin Julian Koch, Berater für digitale Abläufe. Ich habe große Digitalprojekte für Konzerne mitentwickelt
+            und als Vertriebsingenieur Automatisierungstechnik in die Industrie gebracht. Heute bin ich selbst
+            Unternehmer.
+          </p>
+          <p>
+            Sie bekommen also Konzern-Erfahrung von jemandem, der rechnet wie ein Mittelständler. Sie haben einen
+            Ansprechpartner vom ersten Gespräch bis zur fertigen Lösung. Und Sie hängen trotzdem nie an mir: Code,
+            Zugänge und Dokumentation gehören Ihnen.
+          </p>
+          <p class="ueber__privat">Ausgleich finde ich in den Bergen.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="projekte-abschnitt" id="projekte" aria-labelledby="projekte-titel">
+    <div class="bogen band--papier">
+      <Rand nr="06" titel="So läuft das in der Praxis" />
+      <span class="riesenziffer riesenziffer--l" aria-hidden="true">06</span>
+      <div class="satz">
+        <div class="projekte__kopf">
+          <p class="kicker" aria-hidden="true">06 · So läuft das in der Praxis</p>
+          <h2 id="projekte-titel">So läuft das in der Praxis</h2>
+        </div>
+        <div class="projekte">
+          <article class="projekt akte" data-akte="AKTE 01">
+            <span class="akte__blatt" aria-hidden="true"></span>
+            <span class="akte__blatt" aria-hidden="true"></span>
+            <div class="projekt__kopf">
+              <h3>Tennismehl GmbH</h3>
+              <p class="projekt__kontext">
+                Lieferant für Tennisplatzbeläge, Giebelstadt. Mein eigenes Unternehmen, als Mitgesellschafter und Geschäftsführer, seit 2026.
+              </p>
+            </div>
+            <div class="projekt__text">
+              <p>
+                Mein eigener Betrieb ist der erste Prüfstand. Dort übernimmt heute ein eigenes Portal die Büroarbeit:
+              </p>
+              <ul>
+                <li>Anfragen von der Website landen direkt im Portal statt im Postfach.</li>
+                <li>Bestellt ein Kunde Produkte eines Partners, geht die Bestellung dort automatisch ein.</li>
+                <li>Rechnungen entstehen im System und gehen als E-Rechnung raus.</li>
+                <li>
+                  Auch im Werk: Die Absackanlage für 40-kg-Säcke läuft mit programmierbarer Steuerung statt reiner
+                  Pneumatik.
+                </li>
+              </ul>
+              <p>
+                Gerade im Bau ist die Tourenplanung. Die Saison ist kurz, von Februar bis April rollt ein LKW nach dem
+                anderen raus. Mit Google Maps im Hintergrund plant das Portal Routen und Touren halbautomatisch, damit
+                jeder Auftrag schnell auf dem richtigen Wagen landet. Als Nächstes folgt ein KI-Telefonassistent, damit
+                in der Saison kein Anruf mehr verloren geht.
+              </p>
+            </div>
+          </article>
+
+          <article class="projekt akte" data-akte="AKTE 02">
+            <span class="akte__blatt" aria-hidden="true"></span>
+            <span class="akte__blatt" aria-hidden="true"></span>
+            <div class="projekt__kopf">
+              <h3>Anfrage-Plattform</h3>
+              <p class="projekt__kontext">Zwei Online-Services, ein System. 2026.</p>
+            </div>
+            <div class="projekt__text">
+              <p>
+                Für einen Betreiber zweier Online-Services, eines Anfrage- und eines Energie-Service: Statt zwei Systeme
+                doppelt zu pflegen, laufen beide künftig auf einer gemeinsamen Plattform. Jeder Service behält seinen
+                eigenen Auftritt, die Abläufe im Hintergrund laufen von selbst.
+              </p>
+            </div>
+          </article>
         </div>
       </div>
-      <div class="abschnitt__inhalt ueber">
-        <p>
-          Ich weiß, wie es ist, wenn das Büro den Betrieb ausbremst. Bei der Tennismehl GmbH bin ich Mitgesellschafter
-          und führe die Geschäfte. Ich erlebe also jeden Tag, wo im Mittelstand Zeit verloren geht, von der
-          Lohnabrechnung bis zur Tourenplanung. Genau diese Abläufe automatisiere ich, für mein eigenes Unternehmen und
-          für Ihres.
-        </p>
-        <p>
-          Ich bin Julian Koch, Berater für digitale Abläufe. Ich habe große Digitalprojekte für Konzerne mitentwickelt
-          und als Vertriebsingenieur Automatisierungstechnik in die Industrie gebracht. Heute bin ich selbst
-          Unternehmer.
-        </p>
-        <p>
-          Sie bekommen also Konzern-Erfahrung von jemandem, der rechnet wie ein Mittelständler. Sie haben einen
-          Ansprechpartner vom ersten Gespräch bis zur fertigen Lösung. Und Sie hängen trotzdem nie an mir: Code,
-          Zugänge und Dokumentation gehören Ihnen.
-        </p>
-        <p class="ueber__privat">Ausgleich finde ich in den Bergen.</p>
-      </div>
     </div>
   </section>
 
-  <section class="abschnitt" id="projekte" aria-labelledby="projekte-titel">
-    <div class="innen raster">
-      <div class="abschnitt__kopf">
-        <h2 id="projekte-titel">So läuft das in der Praxis</h2>
-      </div>
-      <div class="abschnitt__inhalt projekte">
-        <article class="projekt">
-          <div class="projekt__kopf">
-            <h3>Tennismehl GmbH</h3>
-            <p class="projekt__kontext">
-              Lieferant für Tennisplatzbeläge, Giebelstadt. Mein eigenes Unternehmen, als Mitgesellschafter und Geschäftsführer, seit 2026.
-            </p>
-          </div>
-          <div class="projekt__text">
-            <p>
-              Mein eigener Betrieb ist der erste Prüfstand. Dort übernimmt heute ein eigenes Portal die Büroarbeit:
-            </p>
-            <ul>
-              <li>Anfragen von der Website landen direkt im Portal statt im Postfach.</li>
-              <li>Bestellt ein Kunde Produkte eines Partners, geht die Bestellung dort automatisch ein.</li>
-              <li>Rechnungen entstehen im System und gehen als E-Rechnung raus.</li>
-              <li>
-                Auch im Werk: Die Absackanlage für 40-kg-Säcke läuft mit programmierbarer Steuerung statt reiner
-                Pneumatik.
-              </li>
-            </ul>
-            <p>
-              Gerade im Bau ist die Tourenplanung. Die Saison ist kurz, von Februar bis April rollt ein LKW nach dem
-              anderen raus. Mit Google Maps im Hintergrund plant das Portal Routen und Touren halbautomatisch, damit
-              jeder Auftrag schnell auf dem richtigen Wagen landet. Als Nächstes folgt ein KI-Telefonassistent, damit
-              in der Saison kein Anruf mehr verloren geht.
-            </p>
-          </div>
-        </article>
-
-        <article class="projekt">
-          <div class="projekt__kopf">
-            <h3>Anfrage-Plattform</h3>
-            <p class="projekt__kontext">Zwei Online-Services, ein System. 2026.</p>
-          </div>
-          <div class="projekt__text">
-            <p>
-              Für einen Betreiber zweier Online-Services, eines Anfrage- und eines Energie-Service: Statt zwei Systeme
-              doppelt zu pflegen, laufen beide künftig auf einer gemeinsamen Plattform. Jeder Service behält seinen
-              eigenen Auftritt, die Abläufe im Hintergrund laufen von selbst.
-            </p>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
-    <div class="innen raster">
-      <div class="abschnitt__kopf ablauf__kopf">
+  <section class="ablauf-abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
+    <div class="bogen band--papier ablauf-band">
+      <Rand nr="07" titel="Ihr Weg" />
+      <div class="satz">
+        <p class="kicker" aria-hidden="true">07 · Ihr Weg</p>
         <h2 id="ablauf-titel">In drei Schritten zu weniger Büroarbeit</h2>
+      </div>
+      <div class="ablauf__linie voll" aria-hidden="true">
+        <svg class="ablauf__pfeil ablauf__pfeil--l" viewBox="0 0 10 16" focusable="false"><path d="M10 1 2 8l8 7" /></svg>
+        <svg class="ablauf__strich" viewBox="0 0 100 16" preserveAspectRatio="none" focusable="false">
+          <line x1="0" y1="8" x2="100" y2="8" vector-effect="non-scaling-stroke" />
+        </svg>
+        <svg class="ablauf__pfeil ablauf__pfeil--r" viewBox="0 0 10 16" focusable="false"><path d="M0 1l8 7-8 7" /></svg>
       </div>
       <ol class="ablauf">
         {
@@ -208,13 +243,18 @@ const schritte = [
           ))
         }
       </ol>
-      <div class="ablauf__zusage">
-        <p>
-          Kein Großprojekt, das nie fertig wird. Ihre alten Programme dürfen bleiben, wenn sie ihren Dienst tun. Und
-          Code, Zugänge und Dokumentation gehören Ihnen, ein anderer Entwickler kann jederzeit übernehmen.
-        </p>
-        <a class="knopf knopf--voll" href="#kontakt">Kostenloses Erstgespräch vereinbaren</a>
+      <div class="satz ablauf__fuss">
+        <div class="ablauf__zusage">
+          <span class="zusage__kopie zusage__kopie--rosa" aria-hidden="true"></span>
+          <span class="zusage__kopie zusage__kopie--gelb" aria-hidden="true"></span>
+          <p>
+            Kein Großprojekt, das nie fertig wird. Ihre alten Programme dürfen bleiben, wenn sie ihren Dienst tun. Und
+            Code, Zugänge und Dokumentation gehören Ihnen, ein anderer Entwickler kann jederzeit übernehmen.
+          </p>
+          <a class="knopf knopf--voll" href="#kontakt">Kostenloses Erstgespräch vereinbaren</a>
+        </div>
       </div>
+      <Rasterkante von="#f1f1f3" nach="#1f1e63" />
     </div>
   </section>
 

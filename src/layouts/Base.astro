@@ -56,8 +56,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       <slot />
     </main>
     <Fuss />
+    <div class="lochrand lochrand--l" aria-hidden="true"></div>
+    <div class="lochrand lochrand--r" aria-hidden="true"></div>
     <script>
       import "../scripts/seite";
+      import "../scripts/buehne";
     </script>
   </body>
 </html>

@@ -66,7 +66,9 @@ import { kontakt } from "../data/kontakt";
       <p>
         Die Website setzt keine Cookies und speichert nichts im Browser. Es gibt keine Analyse-Werkzeuge von
         Drittanbietern, keine Werbung und keine eingebundenen Social-Media-Inhalte. Schriften und alle anderen
-        Dateien werden vom eigenen Server geladen; Google Fonts oder andere externe Dienste werden nicht aufgerufen.
+        Dateien werden vom eigenen Server geladen; Google Fonts oder andere externe Dienste werden beim Besuch nicht
+        aufgerufen. Einzige Ausnahme ist die Sicherheitsprüfung von Cloudflare, und auch die erst, wenn Sie das
+        Formular zur Terminbuchung benutzen (siehe „Terminbuchung“).
       </p>
 
       <h3>Reichweitenmessung ohne Cookies</h3>
@@ -86,8 +88,8 @@ import { kontakt } from "../data/kontakt";
         <li>bevorzugte Sprache (aus der Angabe, die Ihr Browser bei jedem Aufruf ohnehin mitschickt)</li>
         <li>Verweildauer und Scrolltiefe</li>
         <li>angesehene Abschnitte und Klicks auf Schaltflächen und Links</li>
-        <li>Nutzung und Angaben des Zeitfresser-Checks (eingetragene Mengen, Richtwerte und geschätzter Auftragswert)</li>
-        <li>ob das Anfrageformular begonnen oder abgeschickt wurde</li>
+        <li>Nutzung und Angaben des Zeitfresser-Checks (welche Aufgaben noch von Hand laufen, eingetragene Mengen, Richtwerte, geschätzter Auftragswert, gewählte Wünsche und Teamgröße)</li>
+        <li>ob das Anfrageformular begonnen oder abgeschickt oder ein Erstgespräch gebucht wurde</li>
       </ul>
       <p>
         Dafür liest ein kleines Skript in Ihrem Browser einige Angaben aus und schickt sie an meinen Server: die
@@ -115,7 +117,7 @@ import { kontakt } from "../data/kontakt";
 
       <h3>Zeitfresser-Check</h3>
       <p>
-        Der Zeitfresser-Check rechnet in Ihrem Browser. Welche Mengen und Werte Sie eintragen,
+        Der Zeitfresser-Check rechnet in Ihrem Browser. Welche Aufgaben, Mengen, Werte, Wünsche und Teamgröße Sie angeben,
         fließt ohne Bezug zu Ihrer Person in die oben beschriebene Reichweitenmessung ein. Mit Ihrem Namen
         verbunden wird das Ergebnis erst, wenn Sie eine Anfrage absenden; dann wird es mit der Anfrage übertragen.
       </p>
@@ -149,6 +151,43 @@ import { kontakt } from "../data/kontakt";
         überschrieben.
       </p>
 
+      <h3>Terminbuchung</h3>
+      <p>
+        Sie können ein Erstgespräch direkt auf der Website buchen. Dafür ruft die Seite die freien Zeiten von meinem
+        eigenen Server ab; dabei verarbeitet der Server nur Ihre IP-Adresse, um zum Schutz vor Missbrauch die Zahl
+        der Abrufe zu begrenzen (wie unten beschrieben nur als nicht umkehrbarer Prüfwert im Arbeitsspeicher). Wenn
+        Sie buchen, werden der gewählte Termin, die Gesprächsart (Google Meet oder Telefon), Ihr Name, Ihre
+        E-Mail-Adresse, Ihre Telefonnummer (bei einem Telefongespräch Pflicht, sonst freiwillig), freiwillig Firma
+        und Nachricht sowie die Seite übertragen, von der Sie buchen. Ich nutze die Angaben, um das Gespräch zu führen und vorzubereiten.
+      </p>
+      <p>
+        Die Buchung wird auf meinem eigenen Server bei Hostinger in der EU gespeichert und dort zugleich als Anfrage
+        abgelegt. Den Termin trage ich automatisch in meinen Kalender bei Google Workspace (Google Ireland Limited,
+        siehe unten) ein; Google verarbeitet die Angaben dabei als Auftragsverarbeiter. Sie erhalten von Google eine
+        Kalendereinladung an Ihre E-Mail-Adresse und von mir eine Bestätigung. Bei einem Gespräch per Google Meet
+        legt Google dabei den Link zum Videocall an. Wie bei Anfragen zählt der Server zum Schutz vor Missbrauch,
+        wie viele Buchungen von derselben IP-Adresse kommen (nur als nicht umkehrbarer Prüfwert im
+        Arbeitsspeicher, nicht gespeichert) und wie viele künftige Termine für dieselbe E-Mail-Adresse gebucht sind.
+      </p>
+      <p>
+        Damit keine automatisierten Programme Termine buchen, nutze ich die Sicherheitsprüfung Turnstile der
+        Cloudflare, Inc., 101 Townsend St., San Francisco, CA 94107, USA. Sie startet erst, wenn Sie in das
+        Buchungsformular klicken: Dann lädt Ihr Browser ein Skript von Cloudflare, und Cloudflare erhält Ihre
+        IP-Adresse sowie technische Angaben zu Browser und Gerät, um Menschen von Programmen zu unterscheiden. Meist
+        merken Sie davon nichts, nur in Zweifelsfällen erscheint ein Kästchen zum Anklicken. Das Ergebnis der
+        Prüfung schickt mein Server mit Ihrer IP-Adresse zur Bestätigung an Cloudflare; Ihre Buchungsangaben
+        erhält Cloudflare nicht.
+        Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse am Schutz vor Missbrauch). Eine
+        Übermittlung in die USA ist möglich; Cloudflare ist nach dem EU-US Data Privacy Framework zertifiziert.
+      </p>
+      <p>
+        Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Maßnahmen auf Ihre Anfrage vor einem möglichen Vertrag).
+        Absagen oder verschieben können Sie jederzeit mit einer Antwort auf die Bestätigung. Für die Löschung gilt
+        dasselbe wie beim Anfrageformular: Buchung und Kalendereintrag werden gelöscht, sobald die Sache erledigt
+        ist und kein Auftrag zustande kommt, spätestens nach 12 Monaten; in den nächtlichen Sicherungskopien bleibt
+        eine gelöschte Buchung noch bis zu 30 Tage enthalten.
+      </p>
+
       <h3>E-Mail und Telefon</h3>
       <p>
         Wenn Sie mir eine E-Mail schreiben oder mich anrufen, verarbeite ich Ihre Angaben, um Ihre Anfrage zu
@@ -174,7 +213,8 @@ import { kontakt } from "../data/kontakt";
       <h2>4. Erstgespräch per Google Meet</h2>
       <p>
         Findet das Erstgespräch als Videocall statt, nutze ich Google Meet, ebenfalls ein Dienst der Google Ireland
-        Limited im Rahmen von Google Workspace. Verarbeitet werden dabei Ihr Name, Ihre E-Mail-Adresse (für die
+        Limited im Rahmen von Google Workspace. Den Link dazu legt Google bei der Buchung an; Sie finden ihn in der
+        Bestätigung und in der Kalendereinladung. Verarbeitet werden dabei Ihr Name, Ihre E-Mail-Adresse (für die
         Einladung), Ihre IP-Adresse, technische Verbindungsdaten sowie Bild und Ton während des Gesprächs. Gespräche
         werden nicht aufgezeichnet. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO. Für eine mögliche Übermittlung in
         die USA gilt das zu Google Workspace Gesagte. Wenn Sie lieber telefonieren, ist das jederzeit möglich.

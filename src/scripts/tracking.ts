@@ -259,6 +259,15 @@ function starten(): void {
           melden("check_besprechen");
           return;
         }
+        // Im Check zählen nur die beiden Beleg-Knöpfe, sonst wäre jedes Antippen ein Klick
+        if (start.closest("[data-beleg-ausstellen]")) {
+          melden("klick", { ziel: "Zeitfresser: Beleg ausstellen" });
+          return;
+        }
+        if (start.closest("[data-beleg-pdf]")) {
+          melden("klick", { ziel: "Zeitfresser: Beleg als PDF" });
+          return;
+        }
         if (start.closest("form[data-check]")) return;
         const element = start.closest("a, button");
         const ziel = element ? klickZiel(element) : null;

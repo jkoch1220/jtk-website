@@ -29,7 +29,9 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
    trägt die Seite ein (HTTPS kommt automatisch) und lädt sie hoch. Ist Port 80/443 schon von einem
    anderen Programm belegt, bricht es ab, ohne etwas zu ändern. Dann stattdessen `deploy/nginx.conf` nutzen.
    Steht `jtkconsulting.de` dort schon ohne Weiterleitung von `/api/anfrage` und `/api/e`, bricht es ab: den Block in
-   `/etc/caddy/Caddyfile` durch den aus `deploy/Caddyfile` ersetzen und erneut ausführen. Außerdem
+   `/etc/caddy/Caddyfile` durch den aus `deploy/Caddyfile` ersetzen und erneut ausführen. Fehlt in einem
+   bestehenden Block nur `/api/termine` (Fassung vor der Terminbuchung), ergänzt es die `@plattform`-Zeile
+   selbst (vorher gesichert, danach `caddy validate`, sonst zurück zum alten Stand). Außerdem
    begrenzt es das System-Journal (Caddys Fehlermeldungen mit IP-Adressen) auf 7 Tage.
 3. Bei jeder Änderung danach: `npm run deploy`. Vor dem Hochladen prüft das Skript, ob der Server `/api/anfrage`
    und `/api/e` weiterleitet und der Website-Dienst antwortet; sonst bricht es ab, weil das Formular ins Leere ginge.
@@ -76,8 +78,8 @@ Lokal: Website-Dienst mit `npm run dev` in `~/Workspace/kochConsultingPlatform/w
 `npm run dev`. Der Vite-Proxy in `astro.config.mjs` leitet `/api` dorthin. Läuft der Dienst nicht,
 gehen Statistik und Formular ins Leere; die Seite selbst funktioniert trotzdem.
 
-Auf dem Server leitet `deploy/Caddyfile` (bzw. `npm run einrichten`) nur `/api/anfrage`, `/api/e` und
-`/api/gesundheit` an `127.0.0.1:3100` weiter; alle anderen `/api/*` beantwortet Caddy mit 404. Die
+Auf dem Server leitet `deploy/Caddyfile` (bzw. `npm run einrichten`) nur `/api/anfrage`, `/api/e`,
+`/api/gesundheit` und `/api/termine` (samt `/api/termine/*`) an `127.0.0.1:3100` weiter; alle anderen `/api/*` beantwortet Caddy mit 404. Die
 Portal-API des Dienstes ist nur über `app.koch.consulting` erreichbar.
 
 ## Wo was steht
@@ -88,6 +90,7 @@ Portal-API des Dienstes ist nur über `app.koch.consulting` erreichbar.
 | Texte der Startseite (Erfolg, Begleiter, Projekte, Plan) | `src/pages/index.astro` |
 | Problem-Meldungen | `src/components/Problem.astro` |
 | Zeitfresser-Check | `src/components/Zeitfresser.astro` |
+| Terminbuchung (Erstgespräch) | `src/components/Anfrage.astro`, `src/scripts/termin.ts`; Zeiten und Dauer im Portal unter „Erstgespräche“ |
 | Anfrageformular | `src/components/Anfrage.astro` |
 | Rechnung im Hero | `src/components/Beleg.astro` |
 | Berge oder Foto | `src/components/Persoenlich.astro` |

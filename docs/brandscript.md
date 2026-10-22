@@ -38,7 +38,7 @@ Inhaber und Geschäftsführer mittelständischer Betriebe in NRW (Handel, Handwe
 ## 4. Der Plan
 
 **Ablauf in drei Schritten**
-1. Kostenloses Erstgespräch: 30 Minuten, unverbindlich. Der Kunde weiß danach, wo sein Betrieb Zeit verliert und wo er anfangen sollte.
+1. Kostenloses Erstgespräch: 15 Minuten, unverbindlich. Der Kunde weiß danach, wo sein Betrieb Zeit verliert und wo er anfangen sollte.
 2. Plan mit Festpreis: Etappen mit festem Preis, jede für sich nutzbar. Nach jeder Etappe entscheidet der Kunde, ob es weitergeht.
 3. Zeit zurückgewinnen: Das Team arbeitet von Anfang an mit und wird geschult, danach Wartung und Weiterentwicklung.
 
@@ -53,7 +53,7 @@ Inhaber und Geschäftsführer mittelständischer Betriebe in NRW (Handel, Handwe
 ## 5. Handlungsaufruf
 
 - **Direkt:** Erstgespräch vereinbaren.
-- **Übergang:** Zeitfresser-Check (2 Minuten). Der Besucher trägt Mengen ein, die er kennt (Anfragen pro Woche, Routineanrufe pro Tag, Rechnungen pro Monat …), statt Zeiten zu schätzen. Gerechnet wird mit sichtbaren, vorsichtigen Richtwerten, die er anpassen kann. Ergebnis: Stunden, Stellenanteil und Euro pro Jahr (45 € pro Stunde), dazu der Umsatz, der durchrutscht (verpasste Anrufe, Angebote ohne Nachfassen, mit eigenem Auftragswert), und die größten Hebel mit Rechenweg. Danach „Meinen Startpunkt besprechen“.
+- **Übergang:** Zeitfresser-Check „Wo verbrennt Ihr Betrieb Geld?“, als kleines Spiel. Hauptbotschaft ist Geld, Zeit kommt danach. Der Besucher sortiert 16 Karten aus dem Büroalltag (Standardanrufe, Angebote, Rechnungen, Belege suchen …): „Läuft bei uns von Hand“ oder „Läuft schon digital“, per Knopf, Pfeiltaste oder Wischen. Was von Hand läuft, landet auf der Werkbank: Ein Schnellstart nach Teamgröße (bis 10, 11 bis 30, 31 bis 100) setzt typische Mengen, Regler mit Rechenweg machen sie passend. Gerechnet wird vorsichtig mit sichtbaren Richtwerten, die er anpassen kann (45 € pro Stunde, 220 Arbeitstage). Live daneben: der Betrag, den der Betrieb im Jahr mit Handarbeit verbrennt, und das **Pixeljahr**, 220 Kästchen für das Arbeitsjahr einer Vollzeitkraft, die sich rot färben („134 von 220 Arbeitstagen bezahlen Sie fürs Abtippen, Suchen und Telefonieren“). Dazu ein ehrlich gerechneter Vergleich (etwa „als würde Ihr ganzes Team jeden Freitag schon um 14 Uhr bezahlt nach Hause gehen“) und der Umsatz, der durchrutscht (verpasste Anrufe, Angebote ohne Nachfassen, eigener Auftragswert). Der zählt erst, wenn der Besucher die Werte selbst einstellt oder bestätigt; auf dem Beleg heißt die Summe dann „Verbrannt und entgangen pro Jahr“, denn entgangener Umsatz ist kein Kostenposten. Alle Beträge sind gerundet, überall gleich. Wünsche wie Kundenportal oder KI-Telefonassistent tippt er an, sie fließen nur ins Erstgespräch ein. Am Ende stellt er sich den **Beleg als Beweisstück** aus, im Durchschreibe-Look mit Stempel „Dringend: Julian Koch anrufen“, mit seinen drei größten Hebeln, als PDF zum Herunterladen. Danach „Meinen Startpunkt besprechen“. Nie versprechen, dass der ganze Betrag wegfällt: Formulierungen wie „kostet Sie“ und „verbrennt“, nicht „sparen Sie garantiert“.
 
 ## 6. Was auf dem Spiel steht
 

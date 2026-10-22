@@ -1,6 +1,7 @@
 ---
 // Hero-Motiv: ein Durchschreibesatz (Original, gelbe und rosa Kopie), dessen
 // Felder sich selbst ausfüllen und der am Ende gestempelt wird.
+// Schnittmarken und Kohlepapier sind reine Zier.
 // Alle Beträge sind nachgerechnet: 170,00 + 214,50 + 45,00 = 429,50 netto,
 // 19 % USt. = 81,61, gesamt 511,11.
 const heute = new Date();
@@ -25,6 +26,7 @@ const positionen = [
   >
     <div class="beleg__kopie beleg__kopie--rosa" aria-hidden="true"></div>
     <div class="beleg__kopie beleg__kopie--gelb" aria-hidden="true"></div>
+    <div class="beleg__kopie beleg__kopie--kohle" aria-hidden="true"></div>
     <div class="beleg__bogen" aria-hidden="true">
       <p class="beleg__absender">Muster Haustechnik GmbH, Musterweg 3, 40878 Ratingen</p>
       <p class="beleg__titel">Rechnung</p>
@@ -146,6 +148,13 @@ const positionen = [
         </g>
       </svg>
     </div>
+    {
+      ["ol", "or", "ul", "ur"].map((ecke) => (
+        <svg class={`schnittmarke schnittmarke--${ecke}`} viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+          <path d="M0.5 18V0.5H18" />
+        </svg>
+      ))
+    }
   </div>
   <figcaption>
     <span id="beleg-beschreibung">So entsteht Ihre nächste Rechnung: automatisch erstellt und als E-Rechnung verschickt.</span>

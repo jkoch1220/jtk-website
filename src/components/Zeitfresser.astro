@@ -1,317 +1,860 @@
 ---
-// StoryBrand: weicher Handlungsaufruf. Der Besucher trägt Mengen ein, die er kennt (Anfragen pro
-// Woche, Rechnungen pro Monat …), der Check rechnet mit sichtbaren, vorsichtigen Richtwerten Stunden,
-// Stellen und Euro pro Jahr aus, dazu den Umsatz, der durchrutscht. Die größten Posten zeigen den
-// Startpunkt, das Ergebnis geht ans Anfrageformular.
+// StoryBrand: weicher Handlungsaufruf als kleines Spiel. Der Besucher sortiert 16 Karten aus dem
+// Büroalltag (von Hand oder schon digital), stellt an Reglern ein, wie oft etwas anfällt, und sieht
+// live, wie viel Geld seine Handarbeit im Jahr kostet. Am Ende stellt er sich einen Beleg aus,
+// das Beweisstück zum Herunterladen. Die Logik steckt in src/scripts/zeitfresser.ts.
+// Die Namen der Aufgaben sind fest: Statistik und Anfragen werden danach gruppiert.
 import Fenster from "./Fenster.astro";
+import Rand from "./Rand.astro";
+import { kontakt } from "../data/kontakt";
 
 type Einheit = "Tag" | "Woche" | "Monat";
+// vorgaenge: Menge × Minuten je Vorgang. minuten/stunden: der Regler ist direkt Zeit.
+type Art = "vorgaenge" | "minuten" | "stunden";
 
-// minuten: Richtwert je Vorgang, lässt sich unter „Richtwerte anpassen“ ändern.
-// Bei „touren“ trägt der Besucher direkt Stunden ein, daher fest 60 Minuten.
-const posten: {
+interface Aufgabe {
   id: string;
-  aufgabe: string;
-  tipp: string;
+  name: string;
+  satz: string;
   einheit: Einheit;
+  art: Art;
   minuten: number;
-  je?: string;
-  einheitText?: string;
+  presets: [number, number, number];
+  max: number;
   schritt: string;
-}[] = [
+  einzahl: string;
+  mehrzahl: string;
+}
+
+const aufgaben: Aufgabe[] = [
+  {
+    id: "anrufe",
+    name: "Standardanrufe annehmen",
+    satz: "„Wann kommt meine Lieferung?“ „Ist Herr Müller da?“",
+    einheit: "Tag",
+    art: "vorgaenge",
+    minuten: 3,
+    presets: [10, 25, 60],
+    max: 150,
+    schritt:
+      "Sie lassen Standardanrufe von einem KI-Telefonassistenten beantworten, Ihr Team bekommt nur noch die Gespräche, die es wirklich braucht.",
+    einzahl: "Anruf",
+    mehrzahl: "Anrufe",
+  },
   {
     id: "anfragen",
-    aufgabe: "Anfragen erfassen und beantworten",
-    tipp: "Ein Blick ins Postfach der letzten Woche reicht.",
+    name: "Anfragen bearbeiten",
+    satz: "Mail lesen, abtippen, Rückfragen stellen.",
     einheit: "Woche",
+    art: "vorgaenge",
     minuten: 10,
-    je: "Anfrage",
-    schritt: "Sie bekommen jede Anfrage direkt ins System, ob per Mail, Formular oder Telefon, und antworten in Minuten.",
+    presets: [10, 30, 80],
+    max: 200,
+    schritt: "Sie bekommen jede Anfrage direkt ins System, ob per Mail, Formular oder Telefon.",
+    einzahl: "Anfrage",
+    mehrzahl: "Anfragen",
   },
   {
     id: "angebote",
-    aufgabe: "Angebote schreiben",
-    tipp: "Ihre Angebotsnummern verraten es.",
+    name: "Angebote schreiben und nachfassen",
+    satz: "Alte Vorlage kopieren, Preise suchen, später nachhaken.",
     einheit: "Woche",
+    art: "vorgaenge",
     minuten: 20,
-    je: "Angebot",
-    schritt: "Sie stellen Angebote mit wenigen Klicks aus Ihren Artikeln und Preisen zusammen statt aus alten Kopien.",
+    presets: [5, 15, 40],
+    max: 100,
+    schritt: "Sie stellen Angebote mit wenigen Klicks zusammen und werden ans Nachfassen erinnert.",
+    einzahl: "Angebot",
+    mehrzahl: "Angebote",
   },
   {
-    id: "anrufe",
-    aufgabe: "Routineanrufe annehmen und weiterverbinden",
-    tipp: "Etwa „Wann kommt meine Lieferung?“. Ihre Telefonanlage zeigt alle Anrufe.",
-    einheit: "Tag",
-    minuten: 3,
-    je: "Anruf",
-    schritt: "Sie lassen Routineanrufe von einem KI-Telefonassistenten beantworten. Was Ihr Team braucht, landet weiter bei Ihrem Team.",
+    id: "auftragsbestaetigungen",
+    name: "Auftragsbestätigungen verschicken",
+    satz: "Alles aus dem Angebot noch einmal abtippen.",
+    einheit: "Woche",
+    art: "vorgaenge",
+    minuten: 5,
+    presets: [5, 15, 40],
+    max: 100,
+    schritt: "Sie verschicken Auftragsbestätigungen per Klick aus dem Angebot.",
+    einzahl: "Bestätigung",
+    mehrzahl: "Bestätigungen",
+  },
+  {
+    id: "termine",
+    name: "Termine vereinbaren und verschieben",
+    satz: "Hin und her telefonieren, bis es passt.",
+    einheit: "Woche",
+    art: "vorgaenge",
+    minuten: 5,
+    presets: [10, 30, 80],
+    max: 200,
+    schritt: "Ihre Kunden buchen und verschieben Termine selbst, Ihr Kalender bleibt aktuell.",
+    einzahl: "Termin",
+    mehrzahl: "Termine",
   },
   {
     id: "rechnungen",
-    aufgabe: "Rechnungen schreiben und verschicken",
-    tipp: "Die Rechnungsnummern des letzten Monats.",
+    name: "Rechnungen schreiben",
+    satz: "Positionen abtippen, PDF erstellen, verschicken.",
     einheit: "Monat",
+    art: "vorgaenge",
     minuten: 5,
-    je: "Rechnung",
-    schritt: "Sie bekommen Rechnung und E-Rechnung direkt aus dem Auftrag, ohne etwas neu zu tippen.",
+    presets: [40, 150, 400],
+    max: 1000,
+    schritt: "Sie bekommen Rechnung und E-Rechnung direkt aus dem Auftrag.",
+    einzahl: "Rechnung",
+    mehrzahl: "Rechnungen",
   },
   {
     id: "zahlungen",
-    aufgabe: "Zahlungseingänge zuordnen und mahnen",
-    tipp: "So viele Zahlungen, wie Sie im Monat erwarten.",
+    name: "Zahlungseingänge prüfen und mahnen",
+    satz: "Kontoauszug neben die Rechnungsliste legen: Wer hat bezahlt?",
     einheit: "Monat",
+    art: "vorgaenge",
     minuten: 3,
-    je: "Zahlung",
-    schritt: "Sie sehen jede Zahlung automatisch ihrer Rechnung zugeordnet, Erinnerungen gehen von selbst raus.",
+    presets: [40, 150, 400],
+    max: 1000,
+    schritt:
+      "Sie sehen jede Zahlung automatisch ihrer Rechnung zugeordnet, Erinnerungen gehen von selbst raus.",
+    einzahl: "Zahlung",
+    mehrzahl: "Zahlungen",
   },
   {
-    id: "eingang",
-    aufgabe: "Eingangsrechnungen erfassen und prüfen",
-    tipp: "Die Belege, die im Monat bei Ihnen ankommen.",
+    id: "eingangsrechnungen",
+    name: "Eingangsrechnungen erfassen und freigeben",
+    satz: "Ausdrucken, abzeichnen, abtippen.",
     einheit: "Monat",
-    minuten: 5,
-    je: "Beleg",
-    schritt: "Sie geben Eingangsrechnungen nur noch frei. Erfassen und Weitergeben an die Buchhaltung übernimmt das System.",
+    art: "vorgaenge",
+    minuten: 4,
+    presets: [30, 100, 300],
+    max: 1000,
+    schritt: "Sie geben Eingangsrechnungen nur noch frei, erfasst werden sie automatisch.",
+    einzahl: "Eingangsrechnung",
+    mehrzahl: "Eingangsrechnungen",
   },
   {
-    id: "bestellungen",
-    aufgabe: "Bestellungen an Lieferanten weitergeben",
-    tipp: "Wie oft Sie pro Woche bestellen.",
-    einheit: "Woche",
-    minuten: 10,
-    je: "Bestellung",
-    schritt: "Sie geben den Auftrag frei, und die Bestellung geht automatisch an den Lieferanten.",
-  },
-  {
-    id: "touren",
-    aufgabe: "Touren und Einsätze planen",
-    tipp: "Bei Saisongeschäft den Durchschnitt übers Jahr.",
-    einheit: "Woche",
+    id: "belege",
+    name: "Belege für den Steuerberater zusammensuchen",
+    satz: "Jeden Monat dieselbe Schnitzeljagd.",
+    einheit: "Monat",
+    art: "stunden",
     minuten: 60,
-    einheitText: "Std. pro Woche",
-    schritt: "Sie planen Touren halbautomatisch: Das System schlägt Route und Fahrzeug vor, Sie entscheiden.",
+    presets: [2, 5, 12],
+    max: 40,
+    schritt: "Ihre Belege landen automatisch beim Steuerberater, sortiert und vollständig.",
+    einzahl: "Stunde",
+    mehrzahl: "Stunden",
+  },
+  {
+    id: "stundenzettel",
+    name: "Stundenzettel abtippen",
+    satz: "Zettel vom Wochenende entziffern.",
+    einheit: "Woche",
+    art: "vorgaenge",
+    minuten: 3,
+    presets: [5, 20, 60],
+    max: 150,
+    schritt: "Ihr Team erfasst Stunden per Handy, die Abrechnung bekommt sie fertig.",
+    einzahl: "Stundenzettel",
+    mehrzahl: "Stundenzettel",
+  },
+  {
+    id: "urlaub",
+    name: "Urlaub und Krankmeldungen einplanen",
+    satz: "Plan umwerfen, Kunden umbuchen.",
+    einheit: "Monat",
+    art: "vorgaenge",
+    minuten: 10,
+    presets: [3, 10, 25],
+    max: 80,
+    schritt: "Sie sehen Abwesenheiten auf einen Blick, der Plan passt sich an.",
+    einzahl: "Abwesenheit",
+    mehrzahl: "Abwesenheiten",
+  },
+  {
+    id: "lohn",
+    name: "Lohnabrechnung vorbereiten",
+    satz: "Stunden, Zuschläge, Fehlzeiten zusammentragen.",
+    einheit: "Monat",
+    art: "stunden",
+    minuten: 60,
+    presets: [2, 6, 15],
+    max: 40,
+    schritt: "Sie geben die Lohndaten mit einem Klick an Lohnbüro oder Steuerberater weiter.",
+    einzahl: "Stunde",
+    mehrzahl: "Stunden",
+  },
+  {
+    id: "suchen",
+    name: "Dokumente und E-Mails suchen",
+    satz: "„Wo ist das Angebot von März?“",
+    einheit: "Tag",
+    art: "minuten",
+    minuten: 1,
+    presets: [20, 60, 150],
+    max: 300,
+    schritt: "Sie finden jedes Dokument in Sekunden, weil alles am Vorgang hängt.",
+    einzahl: "Minute",
+    mehrzahl: "Minuten",
+  },
+  {
+    id: "stand",
+    name: "Nachfragen, wie der Stand ist",
+    satz: "„Ist das schon raus?“ „Hat der Kunde bezahlt?“",
+    einheit: "Tag",
+    art: "vorgaenge",
+    minuten: 3,
+    presets: [5, 15, 40],
+    max: 100,
+    schritt: "Sie sehen jederzeit, wo jeder Auftrag steht, ohne nachzufragen.",
+    einzahl: "Nachfrage",
+    mehrzahl: "Nachfragen",
+  },
+  {
+    id: "auswertungen",
+    name: "Auswertungen in Excel bauen",
+    satz: "Umsatz, offene Aufträge, Monatszahlen von Hand.",
+    einheit: "Monat",
+    art: "stunden",
+    minuten: 60,
+    presets: [3, 8, 20],
+    max: 60,
+    schritt: "Sie sehen Ihre Zahlen live, statt sie jeden Monat zusammenzubauen.",
+    einzahl: "Stunde",
+    mehrzahl: "Stunden",
+  },
+  {
+    id: "doppelt",
+    name: "Daten doppelt eintippen",
+    satz: "Vom Shop ins Warenwirtschaftsprogramm, von dort in die Buchhaltung.",
+    einheit: "Tag",
+    art: "minuten",
+    minuten: 1,
+    presets: [15, 45, 120],
+    max: 300,
+    schritt: "Ihre Programme gleichen die Daten selbst ab, niemand tippt mehr hinüber.",
+    einzahl: "Minute",
+    mehrzahl: "Minuten",
   },
 ];
 
 // quote: von so vielen wird einer zum Auftrag, bewusst vorsichtig angesetzt
-const durchrutscher: {
-  id: string;
-  aufgabe: string;
-  tipp: string;
-  kurz: string;
-  einheit: Einheit;
-  quote: number;
-  satz: [string, string];
-  frage: string;
-  schritt: string;
-}[] = [
+const durchrutscher = [
   {
     id: "verpasst",
-    aufgabe: "Verpasste Anrufe",
-    kurz: "verpasste Anrufe",
-    tipp: "Stehen in der Anrufliste Ihrer Telefonanlage.",
-    einheit: "Woche",
+    name: "Verpasste Anrufe",
+    einheit: "Woche" as Einheit,
+    presets: [3, 8, 20],
+    max: 100,
     quote: 20,
-    satz: ["Von", "verpassten Anrufen wäre einer ein Auftrag geworden"],
+    einzahl: "verpasster Anruf",
+    mehrzahl: "verpasste Anrufe",
+    artikel: "jeder",
+    satz: ["Von", "verpassten Anrufen wäre einer ein Auftrag geworden."],
     frage: "Von wie vielen verpassten Anrufen wäre einer ein Auftrag geworden?",
-    schritt: "Sie verpassen keinen Anruf mehr: Ein KI-Telefonassistent nimmt jeden an, auch nach Feierabend, und legt neue Anfragen im System an.",
+    schritt:
+      "Sie lassen Anrufe auch nach Feierabend von einem KI-Telefonassistenten annehmen, neue Anfragen landen gleich im System. So geht Ihnen kaum noch ein Auftrag verloren.",
   },
   {
     id: "nachfassen",
-    aufgabe: "Angebote, bei denen niemand nachfasst",
-    kurz: "Angebote ohne Nachfassen",
-    tipp: "Offene Angebote, die älter als zwei Wochen sind.",
-    einheit: "Monat",
+    name: "Angebote, bei denen niemand nachfasst",
+    einheit: "Monat" as Einheit,
+    presets: [3, 8, 20],
+    max: 100,
     quote: 10,
-    satz: ["Von", "nachgefassten Angeboten wird eines zum Auftrag"],
+    einzahl: "Angebot ohne Nachfassen",
+    mehrzahl: "Angebote ohne Nachfassen",
+    artikel: "jedes",
+    satz: ["Von", "nachgefassten Angeboten wird eines zum Auftrag."],
     frage: "Von wie vielen nachgefassten Angeboten wird eines zum Auftrag?",
     schritt: "Sie sehen offene Angebote auf einen Blick und fassen rechtzeitig nach, das System erinnert Sie.",
   },
 ];
 
-const einheitText = { Tag: "pro Tag", Woche: "pro Woche", Monat: "pro Monat" };
+// Für den Vergleich zählt die Mitte des Bereichs
+const teams = [
+  { wert: "bis 10", personen: 6 },
+  { wert: "11 bis 30", personen: 20 },
+  { wert: "31 bis 100", personen: 60 },
+];
+const TEAM_STANDARD = 1;
+const auftragswerte = [1500, 2500, 5000];
+const STUNDENSATZ = 45;
+
+const wuensche = [
+  "Kundenportal",
+  "App für Monteure und Außendienst",
+  "Lagerübersicht",
+  "KI-Telefonassistent",
+  "Bessere Website",
+  "Bei Google gefunden werden",
+  "Wissen, woher Kunden kommen",
+  "Eigenes Werkzeug nach Maß",
+];
+
+const pro = { Tag: "pro Tag", Woche: "pro Woche", Monat: "pro Monat" };
+const einheitText = (a: Aufgabe, menge: number) => `${menge === 1 ? a.einzahl : a.mehrzahl} ${pro[a.einheit]}`;
+const ganzzahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
+
+const daten = {
+  aufgaben,
+  durchrutscher: durchrutscher.map(({ frage, satz, ...rest }) => rest),
+  teams,
+  teamStandard: TEAM_STANDARD,
+  auftragswerte,
+  stundensatz: STUNDENSATZ,
+  kontakt: {
+    name: kontakt.name,
+    firma: kontakt.firma,
+    telefonAnzeige: kontakt.telefonAnzeige,
+    telefonLink: kontakt.telefonLink,
+    email: kontakt.email,
+    web: "jtkconsulting.de",
+  },
+};
+// „<“ maskieren, damit kein Text das Script-Element vorzeitig schließt
+const datenJson = JSON.stringify(daten).replace(/</g, "\\u003c");
+const tage = Array.from({ length: 220 });
 ---
 
-<section class="abschnitt check" id="check" aria-labelledby="check-titel">
-  <div class="innen raster">
-    <div class="abschnitt__kopf">
-      <h2 id="check-titel">Was kostet Sie die Handarbeit?</h2>
-      <p>
-        Der Zeitfresser-Check dauert zwei Minuten. Tragen Sie ein, wie oft etwas bei Ihnen anfällt. Das wissen Sie
-        besser als jeder Berater. Der Check rechnet mit vorsichtigen Richtwerten und zeigt Ihnen, was Sie das im
-        Jahr kostet, was Ihnen an Umsatz durchrutscht und wo Sie anfangen können.
-      </p>
-    </div>
+<section class="check" id="check" aria-labelledby="check-titel">
+  <div class="bogen band--papier check__band">
+    <Rand nr="03" titel="Zeitfresser-Check" />
+    <div class="satz">
+      <div class="abschnitt__kopf check__kopf">
+        <p class="kicker" aria-hidden="true">03 · Zeitfresser-Check</p>
+        <h2 id="check-titel">Wo verbrennt Ihr Betrieb Geld?</h2>
+        <p>
+          Sie sortieren 16 Karten aus dem Büroalltag und stellen an Reglern ein, wie oft etwas bei Ihnen anfällt.
+          Dabei sehen Sie live, was Sie die Handarbeit im Jahr kostet, vorsichtig gerechnet. Am Ende stellen Sie sich
+          den Beleg aus, als PDF zum Mitnehmen.
+        </p>
+      </div>
 
-    <Fenster titel="Zeitfresser-Check" class="abschnitt__inhalt check__fenster">
-      <form data-check novalidate>
-        <fieldset class="check__gruppe">
-          <legend>Wie oft fällt das bei Ihnen an?</legend>
-          <p class="check__hinweis">Tragen Sie ein, was Sie kennen. Leere Felder zählen nicht mit.</p>
-          <ul class="posten">
-            {
-              posten.map((p) => (
-                <li class="posten__zeile">
-                  <label class="posten__aufgabe" for={`menge-${p.id}`}>
-                    {p.aufgabe}
-                  </label>
-                  <p class="posten__tipp" id={`tipp-${p.id}`}>
-                    {p.tipp}
-                  </p>
-                  <div class="posten__eingabe">
-                    <input
-                      class="posten__zahl"
-                      id={`menge-${p.id}`}
-                      type="text"
-                      inputmode="numeric"
-                      autocomplete="off"
-                      maxlength="5"
-                      placeholder="0"
-                      aria-describedby={`tipp-${p.id}`}
-                      data-menge={p.id}
-                      data-aufgabe={p.aufgabe}
-                      data-einheit={p.einheit}
-                      data-minuten={p.minuten}
-                      data-je={p.je}
-                      data-einheit-text={p.einheitText ?? einheitText[p.einheit]}
-                      data-schritt={p.schritt}
-                    />
-                    <span class="posten__einheit">{p.einheitText ?? einheitText[p.einheit]}</span>
-                  </div>
-                </li>
-              ))
-            }
-          </ul>
-        </fieldset>
+      <Fenster titel="Zeitfresser-Check" class="check__fenster">
+        <form data-check novalidate>
+          <script is:inline type="application/json" data-check-daten set:html={datenJson}></script>
 
-        <fieldset class="check__gruppe">
-          <legend>Was Ihnen durchrutscht</legend>
-          <p class="check__hinweis">Hier geht es nicht um Zeit, sondern um Aufträge, die gar nicht erst entstehen.</p>
-          <ul class="posten">
-            {
-              durchrutscher.map((d) => (
-                <li class="posten__zeile">
-                  <label class="posten__aufgabe" for={`menge-${d.id}`}>
-                    {d.aufgabe}
-                  </label>
-                  <p class="posten__tipp" id={`tipp-${d.id}`}>
-                    {d.tipp}
-                  </p>
-                  <div class="posten__eingabe">
-                    <input
-                      class="posten__zahl"
-                      id={`menge-${d.id}`}
-                      type="text"
-                      inputmode="numeric"
-                      autocomplete="off"
-                      maxlength="5"
-                      placeholder="0"
-                      aria-describedby={`tipp-${d.id}`}
-                      data-verlust={d.id}
-                      data-aufgabe={d.aufgabe}
-                      data-einheit={d.einheit}
-                      data-quote={d.quote}
-                      data-kurz={d.kurz}
-                      data-einheit-text={einheitText[d.einheit]}
-                      data-schritt={d.schritt}
-                    />
-                    <span class="posten__einheit">{einheitText[d.einheit]}</span>
+          <div class="check__buehne">
+            <div class="check__spielfeld">
+              <!-- 1. Karten sortieren -->
+              <div class="check__teil stapel-bereich" data-stapel-bereich>
+                <h3 class="check__titel" id="zf-stapel-titel">
+                  <span class="check__nr" aria-hidden="true">1</span>
+                  Was läuft bei Ihnen noch von Hand?
+                </h3>
+                <p class="check__hilfe" id="zf-stapel-hilfe">
+                  Eine Karte nach der anderen. Nach links heißt: läuft bei uns von Hand. Nach rechts heißt: läuft schon
+                  digital. Wischen Sie, tippen Sie auf einen Knopf oder nutzen Sie die Pfeiltasten.
+                </p>
+
+                <div class="stapel__spiel" data-stapel-spiel>
+                  <div
+                    class="stapel"
+                    data-stapel
+                    tabindex="0"
+                    role="group"
+                    aria-roledescription="Kartenstapel"
+                    aria-labelledby="zf-stapel-titel"
+                    aria-describedby={`zf-karte-${aufgaben[0].id} zf-stapel-hilfe`}
+                    aria-keyshortcuts="ArrowLeft ArrowRight"
+                  >
+                    <div class="stapel__unter stapel__unter--2" data-stapel-unter="2" aria-hidden="true"></div>
+                    <div class="stapel__unter stapel__unter--1" data-stapel-unter="1" aria-hidden="true"></div>
+                    {
+                      aufgaben.map((a, i) => (
+                        <div class="karte" id={`zf-karte-${a.id}`} data-karte={a.id} hidden={i !== 0}>
+                          <p class="karte__kopf">
+                            <span>
+                              Karte {i + 1} von {aufgaben.length}
+                            </span>
+                            <span class="karte__bisher" data-karte-bisher hidden></span>
+                          </p>
+                          <p class="karte__titel">{a.name}</p>
+                          <p class="karte__satz">{a.satz}</p>
+                          <span class="karte__marke karte__marke--hand" aria-hidden="true">
+                            Von Hand
+                          </span>
+                          <span class="karte__marke karte__marke--digital" aria-hidden="true">
+                            Digital
+                          </span>
+                        </div>
+                      ))
+                    }
                   </div>
-                </li>
-              ))
-            }
-            <li class="posten__zeile">
-              <label class="posten__aufgabe" for="auftragswert">Durchschnittlicher Auftragswert</label>
-              <p class="posten__tipp" id="tipp-auftragswert">Grob reicht, zum Beispiel 2.500.</p>
-              <div class="posten__eingabe">
-                <input
-                  class="posten__zahl posten__zahl--breit"
-                  id="auftragswert"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="off"
-                  maxlength="9"
-                  placeholder="0"
-                  aria-describedby="tipp-auftragswert"
-                  data-auftragswert
-                />
-                <span class="posten__einheit">Euro</span>
+
+                  <div class="stapel__knoepfe">
+                    <button type="button" class="retro-knopf stapel__knopf" data-sortieren="hand">
+                      <svg class="pfeil" viewBox="0 0 7 7" aria-hidden="true" focusable="false">
+                        <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
+                      </svg>
+                      Läuft bei uns von Hand
+                    </button>
+                    <button type="button" class="retro-knopf stapel__knopf" data-sortieren="digital">
+                      Läuft schon digital
+                      <svg class="pfeil pfeil--rechts" viewBox="0 0 7 7" aria-hidden="true" focusable="false">
+                        <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div class="stapel__leiste">
+                    <span class="stapel__fortschritt" data-stapel-fortschritt>1 von {aufgaben.length}</span>
+                    <span class="stapel__balken" aria-hidden="true">
+                      {aufgaben.map((a) => <span data-segment={a.id}></span>)}
+                    </span>
+                  </div>
+                  <div class="stapel__extras">
+                    <button type="button" class="check__link" data-stapel-zurueck disabled>Rückgängig</button>
+                    <button type="button" class="check__link" data-stapel-rest>Überspringen: alle von Hand</button>
+                  </div>
+                </div>
+
+                <div class="stapel__fertig" data-stapel-fertig tabindex="-1" hidden>
+                  <p data-stapel-bilanz></p>
+                  <div class="stapel__extras">
+                    <button type="button" class="check__link" data-stapel-neu>Karten noch einmal sortieren</button>
+                    <button type="button" class="check__link" data-stapel-zurueck hidden>Letzte Entscheidung rückgängig</button>
+                  </div>
+                </div>
+
+                <p class="sr-only" aria-live="polite" data-stapel-ansage></p>
               </div>
-            </li>
-          </ul>
-        </fieldset>
 
-        <details class="check__richtwerte">
-          <summary>Richtwerte ansehen und anpassen</summary>
-          <p class="check__hinweis">
-            Gerechnet wird vorsichtig. Wenn es bei Ihnen länger dauert, tragen Sie Ihren eigenen Wert ein.
-          </p>
-          <ul class="richtwerte">
-            {
-              posten
-                .filter((p) => p.je)
-                .map((p) => (
-                  <li>
-                    <label for={`richtwert-${p.id}`}>Minuten je {p.je}</label>
+              <!-- 2. Werkbank -->
+              <div class="check__teil werkbank" data-werkbank hidden>
+                <h3 class="check__titel">
+                  <span class="check__nr" aria-hidden="true">2</span>
+                  Wie oft fällt das bei Ihnen an?
+                </h3>
+
+                <fieldset class="team">
+                  <legend>Schnellstart: Wie groß ist Ihr Team?</legend>
+                  <div class="team__knoepfe">
+                    {
+                      teams.map((t, i) => (
+                        <label class="team__wahl">
+                          <input type="radio" name="team" value={t.wert} data-team={i} checked={i === TEAM_STANDARD} />
+                          <span>{t.wert}</span>
+                        </label>
+                      ))
+                    }
+                  </div>
+                  <p class="check__hilfe">
+                    Setzt alle Regler auf typische Werte für diese Größe. Danach schieben Sie nach, was bei Ihnen anders ist.
+                  </p>
+                </fieldset>
+
+                <ul class="regler-liste">
+                  {
+                    aufgaben.map((a) => {
+                      const wert = a.presets[TEAM_STANDARD];
+                      const step = a.art === "minuten" || a.max >= 500 ? 5 : 1;
+                      return (
+                        <li class="regler" data-regler={a.id} hidden>
+                          <div class="regler__kopf">
+                            <label class="regler__name" for={`zf-${a.id}`}>
+                              {a.name}
+                            </label>
+                            <span class="regler__wert" aria-hidden="true">
+                              <span class="regler__zahl" data-regler-zahl>
+                                {ganzzahl.format(wert)}
+                              </span>{" "}
+                              <span data-regler-einheit>{einheitText(a, wert)}</span>
+                            </span>
+                          </div>
+                          <input
+                            class="regler__eingabe"
+                            type="range"
+                            id={`zf-${a.id}`}
+                            min="0"
+                            max={a.max}
+                            step={step}
+                            value={wert}
+                            data-menge={a.id}
+                            aria-valuetext={`${ganzzahl.format(wert)} ${einheitText(a, wert)}`}
+                            aria-describedby={`zf-${a.id}-rechnung`}
+                          />
+                          <div class="regler__fuss">
+                            <p class="regler__rechnung" id={`zf-${a.id}-rechnung`} data-regler-rechnung></p>
+                            <button
+                              type="button"
+                              class="check__link regler__weg"
+                              data-regler-weg={a.id}
+                              aria-label={`läuft digital: ${a.name}`}
+                            >
+                              läuft digital
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })
+                  }
+                </ul>
+              </div>
+
+              <!-- 3. Was durchrutscht -->
+              <div class="check__teil rutscht" data-rutscht hidden>
+                <h3 class="check__titel">
+                  <span class="check__nr" aria-hidden="true">3</span>
+                  Was Ihnen durchrutscht
+                </h3>
+                <p class="check__hilfe">
+                  Hier geht es nicht um Zeit, sondern um Geld, das gar nicht erst reinkommt: Aufträge, die nie entstehen.
+                  Die Regler zeigen typische Werte für Ihre Teamgröße. Eingerechnet wird erst, wenn Sie einen Regler
+                  bewegen oder die Werte bestätigen.
+                </p>
+                <ul class="regler-liste">
+                  {
+                    durchrutscher.map((d) => {
+                      const wert = d.presets[TEAM_STANDARD];
+                      return (
+                        <li class="regler" data-verlust-zeile={d.id}>
+                          <div class="regler__kopf">
+                            <label class="regler__name" for={`zf-${d.id}`}>
+                              {d.name}
+                            </label>
+                            <span class="regler__wert" aria-hidden="true">
+                              <span class="regler__zahl" data-regler-zahl>
+                                {wert}
+                              </span>{" "}
+                              <span>{pro[d.einheit]}</span>
+                            </span>
+                          </div>
+                          <input
+                            class="regler__eingabe"
+                            type="range"
+                            id={`zf-${d.id}`}
+                            min="0"
+                            max={d.max}
+                            step="1"
+                            value={wert}
+                            data-verlust={d.id}
+                            aria-valuetext={`${wert} ${d.mehrzahl} ${pro[d.einheit]}`}
+                            aria-describedby={`zf-${d.id}-rechnung`}
+                          />
+                          <p class="regler__rechnung" id={`zf-${d.id}-rechnung`} data-regler-rechnung></p>
+                        </li>
+                      );
+                    })
+                  }
+                  <li class="regler regler--feld">
+                    <label class="regler__name" for="zf-auftragswert">Durchschnittlicher Auftragswert</label>
+                    <span class="feld-euro">
+                      <input
+                        class="zahlfeld zahlfeld--breit"
+                        id="zf-auftragswert"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="10"
+                        value={ganzzahl.format(auftragswerte[TEAM_STANDARD])}
+                        data-auftragswert
+                        data-max="1000000"
+                        aria-describedby="zf-auftragswert-hilfe"
+                      />
+                      <span aria-hidden="true">€</span>
+                    </span>
+                    <p class="regler__rechnung" id="zf-auftragswert-hilfe">Grob reicht, in Euro.</p>
+                  </li>
+                </ul>
+                <p class="rutscht__ergebnis" data-rutscht-ergebnis tabindex="-1"></p>
+                <button type="button" class="retro-knopf rutscht__uebernehmen" data-rutscht-uebernehmen>
+                  Passt ungefähr, einrechnen
+                </button>
+              </div>
+
+              <!-- 4. Wünsche -->
+              <fieldset class="check__teil wuensche" data-wuensche hidden>
+                <legend class="check__titel">
+                  <span class="check__nr" aria-hidden="true">4</span>
+                  Und sonst? Was hätten Sie gern?
+                </legend>
+                <p class="check__hilfe">
+                  Tippen Sie an, was Sie reizt. Das fließt nicht in die Rechnung ein, aber in Ihr Erstgespräch.
+                </p>
+                <div class="chips">
+                  {
+                    wuensche.map((w) => (
+                      <label class="chip">
+                        <input type="checkbox" name="wunsch" value={w} data-wunsch />
+                        <span>{w}</span>
+                      </label>
+                    ))
+                  }
+                </div>
+              </fieldset>
+
+              <!-- 5. Richtwerte -->
+              <details class="check__teil richtwerte" data-richtwerte hidden>
+                <summary>Richtwerte ansehen und anpassen</summary>
+                <p class="check__hilfe">
+                  Gerechnet wird vorsichtig. Dauert es bei Ihnen länger, tragen Sie Ihren eigenen Wert ein.
+                </p>
+                <div class="richtwerte__raster">
+                  <label class="richtwert">
+                    <span>Stundensatz in Euro</span>
                     <input
-                      class="posten__zahl"
-                      id={`richtwert-${p.id}`}
+                      class="zahlfeld"
                       type="text"
                       inputmode="numeric"
                       autocomplete="off"
                       maxlength="3"
-                      value={p.minuten}
-                      data-richtwert={p.id}
-                      data-standard={p.minuten}
+                      value={STUNDENSATZ}
+                      data-stundensatz
+                      data-standard={STUNDENSATZ}
+                      data-min="1"
+                      data-max="500"
                     />
-                  </li>
-                ))
-            }
-            {
-              durchrutscher.map((d) => (
-                <li class="richtwerte__satz">
-                  <span aria-hidden="true">{d.satz[0]}</span>
-                  <input
-                    class="posten__zahl"
-                    type="text"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    maxlength="3"
-                    value={d.quote}
-                    aria-label={d.frage}
-                    data-quote-fuer={d.id}
-                    data-standard={d.quote}
-                  />
-                  <span aria-hidden="true">{d.satz[1]}</span>
-                </li>
-              ))
-            }
-          </ul>
-        </details>
+                  </label>
+                  {
+                    aufgaben
+                      .filter((a) => a.art === "vorgaenge")
+                      .map((a) => (
+                        <label class="richtwert">
+                          <span>Minuten je {a.einzahl}</span>
+                          <input
+                            class="zahlfeld"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            maxlength="3"
+                            value={a.minuten}
+                            data-richtwert={a.id}
+                            data-standard={a.minuten}
+                            data-min="1"
+                            data-max="120"
+                          />
+                        </label>
+                      ))
+                  }
+                </div>
+                {
+                  durchrutscher.map((d) => (
+                    <p class="richtwert__satz">
+                      <span aria-hidden="true">{d.satz[0]}</span>
+                      <input
+                        class="zahlfeld"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        maxlength="3"
+                        value={d.quote}
+                        aria-label={d.frage}
+                        data-quote-fuer={d.id}
+                        data-standard={d.quote}
+                        data-min="1"
+                        data-max="100"
+                      />
+                      <span aria-hidden="true">{d.satz[1]}</span>
+                    </p>
+                  ))
+                }
+                <button type="button" class="check__link" data-richtwerte-standard>Alle Richtwerte zurücksetzen</button>
+              </details>
+            </div>
 
-        <div class="check__ergebnis" aria-live="polite">
-          <p class="check__zahl" data-ergebnis-zahl>Ihr Ergebnis erscheint hier</p>
-          <p class="check__erklaerung" data-ergebnis-text>
-            Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.
-          </p>
-          <p class="check__umsatz" data-ergebnis-umsatz hidden></p>
-          <div class="check__schritte" data-ergebnis-schritte hidden>
-            <p class="check__schritte-titel">Ihre größten Hebel</p>
-            <ul data-ergebnis-liste></ul>
+            <!-- Ergebnis, live -->
+            <aside class="ergebnis" id="zf-ergebnis" aria-labelledby="zf-ergebnis-titel" data-ergebnis-tafel>
+              <h3 class="ergebnis__titel" id="zf-ergebnis-titel">Ihre Rechnung, live</h3>
+              <p class="ergebnis__zahl">
+                <span class="ergebnis__rund">Rund</span>
+                <span class="ergebnis__euro" data-ergebnis-euro>0 €</span>
+                <span class="ergebnis__jahr">im Jahr</span>
+              </p>
+              <p class="ergebnis__unter" data-ergebnis-unter>
+                Sortieren Sie die erste Karte. Was von Hand läuft, landet hier auf der Rechnung.
+              </p>
+
+              <figure class="pixeljahr">
+                <div class="pixeljahr__rahmen">
+                  <div class="pixeljahr__raster" role="img" aria-label="Noch kein Arbeitstag eingefärbt." data-pixeljahr>
+                    {tage.map(() => <span class="pixeljahr__tag"></span>)}
+                  </div>
+                  <span class="pixeljahr__mal" data-pixeljahr-mal aria-hidden="true" hidden></span>
+                </div>
+                <div class="pixeljahr__achse" aria-hidden="true">
+                  <span>Woche 1</span>
+                  <span>Woche 44</span>
+                </div>
+                <figcaption data-pixeljahr-text>
+                  Das Arbeitsjahr einer Vollzeitkraft: 44 Wochen mit je 5 Arbeitstagen, ein Kästchen pro Tag.
+                </figcaption>
+                <p class="pixeljahr__legende" aria-hidden="true">
+                  <span><span class="pixeljahr__muster pixeljahr__muster--weg"></span> Tag für Handarbeit</span>
+                  <span><span class="pixeljahr__muster"></span> Tag für Ihre Kunden</span>
+                </p>
+              </figure>
+
+              <ul class="ergebnis__vergleich" data-vergleich hidden></ul>
+              <p class="ergebnis__umsatz" data-ergebnis-umsatz hidden></p>
+
+              <div class="ergebnis__knoepfe">
+                <button type="button" class="retro-knopf retro-knopf--voll" data-beleg-ausstellen disabled>
+                  Beleg ausstellen
+                </button>
+                <button type="button" class="retro-knopf" data-check-besprechen disabled>
+                  Meinen Startpunkt besprechen
+                </button>
+              </div>
+              <p class="sr-only" aria-live="polite" data-check-ansage></p>
+            </aside>
           </div>
-        </div>
 
-        <div class="check__aktionen">
-          <button type="button" class="retro-knopf retro-knopf--voll" data-check-besprechen disabled>
-            Meinen Startpunkt besprechen
-          </button>
-        </div>
-      </form>
+          <!-- 6. Beleg: das Beweisstück -->
+          <div class="belegbereich" data-beleg-bereich hidden>
+            <div class="zettel" data-zettel>
+              <div class="zettel__kopie zettel__kopie--rosa" aria-hidden="true"></div>
+              <div class="zettel__kopie zettel__kopie--gelb" aria-hidden="true"></div>
+              <div class="zettel__bogen">
+                <p class="zettel__absender">Zeitfresser-Check · ausgestellt von {kontakt.firma}</p>
+                <h3 class="zettel__titel" tabindex="-1" data-zettel-titel>
+                  Beweisstück:<br />Was Ihre Handarbeit kostet
+                </h3>
 
-      <Fragment slot="status">
-        <span data-check-stand>Noch nichts eingetragen</span>
-        <span>Gerechnet mit 220 Arbeitstagen und 45 € pro Stunde</span>
-      </Fragment>
-    </Fenster>
+                <dl class="zettel__meta">
+                  <div>
+                    <dt>Beleg-Nr.</dt>
+                    <dd data-zettel-nr></dd>
+                  </div>
+                  <div>
+                    <dt>Datum</dt>
+                    <dd data-zettel-datum></dd>
+                  </div>
+                  <div>
+                    <dt>Teamgröße</dt>
+                    <dd data-zettel-team></dd>
+                  </div>
+                </dl>
+
+                <table class="zettel__tabelle">
+                  <caption class="sr-only">Was Ihre Handarbeit im Jahr kostet, nach Aufgaben</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col" class="zettel__pos">Pos.</th>
+                      <th scope="col">Aufgabe</th>
+                      <th scope="col" class="rechts">Std./Jahr</th>
+                      <th scope="col" class="rechts">€/Jahr</th>
+                    </tr>
+                  </thead>
+                  <tbody data-zettel-zeilen></tbody>
+                </table>
+
+                <div class="zettel__abschluss">
+                  <div class="zettel__stempelfeld">
+                    <svg class="zettel__stempel" viewBox="0 0 260 104" aria-hidden="true" focusable="false">
+                      <defs>
+                        <filter
+                          id="zf-stempel-tinte"
+                          x="-6%"
+                          y="-12%"
+                          width="112%"
+                          height="124%"
+                          color-interpolation-filters="sRGB"
+                        >
+                          <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="7" result="fein"
+                          ></feTurbulence>
+                          <feDisplacementMap
+                            in="SourceGraphic"
+                            in2="fein"
+                            scale="2.6"
+                            xChannelSelector="R"
+                            yChannelSelector="G"
+                            result="rau"></feDisplacementMap>
+                          <feTurbulence
+                            type="fractalNoise"
+                            baseFrequency="0.045 0.11"
+                            numOctaves="3"
+                            seed="23"
+                            result="flecken"></feTurbulence>
+                          <feColorMatrix
+                            in="flecken"
+                            type="matrix"
+                            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
+                            result="maske"></feColorMatrix>
+                          <feComposite in="rau" in2="maske" operator="in"></feComposite>
+                        </filter>
+                      </defs>
+                      <g filter="url(#zf-stempel-tinte)">
+                        <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"
+                        ></rect>
+                        <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"
+                        ></rect>
+                        <text
+                          x="130"
+                          y="60"
+                          text-anchor="middle"
+                          fill="currentColor"
+                          font-size="40"
+                          font-weight="800"
+                          textLength="214" lengthAdjust="spacingAndGlyphs">DRINGEND</text
+                        >
+                        <text
+                          x="130"
+                          y="82"
+                          text-anchor="middle"
+                          fill="currentColor"
+                          font-size="13"
+                          font-weight="650"
+                          textLength="196" lengthAdjust="spacingAndGlyphs">JULIAN KOCH ANRUFEN</text
+                        >
+                      </g>
+                    </svg>
+                    <span class="sr-only">Stempel: Dringend, Julian Koch anrufen.</span>
+                  </div>
+                  <dl class="zettel__summen">
+                    <div>
+                      <dt>Zwischensumme Handarbeit</dt>
+                      <dd data-zettel-handarbeit></dd>
+                    </div>
+                    <div>
+                      <dt>Umsatz, der durchrutscht</dt>
+                      <dd data-zettel-umsatz></dd>
+                    </div>
+                    <div class="gesamt">
+                      <dt data-zettel-summe-titel>Verbrannt pro Jahr</dt>
+                      <dd data-zettel-summe></dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <p class="zettel__hinweis" data-zettel-hinweis>
+                  Vorsichtig gerechnet mit Ihren Angaben, {STUNDENSATZ} € pro Stunde, 220 Arbeitstagen.
+                </p>
+                <p class="zettel__kontakt">
+                  <span>{kontakt.name}, {kontakt.firma}</span>
+                  <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+                  <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
+                  <a href="https://jtkconsulting.de">jtkconsulting.de</a>
+                </p>
+              </div>
+            </div>
+
+            <div class="hebel">
+              <h3 class="check__titel" data-hebel-titel>Ihre drei größten Hebel</h3>
+              <ol class="hebel__liste" data-hebel-liste></ol>
+              <div class="check__aktionen">
+                <button type="button" class="retro-knopf" data-beleg-pdf>Beleg als PDF herunterladen</button>
+                <button type="button" class="retro-knopf retro-knopf--voll" data-check-besprechen disabled>
+                  Meinen Startpunkt besprechen
+                </button>
+              </div>
+              <p class="check__hilfe" role="status" data-pdf-status></p>
+            </div>
+          </div>
+
+          <div class="check__leiste" data-check-leiste aria-hidden="true" hidden>
+            <span><span class="check__leiste-euro" data-leiste-euro>0 €</span> <span data-leiste-text>im Jahr verbrannt</span></span>
+            <a href="#zf-ergebnis" tabindex="-1">Ansehen</a>
+          </div>
+        </form>
+
+        <Fragment slot="status">
+          <span data-check-stand>Noch keine Karte sortiert</span>
+          <span data-check-satz>Gerechnet mit 220 Arbeitstagen und {STUNDENSATZ} € pro Stunde</span>
+        </Fragment>
+      </Fenster>
+    </div>
   </div>
 </section>

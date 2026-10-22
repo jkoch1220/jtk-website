@@ -14,9 +14,9 @@ jtkconsulting.de, koch.consulting {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
 
-	# Kontaktformular, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker, nur lokal
-	# erreichbar). Nur diese drei Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
-	@plattform path /api/anfrage /api/e /api/gesundheit
+	# Kontaktformular, Terminbuchung, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
+	# nur lokal erreichbar). Nur diese Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
+	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*
 	handle @plattform {
 		reverse_proxy 127.0.0.1:3100
 	}

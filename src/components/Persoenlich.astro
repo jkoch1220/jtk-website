@@ -1,16 +1,53 @@
 ---
-// Persönliches Element: gerasterte Berglandschaft, die sich neu zeichnen lässt.
-// Liegt ein Foto unter public/julian.jpg, erscheint stattdessen das Foto, ebenfalls gerastert.
+// Persönliches Element. Variante "panorama": gerastertes Bergpanorama über die volle
+// Breite mit vier Parallax-Ebenen, das sich neu zeichnen lässt (Skript: seite.ts).
+// Variante "foto": liegt ein Foto unter public/julian.jpg, erscheint es gerastert im
+// Fenster; ohne Foto rendert die Variante nichts.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import Fenster from "./Fenster.astro";
+
+interface Props {
+  variante?: "panorama" | "foto";
+}
+
+const { variante = "panorama" } = Astro.props;
 
 // Der Build läuft im Projektordner, daher relativ zu dessen Wurzel prüfen
 const hatFoto = existsSync(join(process.cwd(), "public", "julian.jpg"));
 ---
 
 {
-  hatFoto ? (
+  variante === "panorama" && (
+    <div class="berge" data-berge-buehne>
+      <div class="berge__bild" data-berge-bild>
+        <canvas
+          class="berge__gesamt"
+          data-berge
+          role="img"
+          aria-label="Gezeichnete Berglandschaft mit Sonne, See und einem Wanderer am Gipfel"
+        />
+        <canvas class="berge__ebene" data-berge-ebene="himmel" aria-hidden="true" />
+        <canvas class="berge__ebene" data-berge-ebene="fern" aria-hidden="true" />
+        <canvas class="berge__ebene" data-berge-ebene="mitte" aria-hidden="true" />
+        <canvas class="berge__ebene" data-berge-ebene="nah" aria-hidden="true" />
+      </div>
+      <div class="fenster berge__hud">
+        <div class="fenster__titel" aria-hidden="true">
+          <span class="fenster__titeltext">berge.bmp</span>
+        </div>
+        <div class="fenster__status">
+          <span data-bild-groesse>6 Farben</span>
+          <button type="button" class="leise-knopf leise-knopf--pixel" data-berge-neu>
+            Neu zeichnen
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+{
+  variante === "foto" && hatFoto && (
     <Fenster titel="julian.jpg" class="bild-fenster">
       <canvas width="240" height="300" data-foto="/julian.jpg" role="img" aria-label="Foto von Julian Koch, gerastert" />
       <Fragment slot="status">
@@ -18,15 +55,118 @@ const hatFoto = existsSync(join(process.cwd(), "public", "julian.jpg"));
         <span data-bild-groesse>2 Farben</span>
       </Fragment>
     </Fenster>
-  ) : (
-    <Fenster titel="berge.bmp" class="bild-fenster">
-      <canvas width="240" height="150" data-berge role="img" aria-label="Gezeichnete Berglandschaft mit Sonne, See und einem Wanderer am Gipfel" />
-      <Fragment slot="status">
-        <span data-bild-groesse>2 Farben</span>
-        <button type="button" class="leise-knopf leise-knopf--pixel" data-berge-neu>
-          Neu zeichnen
-        </button>
-      </Fragment>
-    </Fenster>
   )
 }
+
+<style is:global>
+  /* Bergpanorama --------------------------------------------------------------
+     Volle Breite von .panorama, keine eigenen Außenabstände. Oben reines Weiß
+     (Naht zum weißen Band), unten exakt #15144a (Naht zur Rasterkante). */
+
+  .berge {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .berge__bild {
+    position: relative;
+    overflow: hidden;
+    height: 70vw;
+    background: #fff;
+  }
+
+  @media (min-width: 768px) {
+    .berge__bild {
+      height: clamp(440px, 46vw, 900px);
+      max-height: max(440px, calc(100svh - 120px));
+    }
+  }
+
+  /* Breite, Höhe und left setzt das Skript in ganzen Kunstpixeln.
+     Kein CSS-transform: den setzt GSAP für die Parallax-Ebenen. */
+  .berge__gesamt,
+  .berge__ebene {
+    position: absolute;
+    bottom: 0;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .berge__ebene {
+    display: none;
+  }
+
+  .berge[data-ebenen="an"] .berge__ebene {
+    display: block;
+  }
+
+  .berge[data-ebenen="an"] .berge__gesamt {
+    visibility: hidden;
+  }
+
+  /* Während des Wirbels zeigt das Gesamtbild den Flug, die Ebenen sind ausgeblendet */
+  .berge[data-ebenen="an"][data-wirbel] .berge__gesamt {
+    visibility: visible;
+  }
+
+  .berge__hud .fenster__status {
+    padding-block: 0;
+  }
+
+  .berge__hud [data-bild-groesse] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tippziel mindestens 44 px */
+  .berge__hud [data-berge-neu] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  @media (min-width: 768px) {
+    .berge__hud {
+      position: absolute;
+      top: clamp(20px, 3vw, 48px);
+      right: var(--satz-einzug, max(var(--rand), (100vw - 1328px) / 2));
+      z-index: 2;
+      width: 300px;
+      box-shadow: var(--e-retro-tief, 6px 6px 0 var(--tinte));
+    }
+  }
+
+  /* Mobil: Titelleiste über dem Bild, Statusleiste darunter. Die Statusleiste
+     läuft in Nacht-Tinte weiter, so bleibt die Naht zur Rasterkante ruhig. */
+  @media (max-width: 767px) {
+    .berge {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .berge__hud {
+      display: contents;
+    }
+
+    .berge__hud .fenster__titel {
+      order: -1;
+    }
+
+    .berge__hud .fenster__status {
+      order: 1;
+      border-top: 0;
+      background: #15144a;
+      color: rgb(255 255 255 / 0.74);
+      --fokus: #fff;
+    }
+
+    .berge__hud .leise-knopf.leise-knopf--pixel {
+      color: #fff;
+      text-decoration-color: rgb(255 255 255 / 0.5);
+    }
+
+    .berge__hud [data-berge-neu]:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+    }
+  }
+</style>

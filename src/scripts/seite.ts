@@ -1,12 +1,17 @@
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { aufrufId, checkErgebnis, seitenStart, type CheckErgebnis } from "./tracking";
+import { turnstileToken, turnstileVorbereiten, turnstileZuruecksetzen } from "./turnstile";
+import { zeitfresserEinrichten } from "./zeitfresser";
 
 declare global {
   interface Window {
     __belegGestartet?: boolean;
   }
 }
+
+gsap.registerPlugin(ScrollTrigger);
 
 const bewegungReduziert = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -166,315 +171,6 @@ function meldungenEinrichten(): void {
   });
 }
 
-/* Zeitfresser-Check ---------------------------------------------------------- */
-
-const ARBEITSTAGE = 220;
-const ARBEITSWOCHEN = ARBEITSTAGE / 5;
-const STUNDEN_PRO_WOCHE = 40;
-const STUNDEN_PRO_JAHR_VOLLZEIT = ARBEITSTAGE * 8;
-const EURO_PRO_STUNDE = 45;
-// Mehr Hebel würden das Ergebnis zur Liste machen, der Rest kommt ins Erstgespräch
-const SCHRITTE_MAX = 3;
-
-// Wie oft eine Menge im Jahr anfällt. Monatliche Mengen laufen auch im Urlaub weiter, daher 12.
-const PRO_JAHR: Record<string, number> = { Tag: ARBEITSTAGE, Woche: ARBEITSWOCHEN, Monat: 12 };
-const ZEITRAUM: Record<string, string> = { Tag: "Arbeitstage", Woche: "Wochen", Monat: "Monate" };
-
-// Nur Ziffern zählen, so gehen auch „2.500“ oder „ca. 40“
-function zahlAus(feld: HTMLInputElement | null | undefined): number {
-  const wert = Number((feld?.value ?? "").replace(/\D/g, ""));
-  return Number.isFinite(wert) ? wert : 0;
-}
-
-function zeitfresserEinrichten(): void {
-  const formular = document.querySelector<HTMLFormElement>("[data-check]");
-  if (!formular) return;
-
-  const mengen = Array.from(formular.querySelectorAll<HTMLInputElement>("[data-menge]"));
-  const verluste = Array.from(formular.querySelectorAll<HTMLInputElement>("[data-verlust]"));
-  const auftragswertFeld = formular.querySelector<HTMLInputElement>("[data-auftragswert]");
-  const ergebnis = formular.querySelector<HTMLElement>(".check__ergebnis");
-  const zahl = formular.querySelector<HTMLElement>("[data-ergebnis-zahl]");
-  const erklaerung = formular.querySelector<HTMLElement>("[data-ergebnis-text]");
-  const umsatzZeile = formular.querySelector<HTMLElement>("[data-ergebnis-umsatz]");
-  const schritte = formular.querySelector<HTMLElement>("[data-ergebnis-schritte]");
-  const schrittListe = formular.querySelector<HTMLUListElement>("[data-ergebnis-liste]");
-  const knopf = formular.querySelector<HTMLButtonElement>("[data-check-besprechen]");
-  const stand = document.querySelector<HTMLElement>("[data-check-stand]");
-
-  const ganzzahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
-  const kommazahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
-  // minimumFractionDigits ausdrücklich, ältere Safari werfen sonst einen RangeError
-  const euro = new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-  // Auf 100 € gerundet, ab 10.000 € auf 1.000 €, alles andere wäre Scheingenauigkeit
-  const runden = (betrag: number) => {
-    const schritt = betrag >= 10000 ? 1000 : 100;
-    return Math.round(betrag / schritt) * schritt;
-  };
-  // Leerer Richtwert oder 0 heißt: Standard verwenden
-  const richtwert = (auswahl: string, standard: number) =>
-    zahlAus(formular.querySelector<HTMLInputElement>(auswahl)) || standard;
-
-  const zustand = () => {
-    const posten = mengen
-      .map((feld) => {
-        const id = feld.dataset.menge ?? "";
-        const einheit = feld.dataset.einheit ?? "Woche";
-        const menge = zahlAus(feld);
-        const minutenJe = richtwert(`[data-richtwert="${id}"]`, Number(feld.dataset.minuten));
-        return {
-          aufgabe: feld.dataset.aufgabe ?? "",
-          menge,
-          einheit,
-          einheitText: feld.dataset.einheitText ?? "",
-          // Ohne „je“ trägt der Besucher direkt Stunden ein
-          mitMinuten: Boolean(feld.dataset.je),
-          minutenJe,
-          stunden: (menge * minutenJe * PRO_JAHR[einheit]) / 60,
-          schritt: feld.dataset.schritt ?? "",
-        };
-      })
-      .filter((p) => p.menge > 0);
-
-    const auftragswert = zahlAus(auftragswertFeld);
-    const durchrutscher = verluste
-      .map((feld) => {
-        const id = feld.dataset.verlust ?? "";
-        const einheit = feld.dataset.einheit ?? "Woche";
-        const menge = zahlAus(feld);
-        const quote = richtwert(`[data-quote-fuer="${id}"]`, Number(feld.dataset.quote));
-        return {
-          id,
-          aufgabe: feld.dataset.aufgabe ?? "",
-          kurz: feld.dataset.kurz ?? "",
-          menge,
-          einheit,
-          einheitText: feld.dataset.einheitText ?? "",
-          quote,
-          umsatz: ((menge * PRO_JAHR[einheit]) / quote) * auftragswert,
-          schritt: feld.dataset.schritt ?? "",
-        };
-      })
-      .filter((d) => d.menge > 0);
-
-    const summe = posten.reduce((s, p) => s + p.stunden, 0);
-    // Wer etwas einträgt, soll nicht „0 Stunden“ lesen
-    const stunden = posten.length > 0 ? Math.max(1, Math.round(summe)) : 0;
-    return {
-      posten,
-      durchrutscher,
-      auftragswert,
-      stunden,
-      // Tages-Äquivalent, so wie es Tracking und Anfrage bisher kennen
-      minuten: Math.round((stunden * 60) / ARBEITSTAGE),
-      stellen: stunden / STUNDEN_PRO_JAHR_VOLLZEIT,
-      euro: runden(stunden * EURO_PRO_STUNDE),
-      umsatz: runden(durchrutscher.reduce((s, d) => s + d.umsatz, 0)),
-      angaben: posten.length + durchrutscher.length + (auftragswert > 0 ? 1 : 0),
-    };
-  };
-  type Zustand = ReturnType<typeof zustand>;
-
-  // Im Dativ, passend zu „Das entspricht …“. Unter einer halben Stelle sind Arbeitswochen
-  // greifbarer als „0,1 Vollzeitstellen“.
-  const umfang = (z: Zustand) => {
-    const ungefaehr = (wert: number, ziel: number) => Math.abs(wert - ziel) < 0.05;
-    if (ungefaehr(z.stellen, 0.5)) return "einer halben Vollzeitstelle";
-    if (ungefaehr(z.stellen, 1)) return "einer ganzen Vollzeitstelle";
-    if (z.stellen >= 0.5) return `etwa ${kommazahl.format(z.stellen)} Vollzeitstellen`;
-    if (z.stunden < 8) return "weniger als einem Arbeitstag";
-    if (z.stunden < STUNDEN_PRO_WOCHE) return `etwa ${ganzzahl.format(z.stunden / 8)} Arbeitstagen`;
-    const wochen = z.stunden / STUNDEN_PRO_WOCHE;
-    return `etwa ${(wochen < 2 ? kommazahl : ganzzahl).format(wochen)} Arbeitswochen`;
-  };
-  const verlustQuellen = (z: Zustand) => z.durchrutscher.map((d) => d.kurz).join(" und ");
-  const stundenText = (stunden: number) => `rund ${ganzzahl.format(Math.max(1, Math.round(stunden)))} Std. im Jahr`;
-  const fehltAuftragswert = (z: Zustand) => z.durchrutscher.length > 0 && z.auftragswert === 0;
-
-  // Die größten Posten zuerst. Gibt es beides, teilen sich Zeit und Umsatz die Plätze.
-  const hebel = (z: Zustand) => {
-    const zeit = [...z.posten]
-      .sort((a, b) => b.stunden - a.stunden)
-      .map((p) => ({
-        titel: `${p.aufgabe}: ${stundenText(p.stunden)}`,
-        rechnung: p.mitMinuten
-          ? `${ganzzahl.format(p.menge)} ${p.einheitText} × ${p.minutenJe} Min. × ${ganzzahl.format(PRO_JAHR[p.einheit])} ${ZEITRAUM[p.einheit]}`
-          : `${ganzzahl.format(p.menge)} ${p.einheitText} × ${ganzzahl.format(PRO_JAHR[p.einheit])} ${ZEITRAUM[p.einheit]}`,
-        schritt: p.schritt,
-      }));
-    const umsatz =
-      z.auftragswert > 0
-        ? [...z.durchrutscher]
-            .sort((a, b) => b.umsatz - a.umsatz)
-            .map((d) => ({
-              titel: `${d.aufgabe}: rund ${euro.format(runden(d.umsatz))} Umsatz im Jahr`,
-              rechnung: `${ganzzahl.format(d.menge)} ${d.einheitText} × ${ganzzahl.format(PRO_JAHR[d.einheit])} ${ZEITRAUM[d.einheit]}, davon einer von ${ganzzahl.format(d.quote)} als Auftrag zu ${euro.format(z.auftragswert)}`,
-              schritt: d.schritt,
-            }))
-        : [];
-    const plaetzeUmsatz = zeit.length > 0 ? Math.min(umsatz.length, 1) : SCHRITTE_MAX;
-    const gezeigt = [
-      ...zeit.slice(0, SCHRITTE_MAX - plaetzeUmsatz),
-      ...umsatz.slice(0, plaetzeUmsatz),
-    ].slice(0, SCHRITTE_MAX);
-    return { gezeigt, rest: zeit.length + umsatz.length - gezeigt.length };
-  };
-
-  let letzteHebel = "";
-
-  const aktualisieren = () => {
-    const z = zustand();
-    const fertig = z.stunden > 0 || z.umsatz > 0;
-
-    if (stand) {
-      stand.textContent =
-        z.angaben === 0
-          ? "Noch nichts eingetragen"
-          : `${z.angaben} ${z.angaben === 1 ? "Angabe" : "Angaben"} eingetragen`;
-    }
-
-    ergebnis?.classList.toggle("ist-fertig", fertig);
-
-    if (zahl && erklaerung) {
-      if (z.stunden > 0) {
-        zahl.textContent = `Rund ${ganzzahl.format(z.stunden)} ${z.stunden === 1 ? "Stunde" : "Stunden"} im Jahr`;
-        erklaerung.textContent = `Das entspricht ${umfang(z)}: Zeit, die Ihrem Team für Kunden und Wachstum fehlt. Bei ${EURO_PRO_STUNDE} € pro Stunde kostet Sie die Handarbeit rund ${euro.format(z.euro)} im Jahr.`;
-      } else if (z.umsatz > 0) {
-        zahl.textContent = `Rund ${euro.format(z.umsatz)} im Jahr`;
-        erklaerung.textContent = `So viel Umsatz kann Ihnen durch ${verlustQuellen(z)} entgehen, vorsichtig gerechnet.`;
-      } else if (fehltAuftragswert(z)) {
-        zahl.textContent = "Fast geschafft";
-        erklaerung.textContent =
-          "Tragen Sie noch Ihren durchschnittlichen Auftragswert ein, dann sehen Sie, was Ihnen an Umsatz entgeht.";
-      } else {
-        zahl.textContent = "Ihr Ergebnis erscheint hier";
-        erklaerung.textContent = "Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.";
-      }
-    }
-
-    if (umsatzZeile) {
-      const zeigen = z.stunden > 0 && (z.umsatz > 0 || fehltAuftragswert(z));
-      umsatzZeile.hidden = !zeigen;
-      if (zeigen) {
-        umsatzZeile.textContent =
-          z.umsatz > 0
-            ? `Dazu kommen rund ${euro.format(z.umsatz)} Umsatz im Jahr, die Ihnen durch ${verlustQuellen(z)} entgehen können, vorsichtig gerechnet.`
-            : "Tragen Sie noch Ihren durchschnittlichen Auftragswert ein, dann sehen Sie auch, was Ihnen an Umsatz entgeht.";
-      }
-    }
-
-    if (schritte && schrittListe) {
-      schritte.hidden = !fertig;
-      if (fertig) {
-        const { gezeigt, rest } = hebel(z);
-        const eintraege: { titel?: string; rechnung?: string; schritt: string }[] = [...gezeigt];
-        if (rest === 1) eintraege.push({ schritt: "Und ein weiterer Hebel, den wir im Erstgespräch durchgehen." });
-        if (rest > 1) eintraege.push({ schritt: `Und ${rest} weitere Hebel, die wir im Erstgespräch durchgehen.` });
-        // Nur neu aufbauen, wenn sich etwas ändert, sonst liest der Screenreader die Liste bei jeder Eingabe vor
-        const neu = JSON.stringify(eintraege);
-        if (neu !== letzteHebel) {
-          letzteHebel = neu;
-          schrittListe.replaceChildren(
-            ...eintraege.map((e) => {
-              const li = document.createElement("li");
-              if (e.titel) {
-                const titel = document.createElement("strong");
-                titel.textContent = e.titel;
-                li.append(titel);
-              }
-              if (e.rechnung) {
-                const rechnung = document.createElement("span");
-                rechnung.className = "check__rechnung";
-                rechnung.textContent = e.rechnung;
-                li.append(rechnung);
-              }
-              const text = document.createElement("span");
-              text.textContent = e.schritt;
-              li.append(text);
-              return li;
-            }),
-          );
-        }
-      }
-    }
-
-    // Für Tracking und Anfrage: der aktuelle Stand als JSON, ohne Ergebnis kein Attribut
-    if (fertig) {
-      const menge = (id: string) => z.durchrutscher.find((d) => d.id === id)?.menge ?? 0;
-      formular.dataset.ergebnis = JSON.stringify({
-        punkte: [...z.posten, ...z.durchrutscher].map((p) => p.aufgabe),
-        minuten: z.minuten,
-        stunden: z.stunden,
-        euro: z.euro,
-        umsatz: z.umsatz,
-        posten: z.posten.map((p) => ({
-          aufgabe: p.aufgabe,
-          menge: p.menge,
-          einheit: p.einheit,
-          minutenJe: p.minutenJe,
-          stunden: Math.round(p.stunden),
-        })),
-        durchrutscher: {
-          verpassteAnrufeProWoche: menge("verpasst"),
-          angeboteOhneNachfassenProMonat: menge("nachfassen"),
-          auftragswert: z.auftragswert,
-        },
-      });
-    } else {
-      delete formular.dataset.ergebnis;
-    }
-
-    if (knopf) knopf.disabled = !fertig;
-  };
-
-  knopf?.addEventListener("click", () => {
-    const z = zustand();
-    // Die letzte Zeile muss auf „Stunden im Jahr.“ enden, das Anfrageformular ersetzt den Block daran
-    const text = [
-      "Ergebnis aus dem Zeitfresser-Check:",
-      ...z.posten.map((p) => `- ${p.aufgabe}: ${ganzzahl.format(p.menge)} ${p.einheitText}, ${stundenText(p.stunden)}`),
-      ...z.durchrutscher.map(
-        (d) =>
-          `- ${d.aufgabe}: ${ganzzahl.format(d.menge)} ${d.einheitText}` +
-          (z.auftragswert > 0 ? `, rund ${euro.format(runden(d.umsatz))} Umsatz im Jahr` : ""),
-      ),
-      ...(z.umsatz > 0
-        ? [`Umsatz, der durchrutscht: rund ${euro.format(z.umsatz)} im Jahr (Auftragswert ${euro.format(z.auftragswert)}).`]
-        : []),
-      ...(z.stunden > 0
-        ? [`Gegenwert: entspricht ${umfang(z)}, rund ${euro.format(z.euro)} im Jahr bei ${EURO_PRO_STUNDE} € pro Stunde.`]
-        : []),
-      z.stunden > 0
-        ? `Zeitaufwand im Team: rund ${ganzzahl.format(z.stunden)} Stunden im Jahr.`
-        : "Zeitaufwand im Team: nicht eingetragen, 0 Stunden im Jahr.",
-    ].join("\n");
-    window.dispatchEvent(new CustomEvent<string>("anfrage:vorbelegen", { detail: text }));
-  });
-
-  // Beim Verlassen aufräumen: nur Ziffern, Auftragswert mit Tausenderpunkt
-  formular.addEventListener("change", (event) => {
-    const feld = event.target;
-    if (feld instanceof HTMLInputElement && feld.inputMode === "numeric" && feld.value.trim() !== "") {
-      const wert = zahlAus(feld);
-      feld.value = feld.hasAttribute("data-auftragswert") ? ganzzahl.format(wert) : String(wert);
-    }
-    aktualisieren();
-  });
-  // Live beim Tippen, kurz gebündelt, damit die Ansage nicht bei jeder Ziffer neu startet
-  let warten = 0;
-  formular.addEventListener("input", () => {
-    window.clearTimeout(warten);
-    warten = window.setTimeout(aktualisieren, 250);
-  });
-  formular.addEventListener("submit", (event) => event.preventDefault());
-  aktualisieren();
-}
-
 /* Anfrageformular ---------------------------------------------------------- */
 
 function anfrageEinrichten(): void {
@@ -501,6 +197,7 @@ function anfrageEinrichten(): void {
   const telefon = feld("telefon");
   const nachricht = feld("nachricht");
   const honig = feld("website");
+  turnstileVorbereiten(formular);
 
   const statusSetzen = (text: string) => {
     if (status) status.textContent = text;
@@ -560,6 +257,7 @@ function anfrageEinrichten(): void {
       const wartezeit = MINDESTDAUER_MS - (Date.now() - seitenStart);
       if (wartezeit > 0) await new Promise((fertig) => window.setTimeout(fertig, wartezeit));
 
+      const turnstile = await turnstileToken(formular);
       const antwort = await fetch(ziel, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -575,8 +273,11 @@ function anfrageEinrichten(): void {
           check: checkErgebnis() ?? checkUebernommen,
           aufruf: aufrufId(),
           dauer: Date.now() - seitenStart,
+          turnstile,
         }),
       });
+      // Ein Token gilt nur einmal, auch wenn das Senden scheitert
+      turnstileZuruecksetzen(formular);
       if (antwort.ok) {
         erfolg();
         return;
@@ -648,10 +349,8 @@ function anfrageEinrichten(): void {
   });
 }
 
-/* Persönliches Bild: Berge oder Foto, im Zweifarb-Raster ------------------- */
+/* Persönliches Bild: Bergpanorama in Tinte-Tönen oder Foto im Zweifarb-Raster ---- */
 
-const TINTE = [43, 42, 126];
-const PAPIER = [255, 255, 255];
 const BAYER = [
   [0, 32, 8, 40, 2, 34, 10, 42],
   [48, 16, 56, 24, 50, 18, 58, 26],
@@ -662,6 +361,34 @@ const BAYER = [
   [15, 47, 7, 39, 13, 45, 5, 37],
   [63, 31, 55, 23, 61, 29, 53, 21],
 ];
+
+// Farbnummern des Panoramas (Index in BERGFARBEN), LEER = durchsichtig
+const BOGEN = 0;
+const GELB = 1;
+const T1 = 2;
+const T4 = 5;
+const T5 = 6;
+const T6 = 7;
+const LEER = 255;
+const BERGFARBEN = [
+  [255, 255, 255], // BOGEN: Papier, Schnee, freie Pixel in einer Silhouette
+  [243, 230, 160], // GELB: Halo, Lichtstrahlen, Glitzern, Gegenlichtsaum
+  [185, 184, 224], // T1: Wolken, Kette 0
+  [157, 156, 204], // T2: Kette 1
+  [124, 122, 179], // T3: Kette 2
+  [93, 91, 153], // T4: Kette 3, Spiegelung
+  [43, 42, 126], // T5: Kette 4, Sonne, Wanderer, Vögel
+  [21, 20, 74], // T6: Kette 5, Vordergrund, See-Tiefe (= #15144a)
+];
+const FOTOFARBEN = [
+  [255, 255, 255],
+  [43, 42, 126],
+];
+
+const EBENEN = ["himmel", "fern", "mitte", "nah"] as const;
+const UEBERSTAND = 24; // Kunstpixel über und unter den Ebenen, mindestens die größte Tiefe
+const TIEFE = [16, 10, 5, 0]; // Parallax-Weg je Ebene in Kunstpixeln
+const NAHT = 3; // unterste Zeilen, immer exakt T6 = #15144a
 
 function zufall(startwert: number): () => number {
   let s = startwert;
@@ -697,7 +424,7 @@ function grat(rnd: () => number, rauheit: number, breite: number): Float32Array 
   });
   const profil = new Float32Array(breite);
   for (let x = 0; x < breite; x++) {
-    const v = h[Math.round((x / (breite - 1)) * n)];
+    const v = h[Math.round((x / Math.max(1, breite - 1)) * n)];
     profil[x] = (v - min) / (max - min || 1);
   }
   return profil;
@@ -715,23 +442,36 @@ function maske(ton: Float32Array, breite: number, hoehe: number): Uint8Array {
   return an;
 }
 
-function malen(ctx: CanvasRenderingContext2D, an: Uint8Array, breite: number, hoehe: number): void {
+// Little-Endian-Pixelwert für die Uint32-Sicht auf ImageData
+function farbwert([r, g, b]: number[], alpha = 255): number {
+  return ((alpha << 24) | (b << 16) | (g << 8) | r) >>> 0;
+}
+
+// Palette als Nachschlagetabelle: Farbnummer → Pixelwert, unbelegte Nummern durchsichtig
+function palette(farben: number[][], leer: number | null): Uint32Array {
+  const tabelle = new Uint32Array(256);
+  farben.forEach((farbe, i) => (tabelle[i] = farbwert(farbe)));
+  if (leer !== null) tabelle[LEER] = tabelle[leer];
+  return tabelle;
+}
+
+const PANORAMA_DECKEND = palette(BERGFARBEN, BOGEN);
+const PANORAMA_EBENE = palette(BERGFARBEN, null);
+const FOTO_PALETTE = palette(FOTOFARBEN, null);
+
+// Farbnummern direkt in einen Uint32-Puffer schreiben (LEER wird je nach Palette Papier oder durchsichtig)
+function malen(ctx: CanvasRenderingContext2D, farben: Uint8Array, breite: number, hoehe: number, tabelle: Uint32Array): void {
   const bild = ctx.createImageData(breite, hoehe);
-  an.forEach((wert, i) => {
-    const farbe = wert ? TINTE : PAPIER;
-    bild.data[i * 4] = farbe[0];
-    bild.data[i * 4 + 1] = farbe[1];
-    bild.data[i * 4 + 2] = farbe[2];
-    bild.data[i * 4 + 3] = 255;
-  });
+  const feld = new Uint32Array(bild.data.buffer);
+  for (let i = 0; i < farben.length; i++) feld[i] = tabelle[farben[i]];
   ctx.putImageData(bild, 0, 0);
 }
 
 function rastern(ctx: CanvasRenderingContext2D, ton: Float32Array, breite: number, hoehe: number): void {
-  malen(ctx, maske(ton, breite, hoehe), breite, hoehe);
+  malen(ctx, maske(ton, breite, hoehe), breite, hoehe, FOTO_PALETTE);
 }
 
-// Zeichenfläche in ganzen Kunstpixeln anlegen, damit die Pixel gleich groß bleiben
+// Zeichenfläche des Fotos in ganzen Kunstpixeln anlegen, damit die Pixel gleich groß bleiben
 function kunstFlaeche(canvas: HTMLCanvasElement, pixel: number, verhaeltnis: number): { B: number; H: number } {
   const verfuegbar = canvas.parentElement?.clientWidth || 360;
   const B = Math.max(40, Math.floor(verfuegbar / pixel));
@@ -745,263 +485,708 @@ function kunstFlaeche(canvas: HTMLCanvasElement, pixel: number, verhaeltnis: num
   return { B, H };
 }
 
-// Bergszene als Tonwerte: 0 = Papier, 1 = Tinte, dazwischen gerastert
-function bergeSzene(B: number, H: number, startwert: number): Float32Array {
+/* Szene ------------------------------------------------------------------- */
+
+interface Sperre {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+interface BergSzene {
+  farbe: Uint8Array; // Gesamtbild B × H, Farbnummern
+  ebene: Uint8Array; // Gesamtbild B × H, Ebene je Pixel (0 himmel … 3 nah)
+  lagen: Uint8Array[]; // vier Ebenen je B × (H + 2U), LEER = durchsichtig
+}
+
+// Bergszene in Farbnummern. Die vier Ebenen reichen U Kunstpixel über und unter das Bild,
+// das Gesamtbild ist ihr mittlerer Ausschnitt und deckt sich bei Versatz 0 pixelgenau.
+// sperre: Bereich unter dem HUD (Szenenkoordinaten), dort stehen weder Sonne noch Figuren.
+function bergeSzene(B: number, H: number, startwert: number, U: number, sperre: Sperre | null = null): BergSzene {
   const rnd = zufall(startwert);
-  const ton = new Float32Array(B * H);
-  const setze = (x: number, y: number, wert: number) => {
-    if (x >= 0 && x < B && y >= 0 && y < H) ton[y * B + x] = wert;
+  const G = H + 2 * U;
+  const lagen = EBENEN.map(() => new Uint8Array(B * G).fill(LEER));
+  lagen[0].fill(BOGEN); // der Himmel deckt vollständig
+
+  // Jede Ebene hat ihre eigene Bayer-Phase, so entsteht beim Überlagern kein Moiré
+  const schwelle = (e: number, x: number, y: number) =>
+    (BAYER[(y + U + e * 3) % 8][(x + e * 5) % 8] + 0.5) / 64;
+  const setze = (e: number, x: number, y: number, farbe: number) => {
+    if (x >= 0 && x < B && y >= -U && y < H + U) lagen[e][(y + U) * B + x] = farbe;
+  };
+  const lies = (e: number, x: number, y: number) =>
+    x >= 0 && x < B && y >= -U && y < H + U ? lagen[e][(y + U) * B + x] : LEER;
+  // Sichtbare Farbe bei Versatz 0: vorderste deckende Ebene
+  const oben = (x: number, y: number) => {
+    for (let e = 3; e >= 0; e--) {
+      const f = lies(e, x, y);
+      if (f !== LEER) return f;
+    }
+    return BOGEN;
   };
   // Figur mit 1 Pixel Papierrand stempeln, damit sie sich vom Raster abhebt
-  const stempel = (punkte: number[][], x: number, y: number) => {
+  const stempel = (e: number, punkte: number[][], x: number, y: number, farbe: number) => {
     punkte.forEach(([dx, dy]) => {
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) setze(x + dx + a, y + dy + b, 0);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) setze(e, x + dx + a, y + dy + b, BOGEN);
     });
-    punkte.forEach(([dx, dy]) => setze(x + dx, y + dy, 1));
+    punkte.forEach(([dx, dy]) => setze(e, x + dx, y + dy, farbe));
   };
+  const gesperrt = (x: number, y: number, rand = 0) =>
+    !!sperre && x >= sperre.x0 - rand && x <= sperre.x1 + rand && y >= sperre.y0 - rand && y <= sperre.y1 + rand;
+  // Tanne mit gestuften Ästen, Fuß bei (x, fuss)
+  const tanne = (e: number, x: number, fuss: number, g: number, farbe: number) => {
+    if (g < 8) {
+      for (let j = 0; j < g; j++) {
+        const halb = Math.floor(j * 0.45);
+        for (let dx = -halb; dx <= halb; dx++) setze(e, x + dx, fuss - g + j, farbe);
+      }
+      return;
+    }
+    const stamm = Math.max(1, Math.round(g / 9));
+    const krone = g - stamm;
+    const breite = g * 0.3;
+    const stufen = Math.max(2, Math.round(krone / 5));
+    const stufenHoehe = krone / stufen;
+    for (let j = 0; j < krone; j++) {
+      const inStufe = (j % stufenHoehe) / stufenHoehe;
+      const halb = Math.round(((j + 1) / krone) * breite * (0.55 + 0.45 * inStufe));
+      for (let dx = -halb; dx <= halb; dx++) setze(e, x + dx, fuss - g + j, farbe);
+    }
+    const dicke = g >= 16 ? 1 : 0;
+    for (let j = krone; j < g + 1; j++) for (let dx = -dicke; dx <= 0; dx++) setze(e, x + dx, fuss - g + j, farbe);
+  };
+
+  const weiss = Math.ceil(H * 0.08); // die obersten Zeilen bleiben reines Papier
   const ufer = Math.round(H * 0.8); // darunter liegt der See
 
-  // Himmel: waagerechte Linien, die zum Horizont hin auseinanderlaufen
-  for (let k = 0, y = 0; y < ufer; k++, y += 2 + Math.round((k * H) / 75)) {
-    for (let x = 0; x < B; x++) ton[y * B + x] = 1;
+  /* 1. Himmel ------------------------------------------------------------ */
+
+  // Sonne mal links, mal rechts, nie unter dem HUD
+  let sonnenseite = rnd() < 0.5 ? 1 : -1;
+  let sx = B * (0.5 + sonnenseite * (0.1 + rnd() * 0.18));
+  const sy = H * (0.22 + rnd() * 0.06);
+  const sr = Math.max(5, Math.min(H * 0.13, B * 0.06));
+  const sonneGesperrt = () =>
+    !!sperre && sx + sr + 2 >= sperre.x0 && sx - sr - 2 <= sperre.x1 && sy - sr - 2 <= sperre.y1 && sy + sr + 2 >= sperre.y0;
+  if (sonneGesperrt()) {
+    sx = B - sx;
+    sonnenseite = -sonnenseite;
+  }
+
+  /* 2. Sechs Ketten, hinten hell und licht gerastert, vorne dunkel und dicht -- */
+
+  const ketten = [
+    { basis: 0.54, hoehe: 0.46, rauheit: 0.5, licht: 0.25, schatten: 0.5, nebel: 0.6, ebene: 1 },
+    { basis: 0.6, hoehe: 0.36, rauheit: 0.53, licht: 0.3, schatten: 0.55, nebel: 0.8, ebene: 1 },
+    { basis: 0.66, hoehe: 0.28, rauheit: 0.55, licht: 0.4, schatten: 0.65, nebel: 0.85, ebene: 2 },
+    { basis: 0.71, hoehe: 0.2, rauheit: 0.57, licht: 0.55, schatten: 0.8, nebel: 0.9, ebene: 2 },
+    { basis: 0.76, hoehe: 0.14, rauheit: 0.6, licht: 0.75, schatten: 1, nebel: 0, ebene: 3 },
+    { basis: 0.8, hoehe: 0.08, rauheit: 0.62, licht: 1, schatten: 1, nebel: 0, ebene: 3 },
+  ];
+  const kaemme = ketten.map(() => new Int32Array(B));
+  const sattel = 0.3 + rnd() * 0.55; // so tief taucht die Sonne ins Tal (in Sonnenradien unter der Mitte)
+  const nebelTiefe = H * 0.16;
+  const fenster = 3 + Math.round(B / 60);
+
+  ketten.forEach((kette, k) => {
+    const e = kette.ebene;
+    const farbe = T1 + k;
+    const profil = grat(rnd, kette.rauheit, B);
+    // Sattel unter der Sonne: Die hinteren Ketten senken sich dort so weit, dass die
+    // Sonne mit ihrer oberen Hälfte immer frei steht und in ein Tal hinein untergeht.
+    if (k < 4) {
+      const tal = sy + sr * sattel;
+      const erlaubt = (kette.basis - tal / H) / kette.hoehe; // höchster Profilwert über der Sonne
+      let spitze = 0;
+      for (let x = Math.max(0, Math.floor(sx - sr)); x <= Math.min(B - 1, sx + sr); x++) spitze = Math.max(spitze, profil[x]);
+      if (spitze > erlaubt) {
+        const tiefe = 1 - Math.max(0, erlaubt) / spitze;
+        const weite = sr * 2.4;
+        for (let x = 0; x < B; x++) profil[x] *= 1 - tiefe * Math.exp(-(((x - sx) / weite) ** 2));
+      }
+    }
+    let imSchatten: boolean;
+    // Grund der Silhouette: hinten Papier, sonst der nächsthellere Ton. So rastert jede
+    // Kette zwischen zwei benachbarten Tönen, das Bild wird satt statt fleckig.
+    const grund = k === 0 ? BOGEN : farbe - 1;
+    for (let x = 0; x < B; x++) {
+      const kamm = Math.max(weiss, Math.round(H * (kette.basis - kette.hoehe * profil[x])));
+      kaemme[k][x] = kamm;
+      // Hänge, die von der Sonne wegzeigen, liegen im Schatten. Die Neigung wird über ein
+      // breites Fenster gemessen und weich überblendet: ruhige Flanken statt harter Streifen.
+      const neigung = (profil[Math.min(B - 1, x + fenster)] - profil[Math.max(0, x - fenster)]) * sonnenseite;
+      const schatten = Math.min(1, Math.max(0, 0.5 + neigung * 5));
+      imSchatten = schatten > 0.5;
+      const schneeTief = k < 2 ? Math.max(0, H * 0.3 - kamm) * 0.7 + rnd() * 2 : 0;
+      for (let y = kamm; y < H + U; y++) {
+        const tiefe = y - kamm;
+        // Deckkraft: oben voll, zum Fuß hin löst sich die Kette im Nebel auf
+        const deckung = kette.nebel ? 1 - Math.min(1, Math.max(0, (tiefe - nebelTiefe * 0.3) / (nebelTiefe * 0.7))) : 1;
+        let wert = kette.licht + (kette.schatten - kette.licht) * schatten;
+        let frei = grund;
+        if (tiefe < schneeTief) {
+          wert = imSchatten ? 0.25 : 0;
+          frei = BOGEN;
+        }
+        if (tiefe === 0) wert = 1;
+        wert = Math.round(wert * 8) / 8; // feste Stufen ergeben ruhige Muster
+        const s = schwelle(e, x, y);
+        if (wert * deckung > s) setze(e, x, y, farbe);
+        else if (deckung > s) setze(e, x, y, frei);
+        // sonst durchsichtig: im Nebel am Fuß scheint die Ebene dahinter durch
+      }
+      // Gegenlichtsaum auf der Sonnenseite der hinteren Grate
+      if (k < 2 && !imSchatten && kamm - 1 >= weiss && lies(e, x, kamm - 1) === LEER) setze(e, x, kamm - 1, GELB);
+    }
+    // Tannen auf den vorderen Ketten, mit Abstand, damit sie einzeln lesbar bleiben
+    if (k >= 4) {
+      const [klein, gross, farbeTanne] = k === 4 ? [4, 7, T5] : [6, 11, T6];
+      for (let x = 2 + Math.floor(rnd() * 6); x < B - 2; x += 4 + Math.floor(rnd() * (k === 4 ? 9 : 12))) {
+        const g = klein + Math.floor(rnd() * (gross - klein + 1));
+        tanne(e, x, kaemme[k][x] + 1, g, farbeTanne);
+      }
+    }
+  });
+
+  /* Himmel hinter den Ketten: Strahlen, Halo, Wolken und Sonne enden knapp unter der
+     Kammlinie. So scheint durch den Nebel am Fuß nur weißer Dunst, nie die Sonne. */
+
+  const horizont = new Int32Array(B);
+  for (let x = 0; x < B; x++) {
+    let oberster = ufer;
+    for (let k = 0; k < ketten.length; k++) oberster = Math.min(oberster, kaemme[k][x]);
+    horizont[x] = oberster + 8; // Reserve für den Parallax-Versatz zwischen Himmel und Kette
+  }
+
+  // Lichtstrahlen und Halo: Gelb, gerastert, hinter allem anderen
+  const strahlen = Array.from({ length: 7 }, (_, i) => ((-70 + (i * 140) / 6) * Math.PI) / 180);
+  const keil = (1.25 * Math.PI) / 180;
+  const strahlLaenge = Math.hypot(B, H) * 0.7;
+  const haloRand = 3.2 * sr;
+  for (let y = weiss; y < ufer; y++) {
+    for (let x = 0; x < B; x++) {
+      const dx = x - sx;
+      const dy = y - sy;
+      const d = Math.hypot(dx, dy);
+      if (d <= sr + 1 || y >= horizont[x]) continue;
+      let ton = d < haloRand ? (1 - d / haloRand) ** 1.6 : 0;
+      if (dy > 0) {
+        const winkel = Math.atan2(dx, dy); // 0 = senkrecht nach unten
+        if (strahlen.some((s) => Math.abs(winkel - s) < keil)) ton = Math.max(ton, 0.22 * Math.max(0, 1 - d / strahlLaenge));
+      }
+      if (ton > schwelle(0, x, y)) setze(0, x, y, GELB);
+    }
+  }
+
+  // Wolkenbänder: Linien, deren Abstand zum Horizont hin wächst, in Stücke zerlegt.
+  // Das Profil läuft dreimal über die Breite, so entstehen Wolkenfetzen statt Drähte;
+  // wo es besonders hoch ist, bekommt der Fetzen eine zweite Zeile obendrauf.
+  for (let k = 0, y = weiss; y < ufer; k++, y += 2 + Math.round((k * H) / 75)) {
+    const stuecke = grat(rnd, 0.6, B);
+    const anfang = Math.floor(rnd() * B);
+    const dichte = Math.min(1, Math.max(0, (y / H - 0.08) / 0.12));
+    const versatz = k % 2;
+    for (let x = 0; x < B; x++) {
+      const wert = stuecke[(x * 3 + versatz + anfang) % B];
+      if (y >= horizont[x]) continue;
+      if (wert > 0.45 && dichte > schwelle(0, x, y)) setze(0, x, y, T1);
+      if (wert > 0.72 && y - 1 >= weiss && dichte > schwelle(0, x, y - 1)) setze(0, x, y - 1, T1);
+    }
   }
 
   // Sonne: volle Scheibe mit Schlitzen, die nach unten breiter werden
-  const sonnenseite = rnd() < 0.5 ? 1 : -1; // Sonne mal rechts, mal links
-  const sx = B * (0.5 + sonnenseite * (0.12 + rnd() * 0.22));
-  const sy = H * (0.2 + rnd() * 0.06);
-  const sr = Math.max(7, H * 0.15);
   for (let y = Math.floor(sy - sr - 3); y <= sy + sr + 3; y++) {
     for (let x = Math.floor(sx - sr - 3); x <= sx + sr + 3; x++) {
       const d = Math.hypot(x - sx, y - sy);
-      if (d > sr + 2.5) continue;
+      if (d > sr + 1 || x < 0 || x >= B || y >= horizont[x]) continue;
       const reihe = Math.round(y - sy);
       const schlitz = reihe > 0 && reihe % 3 < (reihe / sr) * 2.4;
-      setze(x, y, d <= sr && !schlitz ? 1 : 0);
+      setze(0, x, y, d <= sr && !schlitz ? T5 : BOGEN);
     }
   }
 
-  // Vier Bergketten: hinten hell mit Schnee, vorne dunkel, an den Füßen Nebel
-  const ketten = [
-    { basis: 0.62, hoehe: 0.5, rauheit: 0.55, licht: 0.25, schatten: 0.5, nebel: 0.5 },
-    { basis: 0.7, hoehe: 0.3, rauheit: 0.58, licht: 0.25, schatten: 0.5, nebel: 0.9 },
-    { basis: 0.76, hoehe: 0.2, rauheit: 0.55, licht: 0.5, schatten: 0.75, nebel: 0.9 },
-    { basis: 0.8, hoehe: 0.1, rauheit: 0.5, licht: 1, schatten: 1, nebel: 0 },
-  ];
-  let gipfelX = Math.round(B / 2);
-  let gipfelY = H;
-  let vorneKamm = new Int32Array(B);
-  let hintenKamm = new Int32Array(B);
+  /* 3. Wanderer auf dem höchsten freien Gipfel der hinteren Kette ---------- */
 
-  ketten.forEach((kette, k) => {
-    const profil = grat(rnd, kette.rauheit, B);
-    const kaemme = new Int32Array(B);
-    let imSchatten = false;
-    for (let x = 0; x < B; x++) {
-      const kamm = Math.round(H * (kette.basis - kette.hoehe * profil[x]));
-      kaemme[x] = kamm;
-      // Hänge, die von der Sonne wegzeigen, liegen im Schatten; Hysterese gegen Flackern
-      const neigung = (profil[Math.min(B - 1, x + 4)] - profil[Math.max(0, x - 4)]) * sonnenseite;
-      if (Math.abs(neigung) > 0.04) imSchatten = neigung > 0;
-      const schneeTief = Math.max(0, H * 0.3 - kamm) * 0.7 + rnd() * 2;
-      for (let y = Math.max(0, kamm); y < ufer; y++) {
-        const nebel = Math.min(1, (y - kamm) / (H * 0.16 + 2)) * kette.nebel;
-        let wert = (imSchatten ? kette.schatten : kette.licht) * (1 - nebel);
-        if (k === 0 && y - kamm < schneeTief) wert = imSchatten ? 0.25 : 0;
-        if (y === kamm) wert = 1;
-        ton[y * B + x] = Math.round(wert * 4) / 4; // feste Stufen ergeben ruhige Muster
-      }
+  let gipfelX = -1;
+  let gipfelY = H;
+  for (let x = Math.ceil(B * 0.12); x <= Math.floor(B * 0.88); x++) {
+    const y = kaemme[0][x];
+    if (Math.abs(x - sx) < sr + 8 || y - 10 < weiss || gesperrt(x, y - 9, 3)) continue;
+    if (kaemme[1][x] - y < 10) continue; // die Kette davor darf ihn nicht verdecken
+    let lokal = true;
+    for (let d = -3; d <= 3; d++) if (kaemme[0][Math.min(B - 1, Math.max(0, x + d))] < y) lokal = false;
+    if (lokal && y < gipfelY) {
+      gipfelY = y;
+      gipfelX = x;
     }
-    // Höchster echter Gipfel der hinteren Kette, mit Abstand zur Sonne
-    if (k === 0) {
-      for (let x = Math.ceil(B * 0.12); x <= Math.floor(B * 0.88); x++) {
-        if (Math.abs(x - sx) < sr + 7) continue;
-        let lokal = true;
-        for (let d = -3; d <= 3; d++) {
-          if (kaemme[Math.min(B - 1, Math.max(0, x + d))] < kaemme[x]) lokal = false;
-        }
-        if (lokal && kaemme[x] < gipfelY) {
-          gipfelY = kaemme[x];
-          gipfelX = x;
-        }
-      }
-      hintenKamm = kaemme;
+  }
+  if (gipfelX >= 0) {
+    stempel(
+      1,
+      [
+        [0, -8],
+        [0, -7], [-1, -6], [0, -6], [1, -6],
+        [0, -5], [0, -4],
+        [-1, -3], [1, -3], [-1, -2], [1, -2], [-1, -1], [1, -1],
+        [2, -7], [2, -6], [2, -5], [2, -4], [2, -3], [2, -2], [2, -1],
+      ],
+      gipfelX,
+      gipfelY,
+      T5,
+    );
+    for (let dx = -3; dx <= 4; dx++) setze(1, gipfelX + dx, gipfelY, T1);
+  }
+
+  /* 4. Vordergrund-Rahmen: Hänge mit großen Tannen an beiden Bildrändern --- */
+
+  const rahmenOben = H * 0.55;
+  [1, -1].forEach((seite) => {
+    const breite = Math.round(B * (0.14 + rnd() * 0.04));
+    const profil = grat(rnd, 0.55, breite);
+    const hang = new Int32Array(breite);
+    for (let i = 0; i < breite; i++) {
+      const t = i / (breite - 1);
+      const anteil = (1 - t) ** 1.25 * (0.72 + 0.28 * profil[i]);
+      hang[i] = Math.round(ufer - (ufer - rahmenOben) * anteil);
+      const x = seite === 1 ? i : B - 1 - i;
+      for (let y = hang[i]; y < H + U; y++) setze(3, x, y, T6);
     }
-    vorneKamm = kaemme;
+    // Große Tannen, außen am größten, nach innen kleiner
+    for (let i = 1 + Math.floor(rnd() * 3); i < breite - 2; ) {
+      const t = i / breite;
+      const g = Math.round(14 + (1 - t) * 6 + rnd() * 2);
+      const x = seite === 1 ? i : B - 1 - i;
+      tanne(3, x, hang[i] + 2, g, T6);
+      i += Math.max(4, Math.round(g * (0.35 + rnd() * 0.35)));
+    }
   });
 
-  // Tannen auf der vordersten Kette, mit Abstand, damit sie einzeln lesbar bleiben
-  for (let bx = 2 + Math.floor(rnd() * 6); bx < B - 2; bx += 5 + Math.floor(rnd() * 9)) {
-    const groesse = 4 + Math.floor(rnd() * 5);
-    const fuss = vorneKamm[bx];
-    for (let j = 0; j < groesse; j++) {
-      const halb = Math.floor(j * 0.45);
-      for (let dx = -halb; dx <= halb; dx++) setze(bx + dx, fuss - groesse + j, 1);
-    }
-  }
+  /* 5. Figuren im freien Himmel (nach dem Rahmen, damit die Kammlinie bekannt ist) */
 
-  // See: Silhouetten gestaucht gespiegelt, jede zweite Zeile frei, Glitzern unter der Sonne
-  for (let y = ufer + 1; y < H; y++) {
-    const d = y - ufer;
-    const quelle = ufer - d * 2;
-    const welle = Math.round(Math.sin(d * 1.7) * 1.5);
-    for (let x = 0; x < B; x++) {
-      const q = quelle >= 0 ? ton[quelle * B + Math.min(B - 1, Math.max(0, x + welle))] : 0;
-      ton[y * B + x] = d % 2 && q > 0.7 ? 1 : 0;
-    }
-    const spur = Math.round(sr * 0.3 + d * 0.6);
-    const versatz = Math.round(Math.sin(d * 2.3) * 2);
-    for (let dx = -spur; dx <= spur; dx++) {
-      if ((dx + versatz + 40) % 5 < 3) setze(Math.round(sx) + dx, y, d % 2 ? 0 : 1);
-    }
-  }
-  for (let x = 0; x < B; x++) ton[ufer * B + x] = 1;
+  const himmelBis = (x: number) => {
+    const xi = Math.min(B - 1, Math.max(0, Math.round(x)));
+    for (let y = weiss; y < ufer; y++) if (lies(1, xi, y) !== LEER || lies(2, xi, y) !== LEER || lies(3, xi, y) !== LEER) return y;
+    return ufer;
+  };
+  const frei = (x: number, y: number, rand: number) =>
+    x > 3 && x < B - 4 && y - rand >= weiss + 1 && y + rand < himmelBis(x) - 3 && !gesperrt(x, y, rand + 2) &&
+    Math.hypot(x - sx, y - sy) > sr + rand + 4;
 
   // Sternschnuppe: Kopf mit Funkeln, Schweif wird nach hinten lückenhaft
-  const stx = Math.round(B * (0.5 - sonnenseite * (0.05 + rnd() * 0.3)));
-  const sty = Math.max(8, Math.min(Math.round(H * (0.12 + rnd() * 0.08)), hintenKamm[stx] - 4));
-  const schweif: number[][] = [];
-  for (let i = 0; i < 16; i++) if (i < 7 || i % 2 === 0) schweif.push([-i * sonnenseite, -Math.round(i * 0.45)]);
-  stempel([...schweif, [sonnenseite, 0], [0, -1], [0, 1]], stx, sty);
-
-  // Drei Vögel, nur im freien Himmel
-  for (let v = 0; v < 3; v++) {
-    const vx = Math.round(B * (0.5 - sonnenseite * (0.02 + rnd() * 0.4)));
-    const vy = Math.max(2, Math.min(Math.round(H * (0.08 + rnd() * 0.14)), hintenKamm[vx] - 4));
-    stempel([[-2, -1], [-1, 0], [0, 1], [1, 0], [2, -1]], vx, vy);
+  for (let versuch = 0; versuch < 12; versuch++) {
+    const stx = Math.round(B * (0.5 - sonnenseite * (0.05 + rnd() * 0.3)));
+    const sty = Math.round(H * (0.14 + rnd() * 0.1));
+    // Kopf und Schweifende müssen beide im freien Himmel liegen
+    if (!frei(stx, sty, 3) || !frei(stx - 15 * sonnenseite, sty - 7, 3)) continue;
+    const schweif: number[][] = [];
+    for (let i = 0; i < 16; i++) if (i < 7 || i % 2 === 0) schweif.push([-i * sonnenseite, -Math.round(i * 0.45)]);
+    stempel(0, [...schweif, [sonnenseite, 0], [0, -1], [0, 1]], stx, sty, T5);
+    break;
   }
 
-  // Wanderer mit Stock auf dem höchsten Gipfel abseits der Sonne
-  stempel(
-    [
-      [0, -8],
-      [0, -7], [-1, -6], [0, -6], [1, -6],
-      [0, -5], [0, -4],
-      [-1, -3], [1, -3], [-1, -2], [1, -2], [-1, -1], [1, -1],
-      [2, -7], [2, -6], [2, -5], [2, -4], [2, -3], [2, -2], [2, -1],
-    ],
-    gipfelX,
-    gipfelY,
-  );
-  for (let dx = -3; dx <= 4; dx++) setze(gipfelX + dx, gipfelY, 1);
+  // Fünf Vögel, nur im freien Himmel
+  for (let v = 0, versuch = 0; v < 5 && versuch < 60; versuch++) {
+    const vx = Math.round(B * (0.5 - sonnenseite * (0.02 + rnd() * 0.42)));
+    const vy = Math.round(H * (0.1 + rnd() * 0.16));
+    if (!frei(vx, vy, 3)) continue;
+    stempel(0, [[-2, -1], [-1, 0], [0, 1], [1, 0], [2, -1]], vx, vy, T5);
+    v++;
+  }
 
-  return ton;
+  /* 6. See: gestauchte Spiegelung, Glitzerspur, Grund läuft in Nacht-Tinte aus */
+
+  const tiefBeginn = H * 0.86;
+  const tiefEnde = H - NAHT;
+  // Spiegelung aus dem Bild bei Versatz 0 lesen, bevor der See es überdeckt
+  const ueberUfer = new Uint8Array(B * ufer);
+  for (let y = 0; y < ufer; y++) for (let x = 0; x < B; x++) ueberUfer[y * B + x] = oben(x, y);
+  for (let y = ufer; y < H + U; y++) {
+    const d = y - ufer;
+    const quelle = ufer - Math.round(d * 2.5);
+    const welle = Math.round(Math.sin(d * 1.7) * 1.6);
+    const grund = Math.min(1, Math.max(0, (y - tiefBeginn) / (tiefEnde - tiefBeginn)));
+    const spur = Math.round(sr * 0.6 + d * 1.2);
+    const glanz = Math.round(Math.sin(d * 2.3) * 2);
+    for (let x = 0; x < B; x++) {
+      let farbe = BOGEN;
+      if (y === ufer || y >= tiefEnde) farbe = T6;
+      else {
+        if (d % 2 && quelle >= 0) {
+          const q = ueberUfer[quelle * B + Math.min(B - 1, Math.max(0, x + welle))];
+          if (q >= T5) farbe = T4;
+        }
+        const dx = x - Math.round(sx);
+        // Glitzerspur: kurze Striche, zum Rand der Spur und zur Tiefe hin seltener
+        const rand = Math.abs(dx) / (spur + 1);
+        const strich = (dx + glanz * 3 + d * 5 + 700) % 7 < (d % 2 ? 3 : 2);
+        const imGlanz = rand <= 1 && strich && (1 - rand * rand) * (1 - grund * 0.85) > schwelle(3, x, y);
+        // Wechselnd Gelb und Tinte; im dunklen Grund leuchtet nur noch Gelb
+        if (imGlanz) farbe = d % 2 || grund > 0.3 ? GELB : T5;
+        else if (grund > schwelle(3, x, y)) farbe = T6;
+      }
+      setze(3, x, y, farbe);
+    }
+  }
+
+  /* Gesamtbild: mittlerer Ausschnitt, je Pixel die vorderste deckende Ebene */
+
+  const farbe = new Uint8Array(B * H);
+  const ebene = new Uint8Array(B * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < B; x++) {
+      const i = (y + U) * B + x;
+      for (let e = 3; e >= 0; e--) {
+        if (lagen[e][i] !== LEER) {
+          farbe[y * B + x] = lagen[e][i];
+          ebene[y * B + x] = e;
+          break;
+        }
+      }
+    }
+  }
+  return { farbe, ebene, lagen };
+}
+
+// Ebenen mit Versatz (Kunstpixel, positiv = nach unten) zu einem Gesamtbild B × H stapeln
+function zusammensetzen(szene: BergSzene, B: number, H: number, versatz: number[]): Uint8Array {
+  if (versatz.every((v) => v === 0)) return szene.farbe;
+  const G = H + 2 * UEBERSTAND;
+  const farbe = new Uint8Array(B * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < B; x++) {
+      let f = BOGEN;
+      for (let e = 3; e >= 0; e--) {
+        const quelle = y + UEBERSTAND - versatz[e];
+        if (quelle < 0 || quelle >= G) continue;
+        const wert = szene.lagen[e][quelle * B + x];
+        if (wert !== LEER) {
+          f = wert;
+          break;
+        }
+      }
+      farbe[y * B + x] = f;
+    }
+  }
+  return farbe;
+}
+
+/* Bühne: Messen, Zeichnen, Parallax, Auftritt, Wirbel ----------------------- */
+
+interface Panorama {
+  buehne: HTMLElement;
+  bild: HTMLElement;
+  gesamt: HTMLCanvasElement;
+  ebenen: HTMLCanvasElement[];
+  hud: HTMLElement | null;
+  angabe: HTMLElement | null;
+  startwert: number;
+  px: number;
+  B: number;
+  H: number;
+  sperre: Sperre | null;
+  szene: BergSzene | null;
+  ebenenAn: boolean;
+  versatz: number[];
+  text: string;
+  laedt: boolean;
 }
 
 let bergFlug = 0;
+let bergEinblenden: gsap.core.Timeline | null = null;
 
-function bergeZeichnen(canvas: HTMLCanvasElement, startwert: number): void {
+function bergeText(p: Panorama, text?: string): void {
+  if (p.angabe) p.angabe.textContent = text ?? p.text;
+}
+
+// Kunstpixel und Rasterweite aus der Größe von .berge__bild; Canvas unten bündig, mittig
+function bergeMessen(p: Panorama): void {
+  const w = p.bild.clientWidth || 360;
+  const h = p.bild.clientHeight || 240;
+  p.px = w < 768 ? 3 : w < 2200 ? 4 : 5;
+  p.B = Math.ceil(w / p.px);
+  p.H = Math.ceil(h / p.px);
+  const links = Math.floor((w - p.B * p.px) / 2);
+  const ueber = p.H * p.px - h; // so viel ragt oben über und wird im weißen Himmel abgeschnitten
+  p.gesamt.width = p.B;
+  p.gesamt.height = p.H;
+  [p.gesamt, ...p.ebenen].forEach((canvas) => {
+    canvas.style.width = `${p.B * p.px}px`;
+    canvas.style.left = `${links}px`;
+  });
+  p.gesamt.style.height = `${p.H * p.px}px`;
+  p.ebenen.forEach((canvas) => {
+    canvas.style.height = `${(p.H + 2 * UEBERSTAND) * p.px}px`;
+    canvas.style.bottom = `${-UEBERSTAND * p.px}px`;
+  });
+  // Bereich unter dem schwebenden HUD in Kunstpixeln
+  p.sperre = null;
+  const hud = p.hud?.getBoundingClientRect();
+  const rahmen = p.bild.getBoundingClientRect();
+  if (hud && hud.width > 0 && hud.top < rahmen.bottom && hud.bottom > rahmen.top) {
+    p.sperre = {
+      x0: Math.floor((hud.left - rahmen.left - links) / p.px),
+      x1: Math.ceil((hud.right - rahmen.left - links) / p.px),
+      y0: Math.floor((hud.top - rahmen.top + ueber) / p.px),
+      y1: Math.ceil((hud.bottom - rahmen.top + ueber) / p.px),
+    };
+  }
+  p.text = `${p.B} × ${p.H}, 6 Farben`;
+  if (!p.laedt) bergeText(p);
+}
+
+function ebenenMalen(p: Panorama): void {
+  if (!p.szene) return;
+  const G = p.H + 2 * UEBERSTAND;
+  p.ebenen.forEach((canvas, e) => {
+    canvas.width = p.B;
+    canvas.height = G;
+    const ctx = canvas.getContext("2d");
+    if (ctx && p.szene) malen(ctx, p.szene.lagen[e], p.B, G, PANORAMA_EBENE);
+  });
+}
+
+// Laufenden Wirbel und Einblenden abbrechen, Ebenen wieder deckend zeigen
+function wirbelBeenden(p: Panorama): void {
   cancelAnimationFrame(bergFlug);
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return;
-  const { B, H } = kunstFlaeche(canvas, 3, 0.625);
-  malen(ctx, maske(bergeSzene(B, H, startwert), B, H), B, H);
+  bergEinblenden?.kill();
+  bergEinblenden = null;
+  gsap.set(p.ebenen, { opacity: 1 });
+  p.buehne.removeAttribute("data-wirbel");
+  if (!p.laedt) bergeText(p);
 }
 
-// Little-Endian-Pixelwert für die Uint32-Sicht auf ImageData
-function farbwert([r, g, b]: number[]): number {
-  return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+function bergeZeichnen(p: Panorama): void {
+  wirbelBeenden(p);
+  bergeMessen(p);
+  p.szene = bergeSzene(p.B, p.H, p.startwert, UEBERSTAND, p.sperre);
+  const ctx = p.gesamt.getContext("2d", { willReadFrequently: true });
+  if (ctx) malen(ctx, p.szene.farbe, p.B, p.H, PANORAMA_DECKEND);
+  if (p.ebenenAn) ebenenMalen(p);
 }
 
-// Neu zeichnen: Die Tintenpixel des alten Bildes drehen sich in einen Wirbel, ballen sich
+// Neu zeichnen: Die farbigen Pixel des alten Bildes drehen sich in einen Wirbel, ballen sich
 // in der Mitte zusammen und entfalten von innen nach außen das neue Bild.
-function bergeNeuZeichnen(canvas: HTMLCanvasElement, startwert: number): void {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+function bergeNeuZeichnen(p: Panorama): void {
+  const ctx = p.gesamt.getContext("2d", { willReadFrequently: true });
   if (bewegungReduziert || !ctx) {
-    bergeZeichnen(canvas, startwert);
+    bergeZeichnen(p);
     return;
   }
   cancelAnimationFrame(bergFlug);
+  bergEinblenden?.kill();
+
+  // Liegen die Ebenen oben, zeigt das Gesamtbild zuerst genau ihren Stand
+  if (p.ebenenAn && p.szene && !p.buehne.hasAttribute("data-wirbel")) {
+    malen(ctx, zusammensetzen(p.szene, p.B, p.H, p.versatz), p.B, p.H, PANORAMA_DECKEND);
+  }
+  p.buehne.setAttribute("data-wirbel", "");
+  if (p.ebenenAn) gsap.to(p.ebenen, { opacity: 0, duration: 0.12, overwrite: true });
 
   // Aktuellen Stand lesen, so setzt ein Klick mitten im Flug sauber an
-  const altB = canvas.width;
-  const altH = canvas.height;
+  const altB = p.gesamt.width;
+  const altH = p.gesamt.height;
   const alt = ctx.getImageData(0, 0, altB, altH).data;
-  const { B, H } = kunstFlaeche(canvas, 3, 0.625);
-  const ziel = maske(bergeSzene(B, H, startwert), B, H);
+  bergeMessen(p);
+  const { B, H } = p;
+  p.szene = bergeSzene(B, H, p.startwert, UEBERSTAND, p.sperre);
+  const ziel = p.ebenenAn ? zusammensetzen(p.szene, B, H, p.versatz) : p.szene.farbe;
 
-  // Lage als Winkel und Abstand zur Bildmitte, bezogen auf die Bildellipse (Rand = 1)
-  const polar = (i: number, breite: number, hoehe: number): [number, number] => {
-    const u = ((i % breite) - breite / 2) / (breite / 2);
-    const v = (Math.floor(i / breite) - hoehe / 2) / (hoehe / 2);
-    return [Math.atan2(v, u), Math.hypot(u, v)];
+  // Lage als Winkel und Abstand zur Bildmitte (Bildellipse, Rand = 1); sortiert nach
+  // Tortenstück und Abstand, so finden Nachbarn benachbarte Ziele. Schlüssel und Index
+  // liegen gemeinsam in einer Zahl, damit das Sortieren ohne Vergleichsfunktion läuft.
+  const ordnen = (anzahl: number, pixel: (j: number) => number, breite: number, hoehe: number) => {
+    const schluessel = new Float64Array(anzahl);
+    for (let j = 0; j < anzahl; j++) {
+      const i = pixel(j);
+      const u = ((i % breite) - breite / 2) / (breite / 2);
+      const v = (Math.floor(i / breite) - hoehe / 2) / (hoehe / 2);
+      const rang = Math.floor((Math.atan2(v, u) + Math.PI) * 10) * 1024 + Math.min(1023, Math.floor(Math.hypot(u, v) * 700));
+      schluessel[j] = rang * 262144 + i;
+    }
+    schluessel.sort();
+    const winkel = new Float32Array(anzahl);
+    const abstand = new Float32Array(anzahl);
+    const index = new Uint32Array(anzahl);
+    for (let j = 0; j < anzahl; j++) {
+      const i = schluessel[j] % 262144;
+      const u = ((i % breite) - breite / 2) / (breite / 2);
+      const v = (Math.floor(i / breite) - hoehe / 2) / (hoehe / 2);
+      winkel[j] = Math.atan2(v, u);
+      abstand[j] = Math.hypot(u, v);
+      index[j] = i;
+    }
+    return { winkel, abstand, index };
   };
-  // Nach Tortenstück und Abstand sortiert, so finden Nachbarn benachbarte Ziele
-  const rang = ([winkel, abstand]: [number, number]) => Math.floor((winkel + Math.PI) * 10) * 10 + abstand;
-  const ordnen = (liste: [number, number][]) => liste.sort((p, q) => rang(p) - rang(q));
 
-  const von: [number, number][] = [];
-  // Rotkanal mit Schwelle statt exakt, damit verrauschtes Auslesen (Fingerprinting-Schutz) nicht stört
-  for (let i = 0; i < altB * altH; i++) {
-    if (alt[i * 4] < 128) von.push(polar(i, altB, altH));
+  // Quelle: alle nicht weißen Pixel, mit Schwelle, damit verrauschtes Auslesen nicht stört
+  const quellen: number[] = [];
+  // Die untersten Zeilen bleiben während des Flugs Nacht-Tinte (Naht zur Rasterkante)
+  for (let i = 0; i < altB * (altH - NAHT); i++) {
+    if (alt[i * 4] + alt[i * 4 + 1] + alt[i * 4 + 2] < 700) quellen.push(i);
   }
-  const nach: [number, number][] = [];
-  ziel.forEach((an, i) => {
-    if (an) nach.push(polar(i, B, H));
-  });
-  if (!von.length || !nach.length) {
-    malen(ctx, ziel, B, H);
+  const ziele: number[] = [];
+  for (let i = 0; i < B * (H - NAHT); i++) if (ziel[i] !== BOGEN) ziele.push(i);
+  if (!quellen.length || !ziele.length) {
+    bergeZeichnen(p);
     return;
   }
-  ordnen(von);
-  ordnen(nach);
+  const von = ordnen(quellen.length, (j) => quellen[j], altB, altH);
+  const nach = ordnen(ziele.length, (j) => ziele[j], B, H);
 
   const EINZUG = 0.8; // so eng ballt sich der Wirbel in der Mitte
   const FRUEH = 0.55; // Anteil der Dauer, nach dem die innersten Pixel landen
   const richtung = Math.random() < 0.5 ? 1 : -1;
-  const n = Math.max(von.length, nach.length);
+  // Höchstens 90 000 Teilchen; mehr Pixel auf einer Seite: gleichmäßig ausdünnen oder doppelt belegen
+  const n = Math.min(90_000, Math.max(von.index.length, nach.index.length));
   const winkel = new Float32Array(n);
   const drehung = new Float32Array(n);
   const abstand = new Float32Array(n);
   const abstandZiel = new Float32Array(n);
   const ende = new Float32Array(n);
-  const weitester = nach.reduce((max, [, r]) => Math.max(max, r), 0) || 1;
+  const farbe = new Uint32Array(n);
+  let weitester = 0;
+  for (let j = 0; j < nach.abstand.length; j++) weitester = Math.max(weitester, nach.abstand[j]);
+  weitester ||= 1;
   for (let i = 0; i < n; i++) {
-    // Mehr Pixel auf einer Seite: anteilig doppelt belegen statt von außen holen
-    const [wa, ra] = von[Math.floor((i * von.length) / n)];
-    const [wz, rz] = nach[Math.floor((i * nach.length) / n)];
+    const a = Math.floor((i * von.index.length) / n);
+    const z = Math.floor((i * nach.index.length) / n);
+    const wa = von.winkel[a];
+    const wz = nach.winkel[z];
     const weg = wz - wa - Math.round((wz - wa) / (2 * Math.PI)) * 2 * Math.PI;
     winkel[i] = wa;
     drehung[i] = weg + richtung * 2 * Math.PI;
-    abstand[i] = ra;
-    abstandZiel[i] = rz;
+    abstand[i] = von.abstand[a];
+    abstandZiel[i] = nach.abstand[z];
+    farbe[i] = PANORAMA_DECKEND[ziel[nach.index[z]]]; // jedes Teilchen trägt seine Zielfarbe
     // Innen landet zuerst, so entfaltet sich das neue Bild aus der Mitte
-    ende[i] = FRUEH + (1 - FRUEH) * (rz / weitester) * (0.85 + Math.random() * 0.15);
+    ende[i] = FRUEH + (1 - FRUEH) * (abstandZiel[i] / weitester) * (0.85 + Math.random() * 0.15);
   }
 
-  const angabe = canvas.closest(".fenster")?.querySelector<HTMLElement>("[data-bild-groesse]");
-  const fertigText = angabe?.textContent ?? "";
-  if (angabe) angabe.textContent = `${n} Pixel unterwegs`;
+  bergeText(p, `${n.toLocaleString("de-DE")} Pixel unterwegs`);
 
   const bild = ctx.createImageData(B, H);
   const feld = new Uint32Array(bild.data.buffer);
-  const tinte = farbwert(TINTE);
-  const papier = farbwert(PAPIER);
+  const papier = PANORAMA_DECKEND[BOGEN];
   const dauer = 1900;
   let beginn = 0;
+
+  const fertig = () => {
+    const szene = p.szene as BergSzene;
+    malen(ctx, p.ebenenAn ? zusammensetzen(szene, B, H, p.versatz) : szene.farbe, B, H, PANORAMA_DECKEND);
+    bergeText(p);
+    if (!p.ebenenAn) {
+      p.buehne.removeAttribute("data-wirbel");
+      return;
+    }
+    // Ebenen aus demselben Startwert, von hinten nach vorne eingeblendet
+    ebenenMalen(p);
+    bergEinblenden = gsap.timeline({
+      onComplete: () => {
+        p.buehne.removeAttribute("data-wirbel");
+        bergEinblenden = null;
+      },
+    });
+    p.ebenen.forEach((canvas, e) => {
+      bergEinblenden?.fromTo(canvas, { opacity: 0 }, { opacity: 1, duration: 0.16, ease: "steps(2)" }, e * 0.09);
+    });
+  };
 
   const schritt = (jetzt: number) => {
     if (!beginn) beginn = jetzt;
     const t = (jetzt - beginn) / dauer;
     if (t >= 1) {
-      malen(ctx, ziel, B, H);
-      if (angabe) angabe.textContent = fertigText;
+      fertig();
       return;
     }
     feld.fill(papier);
+    feld.fill(PANORAMA_DECKEND[T6], B * (H - NAHT));
+    const mitteX = B / 2;
+    const mitteY = H / 2;
     for (let i = 0; i < n; i++) {
-      const p = Math.min(1, t / ende[i]);
-      const e = p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2;
+      const q = t / ende[i];
+      const s = q < 1 ? q : 1;
+      const e = s < 0.5 ? 4 * s * s * s : 1 - (-2 * s + 2) ** 3 / 2;
       const w = winkel[i] + drehung[i] * e;
       const r = (abstand[i] + (abstandZiel[i] - abstand[i]) * e) * (1 - EINZUG * Math.sin(Math.PI * e));
-      const x = Math.round(B / 2 + (Math.cos(w) * r * B) / 2);
-      const y = Math.round(H / 2 + (Math.sin(w) * r * H) / 2);
-      if (x >= 0 && x < B && y >= 0 && y < H) feld[y * B + x] = tinte;
+      const x = Math.round(mitteX + Math.cos(w) * r * mitteX);
+      const y = Math.round(mitteY + Math.sin(w) * r * mitteY);
+      if (x >= 0 && x < B && y >= 0 && y < H) feld[y * B + x] = farbe[i];
     }
     ctx.putImageData(bild, 0, 0);
     bergFlug = requestAnimationFrame(schritt);
   };
   bergFlug = requestAnimationFrame(schritt);
+}
+
+// Parallax: ein ScrollTrigger, die Ebenen rasten auf ganze Kunstpixel ein.
+// Gezeichnet wird dabei nie, es ändert sich nur der transform der Ebenen-Canvas.
+function parallaxEinrichten(p: Panorama): () => void {
+  const setzer = p.ebenen.map((canvas) => gsap.quickSetter(canvas, "y", "px") as (wert: number) => void);
+  const stand = { fortschritt: 0.5 };
+  let px = 0;
+  const anwenden = () => {
+    const neuePixel = px !== p.px;
+    px = p.px;
+    p.ebenen.forEach((_, e) => {
+      const v = Math.round((2 * stand.fortschritt - 1) * TIEFE[e]);
+      if (v === p.versatz[e] && !neuePixel) return;
+      p.versatz[e] = v;
+      setzer[e](v * p.px);
+    });
+  };
+  const tween = gsap.fromTo(
+    stand,
+    { fortschritt: 0 },
+    {
+      fortschritt: 1,
+      ease: "none",
+      onUpdate: anwenden,
+      scrollTrigger: {
+        trigger: p.bild,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: 0.6,
+        onToggle: (self) => gsap.set(p.ebenen, { willChange: self.isActive ? "transform" : "auto" }),
+      },
+    },
+  );
+  anwenden();
+  p.bild.addEventListener("berge:neu", anwenden);
+  return () => {
+    p.bild.removeEventListener("berge:neu", anwenden);
+    tween.scrollTrigger?.kill();
+    tween.kill();
+    p.versatz = [0, 0, 0, 0];
+    gsap.set(p.ebenen, { clearProps: "transform,willChange" });
+  };
+}
+
+// Erster Auftritt: Das Bild baut sich zeilenweise auf wie eine BMP-Datei beim Laden
+function auftrittEinrichten(p: Panorama): void {
+  if (bewegungReduziert || p.bild.getBoundingClientRect().top <= window.innerHeight) return;
+  gsap.set(p.bild, { clipPath: "inset(0 0 100% 0)" });
+  p.laedt = true;
+  bergeText(p, "Lädt … 0 %");
+  ScrollTrigger.create({
+    trigger: p.bild,
+    start: "top 75%",
+    once: true,
+    onEnter: () => {
+      const zeilen = Math.max(8, Math.round(p.bild.clientHeight / p.px / 2));
+      const lauf: gsap.core.Tween = gsap.to(p.bild, {
+        clipPath: "inset(0 0 0% 0)",
+        duration: window.innerWidth < 768 ? 1 : 1.4,
+        ease: `steps(${zeilen})`,
+        onUpdate: () => bergeText(p, `Lädt … ${Math.round(lauf.ratio * 100)} %`),
+        onComplete: () => {
+          p.laedt = false;
+          gsap.set(p.bild, { clearProps: "clipPath" });
+          bergeText(p);
+        },
+      });
+    },
+  });
 }
 
 function fotoRastern(canvas: HTMLCanvasElement, bild: HTMLImageElement): void {
@@ -1035,26 +1220,75 @@ function fotoRastern(canvas: HTMLCanvasElement, bild: HTMLImageElement): void {
   rastern(ctx, ton, B, H);
 }
 
+// Neu zeichnen, sobald sich Breite oder Höhe (gerundet) ändern
 function beiGroesse(element: Element, zeichnen: () => void): void {
   let breite = 0;
+  let hoehe = 0;
   let geplant = 0;
   new ResizeObserver((eintraege) => {
-    const neu = Math.round(eintraege[0].contentRect.width);
-    if (neu === breite) return;
-    breite = neu;
+    const neuBreite = Math.round(eintraege[0].contentRect.width);
+    const neuHoehe = Math.round(eintraege[0].contentRect.height);
+    if (neuBreite === breite && neuHoehe === hoehe) return;
+    breite = neuBreite;
+    hoehe = neuHoehe;
     cancelAnimationFrame(geplant);
     geplant = requestAnimationFrame(zeichnen);
   }).observe(element);
 }
 
 function persoenlichEinrichten(): void {
-  const berge = document.querySelector<HTMLCanvasElement>("[data-berge]");
-  if (berge?.parentElement) {
-    let startwert = 2026;
-    beiGroesse(berge.parentElement, () => bergeZeichnen(berge, startwert));
-    document.querySelector<HTMLButtonElement>("[data-berge-neu]")?.addEventListener("click", () => {
-      startwert = Math.floor(Math.random() * 1_000_000);
-      bergeNeuZeichnen(berge, startwert);
+  const buehne = document.querySelector<HTMLElement>("[data-berge-buehne]");
+  const bild = buehne?.querySelector<HTMLElement>("[data-berge-bild]");
+  const gesamt = bild?.querySelector<HTMLCanvasElement>("[data-berge]");
+  if (buehne && bild && gesamt) {
+    const p: Panorama = {
+      buehne,
+      bild,
+      gesamt,
+      ebenen: EBENEN.map((name) => bild.querySelector<HTMLCanvasElement>(`[data-berge-ebene="${name}"]`) as HTMLCanvasElement),
+      hud: buehne.querySelector<HTMLElement>(".berge__hud"),
+      angabe: buehne.querySelector<HTMLElement>("[data-bild-groesse]"),
+      startwert: 2026,
+      px: 4,
+      B: 0,
+      H: 0,
+      sperre: null,
+      szene: null,
+      ebenenAn: false,
+      versatz: [0, 0, 0, 0],
+      text: "6 Farben",
+      laedt: false,
+    };
+
+    // Ebenen nur auf großen Bildschirmen und ohne reduzierte Bewegung
+    const ebenenFrage = window.matchMedia("(min-width: 1024px) and (prefers-reduced-motion: no-preference)");
+    let parallaxAus: (() => void) | null = null;
+    const umschalten = () => {
+      const an = ebenenFrage.matches && p.ebenen.every(Boolean);
+      if (an === p.ebenenAn && (an ? parallaxAus : true)) return;
+      wirbelBeenden(p);
+      p.ebenenAn = an;
+      parallaxAus?.();
+      parallaxAus = null;
+      if (an) {
+        buehne.dataset.ebenen = "an";
+        if (p.szene) ebenenMalen(p);
+        parallaxAus = parallaxEinrichten(p);
+      } else {
+        delete buehne.dataset.ebenen;
+      }
+    };
+
+    auftrittEinrichten(p);
+    beiGroesse(bild, () => {
+      bergeZeichnen(p);
+      if (!parallaxAus) umschalten();
+      else bild.dispatchEvent(new Event("berge:neu"));
+    });
+    ebenenFrage.addEventListener("change", umschalten);
+    buehne.querySelector<HTMLButtonElement>("[data-berge-neu]")?.addEventListener("click", () => {
+      p.startwert = Math.floor(Math.random() * 1_000_000);
+      bergeNeuZeichnen(p);
     });
   }
 

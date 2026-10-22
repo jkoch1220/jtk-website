@@ -1,89 +1,403 @@
 ---
-// StoryBrand: direkter Handlungsaufruf. Das Formular sendet als JSON an die Koch-Plattform
-// (/api/anfrage bzw. PUBLIC_ANFRAGE_URL, siehe data/kontakt.ts). Ist die Adresse leer,
-// öffnet es das E-Mail-Programm mit der fertigen Nachricht.
+// StoryBrand: direkter Handlungsaufruf. Zwei Wege im selben Fenster:
+//  - Termin direkt buchen: freie Zeiten aus dem Website-Dienst (GET /api/termine/frei), Buchung per
+//    POST /api/termine, der Termin steht sofort im Google-Kalender. Logik in scripts/termin.ts.
+//    Liefert der Dienst keine Zeiten (aus, Kalender nicht verbunden, Fehler), bleibt der Umschalter
+//    unsichtbar und es gibt nur das Formular. Spam-Schutz per Cloudflare Turnstile (scripts/turnstile.ts),
+//    das Skript lädt erst beim ersten Fokus im Buchungsformular.
+//  - Nachricht schreiben: das Formular sendet als JSON an die Koch-Plattform (/api/anfrage bzw.
+//    PUBLIC_ANFRAGE_URL, siehe data/kontakt.ts). Ist die Adresse leer, öffnet es das E-Mail-Programm
+//    mit der fertigen Nachricht. Logik in scripts/seite.ts.
 import Fenster from "./Fenster.astro";
-import { kontakt, mailBetreff, anfrageUrl } from "../data/kontakt";
+import Rand from "./Rand.astro";
+import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from "../data/kontakt";
 ---
 
-<section class="abschnitt kontakt" id="kontakt" aria-labelledby="kontakt-titel">
-  <div class="innen raster">
-    <div class="kontakt__kopf">
+<section class="kontakt" id="kontakt" aria-labelledby="kontakt-titel">
+  <div class="bogen band--nacht-ruhig">
+    <Rand nr="08" titel="Erstgespräch" />
+    <div class="satz">
+      <p class="kicker" aria-hidden="true">08 · Erstgespräch</p>
       <h2 id="kontakt-titel">Ihr Betrieb kann wachsen. Ihr Büro muss es nicht.</h2>
-      <p class="kontakt__erklaerung">
-        Jeder Tag, an dem das Büro von Hand läuft, kostet Sie Zeit, die Ihnen für Kunden und Wachstum fehlt. Im
-        kostenlosen Erstgespräch finden wir in 30 Minuten heraus, wo Sie anfangen sollten. Die Ansatzpunkte gehören
-        Ihnen, ob Sie danach mit mir weitermachen oder nicht.
-      </p>
-      <div class="kontakt__wege">
-        <p>Lieber direkt?</p>
-        <div class="kontakt__mail">
-          <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
-          <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
-        </div>
-        <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
-        <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
-      </div>
-    </div>
-
-    <Fenster titel="Neue Anfrage" class="kontakt__formular">
-      <form
-        data-anfrage
-        data-email={kontakt.email}
-        data-betreff={mailBetreff}
-        data-ziel={anfrageUrl}
-        novalidate
-      >
-        <div class="anfrage__felder">
-          <div class="feld">
-            <label for="a-name">Name</label>
-            <input id="a-name" name="name" type="text" autocomplete="name" maxlength="200" required />
-          </div>
-          <div class="feld">
-            <label for="a-firma">Firma <span class="optional">(optional)</span></label>
-            <input id="a-firma" name="firma" type="text" autocomplete="organization" maxlength="200" />
-          </div>
-          <div class="feld">
-            <label for="a-email">E-Mail</label>
-            <input id="a-email" name="email" type="email" autocomplete="email" maxlength="254" required />
-          </div>
-          <div class="feld">
-            <label for="a-telefon">Telefon <span class="optional">(optional)</span></label>
-            <input id="a-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="60" />
-          </div>
-          <div class="feld feld--breit">
-            <label for="a-nachricht">Worum geht es? <span class="optional">(optional)</span></label>
-            <textarea id="a-nachricht" name="nachricht" rows="6" maxlength="5000"></textarea>
-            <p class="feld__hilfe">Ein, zwei Sätze reichen. Das Ergebnis aus dem Zeitfresser-Check landet hier von selbst.</p>
-          </div>
-          <div class="honig" aria-hidden="true">
-            <label for="a-website">Website</label>
-            <input id="a-website" name="website" type="text" tabindex="-1" autocomplete="off" />
-          </div>
-        </div>
-
-        <p class="anfrage__hinweis">
-          Ihre Angaben nutze ich nur, um Ihre Anfrage zu beantworten. Mehr dazu unter <a href="/datenschutz"
-            >Datenschutz</a
-          >.
+      <div class="kontakt__kopf">
+        <p class="kontakt__erklaerung">
+          Jeder Tag, an dem das Büro von Hand läuft, kostet Sie Zeit, die Ihnen für Kunden und Wachstum fehlt. In
+          einem kostenlosen 15-Minuten-Gespräch finden wir heraus, wo Sie anfangen sollten, per Google Meet oder am
+          Telefon. Die Ansatzpunkte gehören Ihnen, ob Sie danach mit mir weitermachen oder nicht.
         </p>
-
-        <div class="anfrage__knoepfe">
-          <button type="submit" class="retro-knopf retro-knopf--voll">Anfrage senden</button>
-          <button type="button" class="retro-knopf" data-anfrage-kopieren>Text kopieren</button>
+        <div class="kontakt__wege">
+          <p>Lieber direkt?</p>
+          <div class="kontakt__mail">
+            <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
+            <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
+          </div>
+          <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+          <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
         </div>
-        <label class="sr-only" for="a-text">Anfragetext zum Kopieren</label>
-        <textarea class="anfrage__text" id="a-text" data-anfrage-text readonly hidden></textarea>
-      </form>
-
-      <div class="anfrage__danke" data-anfrage-danke hidden tabindex="-1">
-        <p class="anfrage__danke-titel">Danke, Ihre Anfrage ist angekommen.</p>
-        <p>Ich melde mich bei Ihnen, um einen Termin für das Erstgespräch zu finden.</p>
       </div>
 
-      <Fragment slot="status">
-        <span data-anfrage-status role="status">Bereit</span>
-      </Fragment>
-    </Fenster>
+      <Fenster titel="Neue Anfrage" class="kontakt__formular">
+        <div class="termin__umschalter" role="group" aria-label="Wie möchten Sie Kontakt aufnehmen?" data-termin-umschalter hidden>
+          <button type="button" class="termin__reiter" data-termin-modus="termin" aria-pressed="true">
+            Termin direkt buchen
+          </button>
+          <button type="button" class="termin__reiter" data-termin-modus="nachricht" aria-pressed="false">
+            Nachricht schreiben
+          </button>
+        </div>
+
+        <div class="termin" data-termin data-ziel={terminUrl} hidden>
+          <form data-termin-formular data-turnstile-aktion="termin" novalidate>
+            <div class="termin__schritt" role="group" aria-labelledby="t-tage-titel">
+              <p class="termin__schritt-titel" id="t-tage-titel">Tag wählen</p>
+              <div class="termin__tage" data-termin-tage></div>
+            </div>
+
+            <div class="termin__schritt" role="group" aria-labelledby="t-zeiten-titel">
+              <p class="termin__schritt-titel" id="t-zeiten-titel" tabindex="-1" data-termin-zeiten-titel>
+                Uhrzeit wählen
+              </p>
+              <div class="termin__zeiten" data-termin-zeiten></div>
+              <p class="feld__hilfe" data-termin-dauer>Das Gespräch dauert 15 Minuten, Uhrzeiten in deutscher Zeit.</p>
+            </div>
+
+            <div class="anfrage__felder">
+              <div class="feld">
+                <label for="t-name">Name</label>
+                <input id="t-name" name="name" type="text" autocomplete="name" maxlength="200" required />
+              </div>
+              <div class="feld">
+                <label for="t-firma">Firma <span class="optional">(optional)</span></label>
+                <input id="t-firma" name="firma" type="text" autocomplete="organization" maxlength="200" />
+              </div>
+              <div class="feld">
+                <label for="t-email">E-Mail</label>
+                <input id="t-email" name="email" type="email" autocomplete="email" maxlength="254" required />
+              </div>
+              <fieldset class="feld termin__orte" data-termin-orte>
+                <legend>Wie sprechen wir?</legend>
+                <label class="termin__ort" data-termin-ort="meet">
+                  <input type="radio" name="ort" value="meet" checked />
+                  <span>Google Meet</span>
+                </label>
+                <label class="termin__ort" data-termin-ort="telefon">
+                  <input type="radio" name="ort" value="telefon" />
+                  <span>Telefon, ich rufe Sie an</span>
+                </label>
+              </fieldset>
+              <div class="feld">
+                <label for="t-telefon">
+                  Telefon <span class="optional" data-termin-telefon-optional>(optional)</span>
+                </label>
+                <input id="t-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="60" />
+              </div>
+              <div class="feld feld--breit">
+                <label for="t-nachricht">Worum geht es? <span class="optional">(optional)</span></label>
+                <textarea id="t-nachricht" name="nachricht" rows="4" maxlength="5000"></textarea>
+                <p class="feld__hilfe">Ein, zwei Sätze reichen. Das Ergebnis aus dem Zeitfresser-Check landet hier von selbst.</p>
+              </div>
+              <div class="honig" aria-hidden="true">
+                <label for="t-website">Website</label>
+                <input id="t-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
+            </div>
+
+            {turnstileSiteKey && <div data-turnstile data-sitekey={turnstileSiteKey}></div>}
+
+            <p class="anfrage__hinweis">
+              Den Termin trage ich in meinen Google-Kalender ein, Sie bekommen eine Bestätigung und eine
+              Kalendereinladung per Mail. Mehr dazu unter <a href="/datenschutz">Datenschutz</a>.
+            </p>
+
+            <div class="termin__ausweg" data-termin-ausweg hidden>
+              <p data-termin-ausweg-text></p>
+              <button type="button" class="retro-knopf" data-termin-zum-formular>Nachricht schreiben</button>
+            </div>
+
+            <div class="anfrage__knoepfe">
+              <button type="submit" class="retro-knopf retro-knopf--voll" data-termin-buchen>
+                Termin verbindlich buchen
+              </button>
+            </div>
+          </form>
+
+          <div class="anfrage__danke" data-termin-danke hidden tabindex="-1">
+            <p class="anfrage__danke-titel">Ihr Erstgespräch ist gebucht.</p>
+            <p class="termin__danke-zeit" data-termin-danke-zeit></p>
+            <p data-termin-danke-ort></p>
+            <p>Bestätigung und Kalendereinladung kommen per Mail an <span data-termin-danke-mail></span>.</p>
+            <p class="feld__hilfe">Passt es doch nicht? Antworten Sie einfach auf die Bestätigung.</p>
+          </div>
+        </div>
+
+        <form
+          data-anfrage
+          data-email={kontakt.email}
+          data-betreff={mailBetreff}
+          data-ziel={anfrageUrl}
+          data-turnstile-aktion="anfrage"
+          novalidate
+        >
+          <div class="anfrage__felder">
+            <div class="feld">
+              <label for="a-name">Name</label>
+              <input id="a-name" name="name" type="text" autocomplete="name" maxlength="200" required />
+            </div>
+            <div class="feld">
+              <label for="a-firma">Firma <span class="optional">(optional)</span></label>
+              <input id="a-firma" name="firma" type="text" autocomplete="organization" maxlength="200" />
+            </div>
+            <div class="feld">
+              <label for="a-email">E-Mail</label>
+              <input id="a-email" name="email" type="email" autocomplete="email" maxlength="254" required />
+            </div>
+            <div class="feld">
+              <label for="a-telefon">Telefon <span class="optional">(optional)</span></label>
+              <input id="a-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="60" />
+            </div>
+            <div class="feld feld--breit">
+              <label for="a-nachricht">Worum geht es? <span class="optional">(optional)</span></label>
+              <textarea id="a-nachricht" name="nachricht" rows="6" maxlength="5000"></textarea>
+              <p class="feld__hilfe">Ein, zwei Sätze reichen. Das Ergebnis aus dem Zeitfresser-Check landet hier von selbst.</p>
+            </div>
+            <div class="honig" aria-hidden="true">
+              <label for="a-website">Website</label>
+              <input id="a-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+            </div>
+          </div>
+          {turnstileSiteKey && <div data-turnstile data-sitekey={turnstileSiteKey}></div>}
+
+          <p class="anfrage__hinweis">
+            Ihre Angaben nutze ich nur, um Ihre Anfrage zu beantworten. Mehr dazu unter <a href="/datenschutz"
+              >Datenschutz</a
+            >.
+          </p>
+
+          <div class="anfrage__knoepfe">
+            <button type="submit" class="retro-knopf retro-knopf--voll">Anfrage senden</button>
+            <button type="button" class="retro-knopf" data-anfrage-kopieren>Text kopieren</button>
+          </div>
+          <label class="sr-only" for="a-text">Anfragetext zum Kopieren</label>
+          <textarea class="anfrage__text" id="a-text" data-anfrage-text readonly hidden></textarea>
+        </form>
+
+        <div class="anfrage__danke" data-anfrage-danke hidden tabindex="-1">
+          <p class="anfrage__danke-titel">Danke, Ihre Anfrage ist angekommen.</p>
+          <p>Ich melde mich bei Ihnen, um einen Termin für das Erstgespräch zu finden.</p>
+        </div>
+
+        <Fragment slot="status">
+          <span data-anfrage-status role="status">Bereit</span>
+        </Fragment>
+      </Fenster>
+    </div>
   </div>
 </section>
+
+<script>
+  import "../scripts/termin";
+</script>
+
+<style>
+  /* Terminbuchung ---------------------------------------------------------- */
+  /* Tag- und Zeitknöpfe entstehen im Skript (scripts/termin.ts), deshalb :global für sie. */
+
+  .termin__umschalter {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 22px;
+    border: 2px solid var(--tinte);
+  }
+
+  .termin__reiter {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 0;
+    background: var(--bogen);
+    color: var(--tinte);
+    font-family: var(--pixel);
+    font-size: 20px;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+  }
+
+  .termin__reiter + .termin__reiter {
+    border-left: 2px solid var(--tinte);
+  }
+
+  .termin__reiter:hover {
+    background: var(--papier);
+  }
+
+  .termin__reiter[aria-pressed="true"] {
+    background: var(--tinte);
+    color: var(--bogen);
+  }
+
+  .termin__reiter:focus-visible {
+    outline: 2px solid var(--tinte);
+    outline-offset: 3px;
+  }
+
+  .termin__schritt {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .termin__schritt-titel {
+    font-size: var(--t-klein);
+    font-weight: 600;
+  }
+
+  .termin__schritt-titel:focus {
+    outline: none;
+  }
+
+  .termin__tage,
+  .termin__zeiten {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .termin__tage :global(.termin__knopf),
+  .termin__zeiten :global(.termin__knopf) {
+    display: inline-grid;
+    place-items: center;
+    min-width: 76px;
+    min-height: 44px;
+    padding: 6px 10px;
+    border: 2px solid var(--tinte);
+    border-radius: 0;
+    background: var(--bogen);
+    box-shadow: 3px 3px 0 var(--tinte);
+    color: var(--tinte);
+    font-family: var(--pixel);
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition:
+      transform 0.06s ease,
+      box-shadow 0.06s ease;
+  }
+
+  .termin__tage :global(.termin__knopf small) {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--schrift);
+    font-size: 0.75rem;
+    letter-spacing: 0;
+  }
+
+  .termin__tage :global(.termin__knopf:hover),
+  .termin__zeiten :global(.termin__knopf:hover) {
+    background: var(--papier);
+  }
+
+  .termin__tage :global(.termin__knopf[aria-pressed="true"]),
+  .termin__zeiten :global(.termin__knopf[aria-pressed="true"]) {
+    background: var(--tinte);
+    color: var(--bogen);
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 var(--tinte);
+  }
+
+  .termin__tage :global(.termin__knopf:focus-visible),
+  .termin__zeiten :global(.termin__knopf:focus-visible) {
+    outline: 2px solid var(--tinte);
+    outline-offset: 4px;
+  }
+
+  .termin__zeiten[aria-invalid="true"] {
+    padding: 6px;
+    outline: 2px solid var(--stempel);
+  }
+
+  .termin__orte {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .termin__orte legend {
+    margin-bottom: 6px;
+    padding: 0;
+    font-size: var(--t-klein);
+    font-weight: 600;
+  }
+
+  .termin__ort {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  /* Steht in fieldset.feld: die Textfeld-Regel .feld input aus global.css hier zurücknehmen */
+  .termin__ort input {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    accent-color: var(--tinte);
+  }
+
+  .termin__ausweg {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 2px dashed var(--tinte);
+    background: var(--papier);
+  }
+
+  .termin__danke-zeit {
+    font-family: var(--pixel);
+    font-size: 24px;
+    line-height: 1.1;
+  }
+
+  .termin [data-termin-danke] a {
+    overflow-wrap: anywhere;
+  }
+
+  /* Handy: Tage in einer Zeile zum Wischen statt vieler Zeilen */
+  @media (max-width: 600px) {
+    .termin__tage {
+      flex-wrap: nowrap;
+      margin: 0 -4px;
+      padding: 0 4px 8px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+    }
+
+    .termin__tage :global(.termin__knopf) {
+      flex: none;
+      scroll-snap-align: start;
+    }
+
+    .termin__reiter {
+      font-size: 18px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .termin__tage :global(.termin__knopf),
+    .termin__zeiten :global(.termin__knopf) {
+      transition: none;
+    }
+  }
+</style>

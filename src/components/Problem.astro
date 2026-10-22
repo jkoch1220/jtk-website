@@ -3,6 +3,8 @@
 // Die Meldungen zeigen die Welt der Altsysteme und lassen sich wegklicken.
 import Fenster from "./Fenster.astro";
 import PixelIcon from "./PixelIcon.astro";
+import Rand from "./Rand.astro";
+import Rasterkante from "./Rasterkante.astro";
 
 const meldungen = [
   {
@@ -26,46 +28,54 @@ const meldungen = [
 ];
 ---
 
-<section class="abschnitt problem" id="problem" aria-labelledby="problem-titel">
-  <div class="innen raster">
-    <h2 class="problem__titel" id="problem-titel">Kommt Ihnen das bekannt vor?</h2>
+<section class="problem" id="problem" aria-labelledby="problem-titel">
+  <div class="bogen band--nacht">
+    <Rand nr="02" titel="Kommt Ihnen das bekannt vor?" />
+    <div class="satz">
+      <p class="kicker" aria-hidden="true">02 · Kommt Ihnen das bekannt vor?</p>
+      <h2 class="problem__titel" id="problem-titel">Kommt Ihnen das bekannt vor?</h2>
 
-    <div class="schreibtisch" data-meldungen>
-      {
-        meldungen.map((m, i) => (
-          <Fenster
-            titel={m.titel}
-            class={`meldung meldung--${i + 1}`}
-            schliessen="Meldung schließen"
-            data-meldung
-            role="group"
-            aria-label={`Beispielmeldung: ${m.titel}`}
-          >
-            <div class="meldung__text">
-              <PixelIcon name={m.icon} />
-              <p>{m.text}</p>
-            </div>
-            <div class="meldung__knoepfe">
-              <button type="button" class="retro-knopf" data-meldung-zu>
-                {m.knopf}
-              </button>
-            </div>
-          </Fenster>
-        ))
-      }
-      <Fenster titel="Hinweis" class="meldung meldung--leer" data-meldungen-leer hidden>
-        <div class="meldung__text">
-          <PixelIcon name="info" />
-          <p>Alle Meldungen weggeklickt. Im echten Betrieb dauert das etwas länger, aber es geht.</p>
-        </div>
-        <div class="meldung__knoepfe">
-          <a class="retro-knopf retro-knopf--voll" href="#check">Zeitfresser-Check machen</a>
-          <button type="button" class="retro-knopf" data-meldungen-zurueck>Meldungen zurückholen</button>
-        </div>
-      </Fenster>
+      <div class="schreibtisch" data-meldungen>
+        <div class="geist geist--a" aria-hidden="true"><span></span></div>
+        <div class="geist geist--b" aria-hidden="true"><span></span></div>
+        {
+          meldungen.map((m, i) => (
+            <Fenster
+              titel={m.titel}
+              class={`meldung meldung--${i + 1}`}
+              schliessen="Meldung schließen"
+              data-meldung
+              role="group"
+              aria-label={`Beispielmeldung: ${m.titel}`}
+            >
+              <div class="meldung__text">
+                <PixelIcon name={m.icon} />
+                <p>{m.text}</p>
+              </div>
+              <div class="meldung__knoepfe">
+                <button type="button" class="retro-knopf" data-meldung-zu>
+                  {m.knopf}
+                </button>
+              </div>
+            </Fenster>
+          ))
+        }
+        <Fenster titel="Hinweis" class="meldung meldung--leer" data-meldungen-leer hidden>
+          <div class="meldung__text">
+            <PixelIcon name="info" />
+            <p>Alle Meldungen weggeklickt. Im echten Betrieb dauert das etwas länger, aber es geht.</p>
+          </div>
+          <div class="meldung__knoepfe">
+            <a class="retro-knopf retro-knopf--voll" href="#check">Zeitfresser-Check machen</a>
+            <button type="button" class="retro-knopf" data-meldungen-zurueck>Meldungen zurückholen</button>
+          </div>
+        </Fenster>
+      </div>
     </div>
-
-    <div class="problem__folgen">
+  </div>
+  <Rasterkante von="#15144a" nach="#f1f1f3" />
+  <div class="bogen band--papier problem__band">
+    <div class="satz problem__folgen">
       <p class="problem__satz">Sie und Ihre Leute sind zu gut, um Ihre Zeit mit Abtippen zu verbringen.</p>
       <div class="problem__text">
         <p>

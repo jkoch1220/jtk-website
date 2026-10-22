@@ -8,13 +8,15 @@
 #    (eine bestehende Konfiguration wird gesichert und ergänzt, nicht überschrieben)
 #  - trägt zusätzlich app.koch.consulting für den Website-Dienst ein (Docker auf 127.0.0.1:3100,
 #    Deployment über website-dienst/deploy/deploy.sh im Portal-Repo; dort liegt auch die Portal-API);
-#    von der Website gehen nur /api/anfrage, /api/e und /api/gesundheit dorthin
+#    von der Website gehen nur /api/anfrage, /api/e, /api/gesundheit und /api/termine(/*) dorthin
+#  - ergänzt in einer bestehenden Konfiguration ohne Terminbuchung den Matcher um /api/termine
+#    (gesichert, danach caddy validate, sonst zurück zum alten Stand)
 #  - begrenzt die Aufbewahrung des System-Journals auf 7 Tage (dort landen Caddys Fehlermeldungen
 #    mit IP-Adressen, siehe Datenschutzerklärung „Server-Protokolle“)
 #  - gibt Port 80/443 in der Firewall ufw frei, falls ufw aktiv ist
-# Steht jtkconsulting.de schon in der Caddy-Konfiguration, aber nicht mit der Weiterleitung genau dieser
-# drei Pfade (auch der alte Block, der alles unter /api/* weiterreichte), bricht das Skript ab, bevor
-# etwas geändert oder hochgeladen wird.
+# Steht jtkconsulting.de schon in der Caddy-Konfiguration, aber ohne die Weiterleitung von /api/anfrage,
+# /api/e und /api/gesundheit (auch der alte Block, der alles unter /api/* weiterreichte), bricht das Skript
+# ab, bevor etwas geändert oder hochgeladen wird.
 set -e
 
 SERVER="root@76.13.5.157"
@@ -36,9 +38,9 @@ jtkconsulting.de, koch.consulting {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
 
-	# Kontaktformular, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker, nur lokal
-	# erreichbar). Nur diese drei Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
-	@plattform path /api/anfrage /api/e /api/gesundheit
+	# Kontaktformular, Terminbuchung, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
+	# nur lokal erreichbar). Nur diese Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
+	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*
 	handle @plattform {
 		reverse_proxy 127.0.0.1:3100
 	}
@@ -89,7 +91,12 @@ DATEI="${CADDYFILE:-/etc/caddy/Caddyfile}"
 NEU="${NEUE_KONFIG:-/tmp/jtk.caddy}"
 APP_NEU="${NEUE_APP_KONFIG:-/tmp/plattform.caddy}"
 
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -q "@plattform path /api/anfrage /api/e /api/gesundheit" "$DATEI"; then
+# Matcher der Website für den Website-Dienst: ALT ohne Terminbuchung (bis Oktober 2026), NEU wie in
+# deploy/Caddyfile. ALT ist der Anfang von NEU, die Abbruch-Prüfung erkennt so beide Fassungen.
+MATCHER_ALT="@plattform path /api/anfrage /api/e /api/gesundheit"
+MATCHER_NEU="@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*"
+
+if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_ALT" "$DATEI"; then
   echo "$DOMAIN steht schon in $DATEI, aber nicht mit der Weiterleitung von /api/anfrage, /api/e und"
   echo "/api/gesundheit an den Website-Dienst (ältere Fassung oder von Hand angelegt). Ohne sie scheitert das"
   echo "Formular, mit der alten Fassung wäre die Portal-API auch über $DOMAIN erreichbar. Bitte den Block"
@@ -155,9 +162,22 @@ if grep -q "^$DOMAIN {\$" "$DATEI" 2>/dev/null; then
   printf '\nwww.%s {\n\tredir https://%s{uri} permanent\n}\n' "$ZWEIT_DOMAIN" "$ZWEIT_DOMAIN" >> "$DATEI"
   echo "$ZWEIT_DOMAIN zeigt jetzt dieselbe Website wie $DOMAIN."
 elif grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
-  echo "$DOMAIN steht schon in $DATEI, dieser Block bleibt unverändert."
+  echo "$DOMAIN steht schon in $DATEI, dieser Block bleibt bis auf die Weiterleitung unverändert."
 else
   eintragen "$NEU"
+fi
+
+# Ältere Fassung ohne Terminbuchung: /api/termine zusätzlich an den Website-Dienst (nur genau die alte
+# Zeile wird ersetzt; validiert wird unten, bei Fehler kommt der gesicherte Stand zurück)
+if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_NEU" "$DATEI"; then
+  if grep -q "^[[:space:]]*$MATCHER_ALT[[:space:]]*\$" "$DATEI"; then
+    sichern
+    sed -i "s|^\([[:space:]]*\)$MATCHER_ALT[[:space:]]*\$|\1$MATCHER_NEU|" "$DATEI"
+    echo "$DOMAIN leitet jetzt auch /api/termine an den Website-Dienst weiter (Terminbuchung)."
+  else
+    echo "Hinweis: Die Zeile „$MATCHER_ALT“ in $DATEI wurde von Hand geändert und bleibt so."
+    echo "Für die Terminbuchung muss sie lauten: $MATCHER_NEU"
+  fi
 fi
 
 if grep -q "^$APP_DOMAIN" "$DATEI" 2>/dev/null; then
