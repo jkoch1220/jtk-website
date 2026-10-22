@@ -20,13 +20,19 @@ set -e
 SERVER="root@76.13.5.157"
 ZIEL="/var/www/jtkconsulting"
 DOMAIN="jtkconsulting.de"
+ZWEIT_DOMAIN="koch.consulting"
 
 # Gleicher Inhalt wie deploy/Caddyfile (Website-Teil)
 KONFIG='www.jtkconsulting.de {
 	redir https://jtkconsulting.de{uri} permanent
 }
 
-jtkconsulting.de {
+# koch.consulting zeigt dieselbe Website (canonical bleibt jtkconsulting.de)
+www.koch.consulting {
+	redir https://koch.consulting{uri} permanent
+}
+
+jtkconsulting.de, koch.consulting {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
 
@@ -77,7 +83,7 @@ printf '%s\n' "$KONFIG" | ssh "$SERVER" "cat > /tmp/jtk.caddy"
 printf '%s\n' "$APP_KONFIG" | ssh "$SERVER" "cat > /tmp/plattform.caddy"
 
 echo "Richte den Server ein ..."
-ssh "$SERVER" "ZIEL='$ZIEL' DOMAIN='$DOMAIN' APP_DOMAIN='$APP_DOMAIN' sh -s" <<'REMOTE'
+ssh "$SERVER" "ZIEL='$ZIEL' DOMAIN='$DOMAIN' ZWEIT_DOMAIN='$ZWEIT_DOMAIN' APP_DOMAIN='$APP_DOMAIN' sh -s" <<'REMOTE'
 set -e
 DATEI="${CADDYFILE:-/etc/caddy/Caddyfile}"
 NEU="${NEUE_KONFIG:-/tmp/jtk.caddy}"
@@ -142,7 +148,13 @@ eintragen() {
   fi
 }
 
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
+if grep -q "^$DOMAIN {\$" "$DATEI" 2>/dev/null; then
+  # Ältere Fassung ohne koch.consulting: dieselbe Website zusätzlich unter der zweiten Domain ausliefern
+  sichern
+  sed -i "s/^$DOMAIN {\$/$DOMAIN, $ZWEIT_DOMAIN {/" "$DATEI"
+  printf '\nwww.%s {\n\tredir https://%s{uri} permanent\n}\n' "$ZWEIT_DOMAIN" "$ZWEIT_DOMAIN" >> "$DATEI"
+  echo "$ZWEIT_DOMAIN zeigt jetzt dieselbe Website wie $DOMAIN."
+elif grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
   echo "$DOMAIN steht schon in $DATEI, dieser Block bleibt unverändert."
 else
   eintragen "$NEU"
@@ -189,13 +201,13 @@ fi
 
 IP="${SERVER#*@}"
 if command -v dig >/dev/null 2>&1; then
-  for NAME in "$DOMAIN" "$APP_DOMAIN"; do
+  for NAME in "$DOMAIN" "$ZWEIT_DOMAIN" "$APP_DOMAIN"; do
     AKTUELL=$(dig +short "$NAME" A | tr '\n' ' ' | sed 's/ $//')
     if [ "$AKTUELL" != "$IP" ]; then
       echo ""
       echo "Noch offen: $NAME zeigt auf ${AKTUELL:-nichts} statt auf $IP."
-      if [ "$NAME" = "$DOMAIN" ]; then
-        echo "Bei GoDaddy unter DNS die A-Records für @ durch einen einzigen A-Record mit $IP ersetzen."
+      if [ "$NAME" = "$DOMAIN" ] || [ "$NAME" = "$ZWEIT_DOMAIN" ]; then
+        echo "Bei GoDaddy ($NAME) unter DNS den A-Record für @ auf $IP ändern. MX/TXT nicht anfassen."
       else
         echo "Bei GoDaddy (Domain koch.consulting) einen A-Record app → $IP anlegen. MX/TXT nicht anfassen."
       fi

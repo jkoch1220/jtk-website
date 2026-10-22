@@ -5,7 +5,12 @@ www.jtkconsulting.de {
 	redir https://jtkconsulting.de{uri} permanent
 }
 
-jtkconsulting.de {
+# koch.consulting zeigt dieselbe Website (canonical bleibt jtkconsulting.de)
+www.koch.consulting {
+	redir https://koch.consulting{uri} permanent
+}
+
+jtkconsulting.de, koch.consulting {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
 
