@@ -44,7 +44,7 @@ hellem Hintergrund im Hochformat.
 ## Anfrageformular
 
 Das Formular schickt per POST ein JSON an `/api/anfrage` auf derselben Domain. Caddy leitet `/api/anfrage` an den
-Website-Dienst weiter (`~/Workspace/koch-plattform`, Port 3100). Er speichert die Anfrage, schickt mir eine
+Website-Dienst weiter (`website-dienst/` im Portal-Repo `~/Workspace/kochConsultingPlatform`, Port 3100). Er speichert die Anfrage, schickt mir eine
 Hinweis-Mail und dem Absender eine kurze Bestätigung (ohne seine Nachricht). Felder: `name`, `firma`, `email`,
 `telefon`, `nachricht`, `seite` (nur Origin und Pfad), `website` (Honigtopf), `check` (Ergebnis des
 Zeitfresser-Checks oder `null`), `aufruf` (ID des Seitenaufrufs, nur für den Zähler „Anfrage gesendet“ in der
@@ -72,7 +72,7 @@ Datenschutzerklärung). Geräteeigenschaften wie Sprache oder Bildschirmbreite l
 aus; die Sprache leitet der Dienst aus dem `Accept-Language`-Kopf ab. Wer etwas am Skript ändert, muss
 die Liste in `src/pages/datenschutz.astro` mitziehen.
 
-Lokal: Website-Dienst mit `npm run dev` in `~/Workspace/koch-plattform` starten (Port 3100), dann hier
+Lokal: Website-Dienst mit `npm run dev` in `~/Workspace/kochConsultingPlatform/website-dienst` starten (Port 3100), dann hier
 `npm run dev`. Der Vite-Proxy in `astro.config.mjs` leitet `/api` dorthin. Läuft der Dienst nicht,
 gehen Statistik und Formular ins Leere; die Seite selbst funktioniert trotzdem.
 

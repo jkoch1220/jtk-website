@@ -478,7 +478,7 @@ function zeitfresserEinrichten(): void {
 /* Anfrageformular ---------------------------------------------------------- */
 
 function anfrageEinrichten(): void {
-  // Etwas mehr als die Mindestdauer im Server (3000 ms, koch-plattform api/anfrage)
+  // Etwas mehr als die Mindestdauer im Server (3000 ms, Website-Dienst /api/anfrage)
   const MINDESTDAUER_MS = 3200;
   // Wie der Server: keine Zeichen, die in mailto-Links oder Kopfzeilen etwas bedeuten
   const emailMuster = /^[\p{L}\p{N}._+'-]+@(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{2,}$/u;

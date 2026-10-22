@@ -37,8 +37,8 @@ jtkconsulting.de {
 	}
 }
 
-# Website-Dienst für das Portal: alles durchreichen (gleicher Inhalt wie deploy/Caddyfile.plattform
-# im Repo koch-plattform)
+# Website-Dienst für das Portal: alles durchreichen (gleicher Inhalt wie website-dienst/deploy/Caddyfile.dienst
+# im Portal-Repo kochConsultingPlatform)
 app.koch.consulting {
 	encode zstd gzip
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains"

@@ -7,7 +7,7 @@
 #  - legt /var/www/jtkconsulting an und trägt die Seite in die Caddy-Konfiguration ein
 #    (eine bestehende Konfiguration wird gesichert und ergänzt, nicht überschrieben)
 #  - trägt zusätzlich app.koch.consulting für den Website-Dienst ein (Docker auf 127.0.0.1:3100,
-#    Deployment über deploy/deploy.sh im Repo koch-plattform; dort liegt auch die Portal-API);
+#    Deployment über website-dienst/deploy/deploy.sh im Portal-Repo; dort liegt auch die Portal-API);
 #    von der Website gehen nur /api/anfrage, /api/e und /api/gesundheit dorthin
 #  - begrenzt die Aufbewahrung des System-Journals auf 7 Tage (dort landen Caddys Fehlermeldungen
 #    mit IP-Adressen, siehe Datenschutzerklärung „Server-Protokolle“)
@@ -58,7 +58,7 @@ jtkconsulting.de {
 	}
 }'
 
-# Gleicher Inhalt wie deploy/Caddyfile (Plattform-Teil) bzw. deploy/Caddyfile.plattform in koch-plattform
+# Gleicher Inhalt wie deploy/Caddyfile (Plattform-Teil) bzw. website-dienst/deploy/Caddyfile.dienst im Portal-Repo
 APP_DOMAIN="app.koch.consulting"
 APP_KONFIG='# Website-Dienst (Portal-API, Formular, Tracking)
 app.koch.consulting {
@@ -183,7 +183,7 @@ REMOTE
 echo "Lade die Website hoch ..."
 if ! sh deploy/deploy.sh; then
   echo "Der Server ist eingerichtet, die Website aber noch nicht hochgeladen."
-  echo "Erst die Koch-Plattform deployen (Repo koch-plattform, sh deploy/deploy.sh), dann: sh deploy/deploy.sh"
+  echo "Erst den Website-Dienst deployen (im Portal-Repo: sh website-dienst/deploy/deploy.sh), dann: sh deploy/deploy.sh"
   exit 1
 fi
 
