@@ -1,6 +1,7 @@
 ---
-// StoryBrand: direkter Handlungsaufruf. Das Formular sendet an PUBLIC_ANFRAGE_URL,
-// falls gesetzt, sonst öffnet es das E-Mail-Programm mit der fertigen Nachricht.
+// StoryBrand: direkter Handlungsaufruf. Das Formular sendet als JSON an die Koch-Plattform
+// (/api/anfrage bzw. PUBLIC_ANFRAGE_URL, siehe data/kontakt.ts). Ist die Adresse leer,
+// öffnet es das E-Mail-Programm mit der fertigen Nachricht.
 import Fenster from "./Fenster.astro";
 import { kontakt, mailBetreff, anfrageUrl } from "../data/kontakt";
 ---
@@ -36,23 +37,23 @@ import { kontakt, mailBetreff, anfrageUrl } from "../data/kontakt";
         <div class="anfrage__felder">
           <div class="feld">
             <label for="a-name">Name</label>
-            <input id="a-name" name="name" type="text" autocomplete="name" required />
+            <input id="a-name" name="name" type="text" autocomplete="name" maxlength="200" required />
           </div>
           <div class="feld">
             <label for="a-firma">Firma <span class="optional">(optional)</span></label>
-            <input id="a-firma" name="firma" type="text" autocomplete="organization" />
+            <input id="a-firma" name="firma" type="text" autocomplete="organization" maxlength="200" />
           </div>
           <div class="feld">
             <label for="a-email">E-Mail</label>
-            <input id="a-email" name="email" type="email" autocomplete="email" required />
+            <input id="a-email" name="email" type="email" autocomplete="email" maxlength="254" required />
           </div>
           <div class="feld">
             <label for="a-telefon">Telefon <span class="optional">(optional)</span></label>
-            <input id="a-telefon" name="telefon" type="tel" autocomplete="tel" />
+            <input id="a-telefon" name="telefon" type="tel" autocomplete="tel" maxlength="60" />
           </div>
           <div class="feld feld--breit">
             <label for="a-nachricht">Worum geht es? <span class="optional">(optional)</span></label>
-            <textarea id="a-nachricht" name="nachricht" rows="6"></textarea>
+            <textarea id="a-nachricht" name="nachricht" rows="6" maxlength="5000"></textarea>
             <p class="feld__hilfe">Ein, zwei Sätze reichen. Das Ergebnis aus dem Zeitfresser-Check landet hier von selbst.</p>
           </div>
           <div class="honig" aria-hidden="true">

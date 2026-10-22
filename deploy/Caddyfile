@@ -1,3 +1,6 @@
+# Bewusst ohne „log“: Caddy schreibt so kein Zugriffsprotokoll. Fehlermeldungen landen im
+# System-Journal, das einrichten.sh auf 7 Tage begrenzt (Datenschutzerklärung „Server-Protokolle“).
+
 www.jtkconsulting.de {
 	redir https://jtkconsulting.de{uri} permanent
 }
@@ -5,7 +8,22 @@ www.jtkconsulting.de {
 jtkconsulting.de {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
-	file_server
+
+	# Kontaktformular, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker, nur lokal
+	# erreichbar). Nur diese drei Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
+	@plattform path /api/anfrage /api/e /api/gesundheit
+	handle @plattform {
+		reverse_proxy 127.0.0.1:3100
+	}
+
+	# Alle anderen /api-Pfade gibt es auf der Website nicht
+	handle /api/* {
+		respond 404
+	}
+
+	handle {
+		file_server
+	}
 
 	# Dateien mit Hash im Namen dürfen lange im Cache bleiben
 	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
@@ -17,4 +35,12 @@ jtkconsulting.de {
 			file_server
 		}
 	}
+}
+
+# Website-Dienst für das Portal: alles durchreichen (gleicher Inhalt wie deploy/Caddyfile.plattform
+# im Repo koch-plattform)
+app.koch.consulting {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy 127.0.0.1:3100
 }

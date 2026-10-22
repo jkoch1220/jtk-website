@@ -939,53 +939,149 @@ a:hover {
   font-weight: 600;
 }
 
-.zeitwahl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
+.check__hinweis {
+  margin-bottom: 8px;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
 }
 
-.zeitwahl input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+.posten {
   margin: 0;
-  opacity: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.zeitwahl label {
-  display: inline-flex;
+.posten__zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--spalt);
   align-items: center;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--linie);
+}
+
+.posten__zeile:last-child {
+  border-bottom: 1px solid var(--linie);
+}
+
+.posten__aufgabe {
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.posten__tipp {
+  grid-column: 1;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  line-height: 1.4;
+}
+
+.posten__eingabe {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-items: center;
+  gap: 10px;
+}
+
+.posten__zahl {
+  width: 5.5rem;
   min-height: 42px;
-  padding: 6px 14px;
+  padding: 4px 10px;
   border: 2px solid var(--tinte);
+  border-radius: 0;
   background: var(--bogen);
-  box-shadow: 3px 3px 0 var(--tinte);
+  box-shadow: inset 2px 2px 0 var(--hauch);
+  color: var(--tinte);
   font-family: var(--pixel);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition:
-    transform 0.06s ease,
-    box-shadow 0.06s ease;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.zeitwahl label:hover {
-  background: var(--papier);
+.posten__zahl--breit {
+  width: 7.5rem;
 }
 
-.zeitwahl input:checked + label {
-  background: var(--tinte);
-  color: var(--bogen);
-  transform: translate(3px, 3px);
-  box-shadow: 0 0 0 var(--tinte);
+.posten__zahl::placeholder {
+  color: var(--linie-stark);
 }
 
-.zeitwahl input:focus-visible + label {
+.posten__zahl:focus-visible {
   outline: 2px solid var(--tinte);
-  outline-offset: 4px;
+  outline-offset: 2px;
+}
+
+.posten__einheit {
+  min-width: 7.5em;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .posten__zeile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .posten__eingabe {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 8px;
+  }
+}
+
+.check__richtwerte {
+  margin-top: 22px;
+}
+
+.check__richtwerte summary {
+  width: fit-content;
+  font-stretch: var(--halbbreit);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check__richtwerte[open] summary {
+  margin-bottom: 8px;
+}
+
+.richtwerte {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px var(--spalt);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.richtwerte li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.richtwerte li.richtwerte__satz {
+  display: block;
+  grid-column: 1 / -1;
+  line-height: 2.6;
+}
+
+.richtwerte__satz .posten__zahl {
+  margin: 0 6px;
+  vertical-align: middle;
+}
+
+.richtwerte .posten__zahl {
+  width: 4.5rem;
+}
+
+@media (max-width: 560px) {
+  .richtwerte {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .check__ergebnis {
@@ -1028,7 +1124,7 @@ a:hover {
 
 .check__schritte ul {
   display: grid;
-  gap: 4px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1045,106 +1141,27 @@ a:hover {
   left: 0;
 }
 
+.check__schritte strong {
+  display: block;
+  font-weight: 600;
+}
+
+.check__rechnung {
+  display: block;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  font-variant-numeric: tabular-nums;
+}
+
+.check__umsatz {
+  font-weight: 600;
+}
+
 .check__aktionen {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 22px;
-}
-
-/* Checkliste im Check ------------------------------------------------------ */
-
-.checkliste__liste {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--spalt);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.checkliste__liste li {
-  position: relative;
-  border-top: 1px solid var(--linie);
-}
-
-.checkliste__liste li:nth-last-child(-n + 2) {
-  border-bottom: 1px solid var(--linie);
-}
-
-@media (max-width: 680px) {
-  .checkliste__liste {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .checkliste__liste li:nth-last-child(2) {
-    border-bottom: 0;
-  }
-}
-
-.checkliste__box {
-  position: absolute;
-  top: 1.2rem;
-  left: 0;
-  width: 1.375rem;
-  height: 1.375rem;
-  margin: 0;
-  opacity: 0;
-}
-
-.checkliste__liste label {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.1rem 0 1.15rem;
-  cursor: pointer;
-  line-height: 1.45;
-}
-
-.kreuz {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 1.375rem;
-  height: 1.375rem;
-  margin-top: 0.05rem;
-  border: 1.5px solid var(--tinte);
-  border-radius: 1px;
-  background: var(--bogen);
-  transition: background-color 0.15s ease;
-}
-
-.kreuz svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.kreuz path {
-  fill: none;
-  stroke: var(--tinte);
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-dasharray: 17;
-  stroke-dashoffset: 17;
-  transition: stroke-dashoffset 0.14s ease-out;
-}
-
-.kreuz path + path {
-  transition-delay: 0.09s;
-}
-
-.checkliste__box:checked + label .kreuz path {
-  stroke-dashoffset: 0;
-}
-
-.checkliste__liste label:hover .kreuz {
-  background: var(--hauch);
-}
-
-.checkliste__box:focus-visible + label .kreuz {
-  outline: 2px solid var(--tinte);
-  outline-offset: 3px;
 }
 
 /* Anfrageformular --------------------------------------------------------- */

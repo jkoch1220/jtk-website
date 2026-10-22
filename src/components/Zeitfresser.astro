@@ -1,60 +1,135 @@
 ---
-// StoryBrand: weicher Handlungsaufruf. Der Check rechnet die geschätzte Zeit
-// in Stunden, Stellen und Euro pro Jahr um, zeigt zu jedem Kreuz einen ersten
-// Schritt und übergibt das Ergebnis an das Anfrageformular.
+// StoryBrand: weicher Handlungsaufruf. Der Besucher trägt Mengen ein, die er kennt (Anfragen pro
+// Woche, Rechnungen pro Monat …), der Check rechnet mit sichtbaren, vorsichtigen Richtwerten Stunden,
+// Stellen und Euro pro Jahr aus, dazu den Umsatz, der durchrutscht. Die größten Posten zeigen den
+// Startpunkt, das Ergebnis geht ans Anfrageformular.
 import Fenster from "./Fenster.astro";
 
-const punkte = [
+type Einheit = "Tag" | "Woche" | "Monat";
+
+// minuten: Richtwert je Vorgang, lässt sich unter „Richtwerte anpassen“ ändern.
+// Bei „touren“ trägt der Besucher direkt Stunden ein, daher fest 60 Minuten.
+const posten: {
+  id: string;
+  aufgabe: string;
+  tipp: string;
+  einheit: Einheit;
+  minuten: number;
+  je?: string;
+  einheitText?: string;
+  schritt: string;
+}[] = [
   {
-    text: "Anfragen aus E-Mails in Listen übertragen",
-    schritt: "Sie bekommen jede Anfrage direkt ins System und machen mit wenigen Klicks ein Angebot daraus.",
+    id: "anfragen",
+    aufgabe: "Anfragen erfassen und beantworten",
+    tipp: "Ein Blick ins Postfach der letzten Woche reicht.",
+    einheit: "Woche",
+    minuten: 10,
+    je: "Anfrage",
+    schritt: "Sie bekommen jede Anfrage direkt ins System, ob per Mail, Formular oder Telefon, und antworten in Minuten.",
   },
   {
-    text: "Angebote aus alten Vorlagen zusammenkopieren",
-    schritt: "Sie stellen Angebote aus Ihren Artikeln und Preisen zusammen statt aus alten Kopien.",
+    id: "angebote",
+    aufgabe: "Angebote schreiben",
+    tipp: "Ihre Angebotsnummern verraten es.",
+    einheit: "Woche",
+    minuten: 20,
+    je: "Angebot",
+    schritt: "Sie stellen Angebote mit wenigen Klicks aus Ihren Artikeln und Preisen zusammen statt aus alten Kopien.",
   },
   {
-    text: "Aufträge per Hand an Lieferanten weitergeben",
+    id: "anrufe",
+    aufgabe: "Routineanrufe annehmen und weiterverbinden",
+    tipp: "Etwa „Wann kommt meine Lieferung?“. Ihre Telefonanlage zeigt alle Anrufe.",
+    einheit: "Tag",
+    minuten: 3,
+    je: "Anruf",
+    schritt: "Sie lassen Routineanrufe von einem KI-Telefonassistenten beantworten. Was Ihr Team braucht, landet weiter bei Ihrem Team.",
+  },
+  {
+    id: "rechnungen",
+    aufgabe: "Rechnungen schreiben und verschicken",
+    tipp: "Die Rechnungsnummern des letzten Monats.",
+    einheit: "Monat",
+    minuten: 5,
+    je: "Rechnung",
+    schritt: "Sie bekommen Rechnung und E-Rechnung direkt aus dem Auftrag, ohne etwas neu zu tippen.",
+  },
+  {
+    id: "zahlungen",
+    aufgabe: "Zahlungseingänge zuordnen und mahnen",
+    tipp: "So viele Zahlungen, wie Sie im Monat erwarten.",
+    einheit: "Monat",
+    minuten: 3,
+    je: "Zahlung",
+    schritt: "Sie sehen jede Zahlung automatisch ihrer Rechnung zugeordnet, Erinnerungen gehen von selbst raus.",
+  },
+  {
+    id: "eingang",
+    aufgabe: "Eingangsrechnungen erfassen und prüfen",
+    tipp: "Die Belege, die im Monat bei Ihnen ankommen.",
+    einheit: "Monat",
+    minuten: 5,
+    je: "Beleg",
+    schritt: "Sie geben Eingangsrechnungen nur noch frei. Erfassen und Weitergeben an die Buchhaltung übernimmt das System.",
+  },
+  {
+    id: "bestellungen",
+    aufgabe: "Bestellungen an Lieferanten weitergeben",
+    tipp: "Wie oft Sie pro Woche bestellen.",
+    einheit: "Woche",
+    minuten: 10,
+    je: "Bestellung",
     schritt: "Sie geben den Auftrag frei, und die Bestellung geht automatisch an den Lieferanten.",
   },
   {
-    text: "Lieferscheine und Rechnungen abtippen",
-    schritt: "Sie bekommen Lieferschein und Rechnung direkt aus dem Auftrag, ohne etwas neu zu tippen.",
-  },
-  {
-    text: "Stundenzettel und Wartungstermine übertragen",
-    schritt: "Sie erhalten Stunden und Termine digital und rechnen sie direkt ab.",
-  },
-  {
-    text: "Die E-Rechnung einführen (Pflicht ab 2027 bzw. 2028)",
-    schritt: "Sie verschicken E-Rechnungen, in vielen Fällen sogar aus Ihrem bisherigen Programm.",
-  },
-  {
-    text: "Excel-Listen pflegen, die nur eine Person versteht",
-    schritt: "Sie machen aus der Liste ein System, das jeder im Team bedienen kann.",
-  },
-  {
-    text: "Daten zwischen zwei Programmen hin- und herkopieren",
-    schritt: "Sie tippen nichts mehr hinüber, Ihre Programme gleichen die Daten selbst ab.",
-  },
-  {
-    text: "Dieselben Kundenfragen jeden Tag neu beantworten",
-    schritt: "Sie lassen die KI Antworten vorbereiten, Ihr Team prüft und schickt sie ab.",
-  },
-  {
-    text: "Nachfragen, wie es um offene Angebote steht",
-    schritt: "Sie sehen auf einen Blick, welche Angebote offen sind und wo es hakt.",
+    id: "touren",
+    aufgabe: "Touren und Einsätze planen",
+    tipp: "Bei Saisongeschäft den Durchschnitt übers Jahr.",
+    einheit: "Woche",
+    minuten: 60,
+    einheitText: "Std. pro Woche",
+    schritt: "Sie planen Touren halbautomatisch: Das System schlägt Route und Fahrzeug vor, Sie entscheiden.",
   },
 ];
 
-const zeiten = [
-  { minuten: 15, text: "15 Min." },
-  { minuten: 30, text: "30 Min." },
-  { minuten: 60, text: "1 Std." },
-  { minuten: 120, text: "2 Std." },
-  { minuten: 240, text: "4 Std." },
-  { minuten: 480, text: "8 Std." },
+// quote: von so vielen wird einer zum Auftrag, bewusst vorsichtig angesetzt
+const durchrutscher: {
+  id: string;
+  aufgabe: string;
+  tipp: string;
+  kurz: string;
+  einheit: Einheit;
+  quote: number;
+  satz: [string, string];
+  frage: string;
+  schritt: string;
+}[] = [
+  {
+    id: "verpasst",
+    aufgabe: "Verpasste Anrufe",
+    kurz: "verpasste Anrufe",
+    tipp: "Stehen in der Anrufliste Ihrer Telefonanlage.",
+    einheit: "Woche",
+    quote: 20,
+    satz: ["Von", "verpassten Anrufen wäre einer ein Auftrag geworden"],
+    frage: "Von wie vielen verpassten Anrufen wäre einer ein Auftrag geworden?",
+    schritt: "Sie verpassen keinen Anruf mehr: Ein KI-Telefonassistent nimmt jeden an, auch nach Feierabend, und legt neue Anfragen im System an.",
+  },
+  {
+    id: "nachfassen",
+    aufgabe: "Angebote, bei denen niemand nachfasst",
+    kurz: "Angebote ohne Nachfassen",
+    tipp: "Offene Angebote, die älter als zwei Wochen sind.",
+    einheit: "Monat",
+    quote: 10,
+    satz: ["Von", "nachgefassten Angeboten wird eines zum Auftrag"],
+    frage: "Von wie vielen nachgefassten Angeboten wird eines zum Auftrag?",
+    schritt: "Sie sehen offene Angebote auf einen Blick und fassen rechtzeitig nach, das System erinnert Sie.",
+  },
 ];
+
+const einheitText = { Tag: "pro Tag", Woche: "pro Woche", Monat: "pro Monat" };
 ---
 
 <section class="abschnitt check" id="check" aria-labelledby="check-titel">
@@ -62,36 +137,47 @@ const zeiten = [
     <div class="abschnitt__kopf">
       <h2 id="check-titel">Was kostet Sie die Handarbeit?</h2>
       <p>
-        Der Zeitfresser-Check dauert zwei Minuten. Kreuzen Sie an, was bei Ihnen noch von Hand läuft, und schätzen
-        Sie die Zeit. Sie sehen sofort, was das im Jahr ausmacht und wo Sie anfangen können.
+        Der Zeitfresser-Check dauert zwei Minuten. Tragen Sie ein, wie oft etwas bei Ihnen anfällt. Das wissen Sie
+        besser als jeder Berater. Der Check rechnet mit vorsichtigen Richtwerten und zeigt Ihnen, was Sie das im
+        Jahr kostet, was Ihnen an Umsatz durchrutscht und wo Sie anfangen können.
       </p>
     </div>
 
     <Fenster titel="Zeitfresser-Check" class="abschnitt__inhalt check__fenster">
       <form data-check novalidate>
         <fieldset class="check__gruppe">
-          <legend>Was läuft bei Ihnen noch von Hand?</legend>
-          <ul class="checkliste__liste">
+          <legend>Wie oft fällt das bei Ihnen an?</legend>
+          <p class="check__hinweis">Tragen Sie ein, was Sie kennen. Leere Felder zählen nicht mit.</p>
+          <ul class="posten">
             {
-              punkte.map((punkt, i) => (
-                <li>
-                  <input
-                    class="checkliste__box"
-                    type="checkbox"
-                    id={`punkt-${i + 1}`}
-                    name="punkt"
-                    value={punkt.text}
-                    data-schritt={punkt.schritt}
-                  />
-                  <label for={`punkt-${i + 1}`}>
-                    <span class="kreuz" aria-hidden="true">
-                      <svg viewBox="0 0 20 20">
-                        <path d="M4 4 L16 16" />
-                        <path d="M16 4 L4 16" />
-                      </svg>
-                    </span>
-                    <span>{punkt.text}</span>
+              posten.map((p) => (
+                <li class="posten__zeile">
+                  <label class="posten__aufgabe" for={`menge-${p.id}`}>
+                    {p.aufgabe}
                   </label>
+                  <p class="posten__tipp" id={`tipp-${p.id}`}>
+                    {p.tipp}
+                  </p>
+                  <div class="posten__eingabe">
+                    <input
+                      class="posten__zahl"
+                      id={`menge-${p.id}`}
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      maxlength="5"
+                      placeholder="0"
+                      aria-describedby={`tipp-${p.id}`}
+                      data-menge={p.id}
+                      data-aufgabe={p.aufgabe}
+                      data-einheit={p.einheit}
+                      data-minuten={p.minuten}
+                      data-je={p.je}
+                      data-einheit-text={p.einheitText ?? einheitText[p.einheit]}
+                      data-schritt={p.schritt}
+                    />
+                    <span class="posten__einheit">{p.einheitText ?? einheitText[p.einheit]}</span>
+                  </div>
                 </li>
               ))
             }
@@ -99,26 +185,118 @@ const zeiten = [
         </fieldset>
 
         <fieldset class="check__gruppe">
-          <legend>Wie viel Zeit kostet das Ihr Team zusammen pro Tag?</legend>
-          <div class="zeitwahl">
+          <legend>Was Ihnen durchrutscht</legend>
+          <p class="check__hinweis">Hier geht es nicht um Zeit, sondern um Aufträge, die gar nicht erst entstehen.</p>
+          <ul class="posten">
             {
-              zeiten.map((z) => (
-                <>
-                  <input type="radio" name="zeit" id={`zeit-${z.minuten}`} value={z.minuten} />
-                  <label for={`zeit-${z.minuten}`}>{z.text}</label>
-                </>
+              durchrutscher.map((d) => (
+                <li class="posten__zeile">
+                  <label class="posten__aufgabe" for={`menge-${d.id}`}>
+                    {d.aufgabe}
+                  </label>
+                  <p class="posten__tipp" id={`tipp-${d.id}`}>
+                    {d.tipp}
+                  </p>
+                  <div class="posten__eingabe">
+                    <input
+                      class="posten__zahl"
+                      id={`menge-${d.id}`}
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      maxlength="5"
+                      placeholder="0"
+                      aria-describedby={`tipp-${d.id}`}
+                      data-verlust={d.id}
+                      data-aufgabe={d.aufgabe}
+                      data-einheit={d.einheit}
+                      data-quote={d.quote}
+                      data-kurz={d.kurz}
+                      data-einheit-text={einheitText[d.einheit]}
+                      data-schritt={d.schritt}
+                    />
+                    <span class="posten__einheit">{einheitText[d.einheit]}</span>
+                  </div>
+                </li>
               ))
             }
-          </div>
+            <li class="posten__zeile">
+              <label class="posten__aufgabe" for="auftragswert">Durchschnittlicher Auftragswert</label>
+              <p class="posten__tipp" id="tipp-auftragswert">Grob reicht, zum Beispiel 2.500.</p>
+              <div class="posten__eingabe">
+                <input
+                  class="posten__zahl posten__zahl--breit"
+                  id="auftragswert"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
+                  maxlength="9"
+                  placeholder="0"
+                  aria-describedby="tipp-auftragswert"
+                  data-auftragswert
+                />
+                <span class="posten__einheit">Euro</span>
+              </div>
+            </li>
+          </ul>
         </fieldset>
+
+        <details class="check__richtwerte">
+          <summary>Richtwerte ansehen und anpassen</summary>
+          <p class="check__hinweis">
+            Gerechnet wird vorsichtig. Wenn es bei Ihnen länger dauert, tragen Sie Ihren eigenen Wert ein.
+          </p>
+          <ul class="richtwerte">
+            {
+              posten
+                .filter((p) => p.je)
+                .map((p) => (
+                  <li>
+                    <label for={`richtwert-${p.id}`}>Minuten je {p.je}</label>
+                    <input
+                      class="posten__zahl"
+                      id={`richtwert-${p.id}`}
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      maxlength="3"
+                      value={p.minuten}
+                      data-richtwert={p.id}
+                      data-standard={p.minuten}
+                    />
+                  </li>
+                ))
+            }
+            {
+              durchrutscher.map((d) => (
+                <li class="richtwerte__satz">
+                  <span aria-hidden="true">{d.satz[0]}</span>
+                  <input
+                    class="posten__zahl"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    maxlength="3"
+                    value={d.quote}
+                    aria-label={d.frage}
+                    data-quote-fuer={d.id}
+                    data-standard={d.quote}
+                  />
+                  <span aria-hidden="true">{d.satz[1]}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </details>
 
         <div class="check__ergebnis" aria-live="polite">
           <p class="check__zahl" data-ergebnis-zahl>Ihr Ergebnis erscheint hier</p>
           <p class="check__erklaerung" data-ergebnis-text>
             Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.
           </p>
+          <p class="check__umsatz" data-ergebnis-umsatz hidden></p>
           <div class="check__schritte" data-ergebnis-schritte hidden>
-            <p class="check__schritte-titel">Hier können Sie anfangen</p>
+            <p class="check__schritte-titel">Ihre größten Hebel</p>
             <ul data-ergebnis-liste></ul>
           </div>
         </div>
@@ -131,7 +309,7 @@ const zeiten = [
       </form>
 
       <Fragment slot="status">
-        <span data-check-stand>Noch nichts angekreuzt</span>
+        <span data-check-stand>Noch nichts eingetragen</span>
         <span>Gerechnet mit 220 Arbeitstagen und 45 € pro Stunde</span>
       </Fragment>
     </Fenster>

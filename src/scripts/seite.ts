@@ -1,5 +1,6 @@
 import { gsap } from "gsap";
 import Lenis from "lenis";
+import { aufrufId, checkErgebnis, seitenStart, type CheckErgebnis } from "./tracking";
 
 declare global {
   interface Window {
@@ -168,21 +169,34 @@ function meldungenEinrichten(): void {
 /* Zeitfresser-Check ---------------------------------------------------------- */
 
 const ARBEITSTAGE = 220;
+const ARBEITSWOCHEN = ARBEITSTAGE / 5;
 const STUNDEN_PRO_WOCHE = 40;
 const STUNDEN_PRO_JAHR_VOLLZEIT = ARBEITSTAGE * 8;
 const EURO_PRO_STUNDE = 45;
-// Mehr erste Schritte würden das Ergebnis zur Liste machen, der Rest kommt ins Erstgespräch
+// Mehr Hebel würden das Ergebnis zur Liste machen, der Rest kommt ins Erstgespräch
 const SCHRITTE_MAX = 3;
+
+// Wie oft eine Menge im Jahr anfällt. Monatliche Mengen laufen auch im Urlaub weiter, daher 12.
+const PRO_JAHR: Record<string, number> = { Tag: ARBEITSTAGE, Woche: ARBEITSWOCHEN, Monat: 12 };
+const ZEITRAUM: Record<string, string> = { Tag: "Arbeitstage", Woche: "Wochen", Monat: "Monate" };
+
+// Nur Ziffern zählen, so gehen auch „2.500“ oder „ca. 40“
+function zahlAus(feld: HTMLInputElement | null | undefined): number {
+  const wert = Number((feld?.value ?? "").replace(/\D/g, ""));
+  return Number.isFinite(wert) ? wert : 0;
+}
 
 function zeitfresserEinrichten(): void {
   const formular = document.querySelector<HTMLFormElement>("[data-check]");
   if (!formular) return;
 
-  const boxen = Array.from(formular.querySelectorAll<HTMLInputElement>('input[name="punkt"]'));
-  const zeiten = Array.from(formular.querySelectorAll<HTMLInputElement>('input[name="zeit"]'));
+  const mengen = Array.from(formular.querySelectorAll<HTMLInputElement>("[data-menge]"));
+  const verluste = Array.from(formular.querySelectorAll<HTMLInputElement>("[data-verlust]"));
+  const auftragswertFeld = formular.querySelector<HTMLInputElement>("[data-auftragswert]");
   const ergebnis = formular.querySelector<HTMLElement>(".check__ergebnis");
   const zahl = formular.querySelector<HTMLElement>("[data-ergebnis-zahl]");
   const erklaerung = formular.querySelector<HTMLElement>("[data-ergebnis-text]");
+  const umsatzZeile = formular.querySelector<HTMLElement>("[data-ergebnis-umsatz]");
   const schritte = formular.querySelector<HTMLElement>("[data-ergebnis-schritte]");
   const schrittListe = formular.querySelector<HTMLUListElement>("[data-ergebnis-liste]");
   const knopf = formular.querySelector<HTMLButtonElement>("[data-check-besprechen]");
@@ -197,82 +211,222 @@ function zeitfresserEinrichten(): void {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+  // Auf 100 € gerundet, ab 10.000 € auf 1.000 €, alles andere wäre Scheingenauigkeit
+  const runden = (betrag: number) => {
+    const schritt = betrag >= 10000 ? 1000 : 100;
+    return Math.round(betrag / schritt) * schritt;
+  };
+  // Leerer Richtwert oder 0 heißt: Standard verwenden
+  const richtwert = (auswahl: string, standard: number) =>
+    zahlAus(formular.querySelector<HTMLInputElement>(auswahl)) || standard;
 
   const zustand = () => {
-    const angekreuzt = boxen.filter((b) => b.checked);
-    const gewaehlt = zeiten.find((z) => z.checked);
-    const minuten = Number(gewaehlt?.value ?? 0);
-    const stunden = Math.round((minuten * ARBEITSTAGE) / 60);
+    const posten = mengen
+      .map((feld) => {
+        const id = feld.dataset.menge ?? "";
+        const einheit = feld.dataset.einheit ?? "Woche";
+        const menge = zahlAus(feld);
+        const minutenJe = richtwert(`[data-richtwert="${id}"]`, Number(feld.dataset.minuten));
+        return {
+          aufgabe: feld.dataset.aufgabe ?? "",
+          menge,
+          einheit,
+          einheitText: feld.dataset.einheitText ?? "",
+          // Ohne „je“ trägt der Besucher direkt Stunden ein
+          mitMinuten: Boolean(feld.dataset.je),
+          minutenJe,
+          stunden: (menge * minutenJe * PRO_JAHR[einheit]) / 60,
+          schritt: feld.dataset.schritt ?? "",
+        };
+      })
+      .filter((p) => p.menge > 0);
+
+    const auftragswert = zahlAus(auftragswertFeld);
+    const durchrutscher = verluste
+      .map((feld) => {
+        const id = feld.dataset.verlust ?? "";
+        const einheit = feld.dataset.einheit ?? "Woche";
+        const menge = zahlAus(feld);
+        const quote = richtwert(`[data-quote-fuer="${id}"]`, Number(feld.dataset.quote));
+        return {
+          id,
+          aufgabe: feld.dataset.aufgabe ?? "",
+          kurz: feld.dataset.kurz ?? "",
+          menge,
+          einheit,
+          einheitText: feld.dataset.einheitText ?? "",
+          quote,
+          umsatz: ((menge * PRO_JAHR[einheit]) / quote) * auftragswert,
+          schritt: feld.dataset.schritt ?? "",
+        };
+      })
+      .filter((d) => d.menge > 0);
+
+    const summe = posten.reduce((s, p) => s + p.stunden, 0);
+    // Wer etwas einträgt, soll nicht „0 Stunden“ lesen
+    const stunden = posten.length > 0 ? Math.max(1, Math.round(summe)) : 0;
     return {
-      punkte: angekreuzt.map((b) => b.value),
-      schritte: angekreuzt.map((b) => b.dataset.schritt ?? "").filter(Boolean),
-      minuten,
+      posten,
+      durchrutscher,
+      auftragswert,
       stunden,
+      // Tages-Äquivalent, so wie es Tracking und Anfrage bisher kennen
+      minuten: Math.round((stunden * 60) / ARBEITSTAGE),
       stellen: stunden / STUNDEN_PRO_JAHR_VOLLZEIT,
-      // Auf 100 € gerundet, alles andere wäre Scheingenauigkeit
-      euro: Math.round((stunden * EURO_PRO_STUNDE) / 100) * 100,
-      zeitText: gewaehlt?.labels?.[0]?.textContent?.trim() ?? "",
+      euro: runden(stunden * EURO_PRO_STUNDE),
+      umsatz: runden(durchrutscher.reduce((s, d) => s + d.umsatz, 0)),
+      angaben: posten.length + durchrutscher.length + (auftragswert > 0 ? 1 : 0),
     };
   };
+  type Zustand = ReturnType<typeof zustand>;
 
   // Im Dativ, passend zu „Das entspricht …“. Unter einer halben Stelle sind Arbeitswochen
   // greifbarer als „0,1 Vollzeitstellen“.
-  const umfang = (z: ReturnType<typeof zustand>) => {
+  const umfang = (z: Zustand) => {
     const ungefaehr = (wert: number, ziel: number) => Math.abs(wert - ziel) < 0.05;
     if (ungefaehr(z.stellen, 0.5)) return "einer halben Vollzeitstelle";
     if (ungefaehr(z.stellen, 1)) return "einer ganzen Vollzeitstelle";
     if (z.stellen >= 0.5) return `etwa ${kommazahl.format(z.stellen)} Vollzeitstellen`;
-    return `etwa ${kommazahl.format(z.stunden / STUNDEN_PRO_WOCHE)} Arbeitswochen`;
+    if (z.stunden < 8) return "weniger als einem Arbeitstag";
+    if (z.stunden < STUNDEN_PRO_WOCHE) return `etwa ${ganzzahl.format(z.stunden / 8)} Arbeitstagen`;
+    const wochen = z.stunden / STUNDEN_PRO_WOCHE;
+    return `etwa ${(wochen < 2 ? kommazahl : ganzzahl).format(wochen)} Arbeitswochen`;
   };
-  let letzteSchritte = "";
+  const verlustQuellen = (z: Zustand) => z.durchrutscher.map((d) => d.kurz).join(" und ");
+  const stundenText = (stunden: number) => `rund ${ganzzahl.format(Math.max(1, Math.round(stunden)))} Std. im Jahr`;
+  const fehltAuftragswert = (z: Zustand) => z.durchrutscher.length > 0 && z.auftragswert === 0;
+
+  // Die größten Posten zuerst. Gibt es beides, teilen sich Zeit und Umsatz die Plätze.
+  const hebel = (z: Zustand) => {
+    const zeit = [...z.posten]
+      .sort((a, b) => b.stunden - a.stunden)
+      .map((p) => ({
+        titel: `${p.aufgabe}: ${stundenText(p.stunden)}`,
+        rechnung: p.mitMinuten
+          ? `${ganzzahl.format(p.menge)} ${p.einheitText} × ${p.minutenJe} Min. × ${ganzzahl.format(PRO_JAHR[p.einheit])} ${ZEITRAUM[p.einheit]}`
+          : `${ganzzahl.format(p.menge)} ${p.einheitText} × ${ganzzahl.format(PRO_JAHR[p.einheit])} ${ZEITRAUM[p.einheit]}`,
+        schritt: p.schritt,
+      }));
+    const umsatz =
+      z.auftragswert > 0
+        ? [...z.durchrutscher]
+            .sort((a, b) => b.umsatz - a.umsatz)
+            .map((d) => ({
+              titel: `${d.aufgabe}: rund ${euro.format(runden(d.umsatz))} Umsatz im Jahr`,
+              rechnung: `${ganzzahl.format(d.menge)} ${d.einheitText} × ${ganzzahl.format(PRO_JAHR[d.einheit])} ${ZEITRAUM[d.einheit]}, davon einer von ${ganzzahl.format(d.quote)} als Auftrag zu ${euro.format(z.auftragswert)}`,
+              schritt: d.schritt,
+            }))
+        : [];
+    const plaetzeUmsatz = zeit.length > 0 ? Math.min(umsatz.length, 1) : SCHRITTE_MAX;
+    const gezeigt = [
+      ...zeit.slice(0, SCHRITTE_MAX - plaetzeUmsatz),
+      ...umsatz.slice(0, plaetzeUmsatz),
+    ].slice(0, SCHRITTE_MAX);
+    return { gezeigt, rest: zeit.length + umsatz.length - gezeigt.length };
+  };
+
+  let letzteHebel = "";
 
   const aktualisieren = () => {
     const z = zustand();
-    const fertig = z.punkte.length > 0 && z.minuten > 0;
+    const fertig = z.stunden > 0 || z.umsatz > 0;
 
     if (stand) {
       stand.textContent =
-        z.punkte.length > 0 ? `${z.punkte.length} von ${boxen.length} angekreuzt` : "Noch nichts angekreuzt";
+        z.angaben === 0
+          ? "Noch nichts eingetragen"
+          : `${z.angaben} ${z.angaben === 1 ? "Angabe" : "Angaben"} eingetragen`;
     }
 
     ergebnis?.classList.toggle("ist-fertig", fertig);
 
     if (zahl && erklaerung) {
-      if (fertig) {
-        zahl.textContent = `Rund ${ganzzahl.format(z.stunden)} Stunden im Jahr`;
+      if (z.stunden > 0) {
+        zahl.textContent = `Rund ${ganzzahl.format(z.stunden)} ${z.stunden === 1 ? "Stunde" : "Stunden"} im Jahr`;
         erklaerung.textContent = `Das entspricht ${umfang(z)}: Zeit, die Ihrem Team für Kunden und Wachstum fehlt. Bei ${EURO_PRO_STUNDE} € pro Stunde kostet Sie die Handarbeit rund ${euro.format(z.euro)} im Jahr.`;
-      } else if (z.punkte.length > 0) {
+      } else if (z.umsatz > 0) {
+        zahl.textContent = `Rund ${euro.format(z.umsatz)} im Jahr`;
+        erklaerung.textContent = `So viel Umsatz kann Ihnen durch ${verlustQuellen(z)} entgehen, vorsichtig gerechnet.`;
+      } else if (fehltAuftragswert(z)) {
         zahl.textContent = "Fast geschafft";
-        erklaerung.textContent = "Wählen Sie noch, wie viel Zeit das pro Tag kostet.";
-      } else if (z.minuten > 0) {
-        zahl.textContent = "Fast geschafft";
-        erklaerung.textContent = "Kreuzen Sie noch an, was bei Ihnen von Hand läuft.";
+        erklaerung.textContent =
+          "Tragen Sie noch Ihren durchschnittlichen Auftragswert ein, dann sehen Sie, was Ihnen an Umsatz entgeht.";
       } else {
         zahl.textContent = "Ihr Ergebnis erscheint hier";
         erklaerung.textContent = "Zum Vergleich: 30 Minuten am Tag sind rund 110 Stunden im Jahr.";
       }
     }
 
+    if (umsatzZeile) {
+      const zeigen = z.stunden > 0 && (z.umsatz > 0 || fehltAuftragswert(z));
+      umsatzZeile.hidden = !zeigen;
+      if (zeigen) {
+        umsatzZeile.textContent =
+          z.umsatz > 0
+            ? `Dazu kommen rund ${euro.format(z.umsatz)} Umsatz im Jahr, die Ihnen durch ${verlustQuellen(z)} entgehen können, vorsichtig gerechnet.`
+            : "Tragen Sie noch Ihren durchschnittlichen Auftragswert ein, dann sehen Sie auch, was Ihnen an Umsatz entgeht.";
+      }
+    }
+
     if (schritte && schrittListe) {
       schritte.hidden = !fertig;
       if (fertig) {
-        const rest = z.schritte.length - SCHRITTE_MAX;
-        const eintraege = z.schritte.slice(0, SCHRITTE_MAX);
-        if (rest === 1) eintraege.push("Und ein weiterer Ansatzpunkt, den wir im Erstgespräch durchgehen.");
-        if (rest > 1) eintraege.push(`Und ${rest} weitere Ansatzpunkte, die wir im Erstgespräch durchgehen.`);
-        // Nur neu aufbauen, wenn sich etwas ändert, sonst liest der Screenreader die Liste bei jedem Kreuz vor
-        const neu = eintraege.join("\n");
-        if (neu !== letzteSchritte) {
-          letzteSchritte = neu;
+        const { gezeigt, rest } = hebel(z);
+        const eintraege: { titel?: string; rechnung?: string; schritt: string }[] = [...gezeigt];
+        if (rest === 1) eintraege.push({ schritt: "Und ein weiterer Hebel, den wir im Erstgespräch durchgehen." });
+        if (rest > 1) eintraege.push({ schritt: `Und ${rest} weitere Hebel, die wir im Erstgespräch durchgehen.` });
+        // Nur neu aufbauen, wenn sich etwas ändert, sonst liest der Screenreader die Liste bei jeder Eingabe vor
+        const neu = JSON.stringify(eintraege);
+        if (neu !== letzteHebel) {
+          letzteHebel = neu;
           schrittListe.replaceChildren(
-            ...eintraege.map((text) => {
+            ...eintraege.map((e) => {
               const li = document.createElement("li");
-              li.textContent = text;
+              if (e.titel) {
+                const titel = document.createElement("strong");
+                titel.textContent = e.titel;
+                li.append(titel);
+              }
+              if (e.rechnung) {
+                const rechnung = document.createElement("span");
+                rechnung.className = "check__rechnung";
+                rechnung.textContent = e.rechnung;
+                li.append(rechnung);
+              }
+              const text = document.createElement("span");
+              text.textContent = e.schritt;
+              li.append(text);
               return li;
             }),
           );
         }
       }
+    }
+
+    // Für Tracking und Anfrage: der aktuelle Stand als JSON, ohne Ergebnis kein Attribut
+    if (fertig) {
+      const menge = (id: string) => z.durchrutscher.find((d) => d.id === id)?.menge ?? 0;
+      formular.dataset.ergebnis = JSON.stringify({
+        punkte: [...z.posten, ...z.durchrutscher].map((p) => p.aufgabe),
+        minuten: z.minuten,
+        stunden: z.stunden,
+        euro: z.euro,
+        umsatz: z.umsatz,
+        posten: z.posten.map((p) => ({
+          aufgabe: p.aufgabe,
+          menge: p.menge,
+          einheit: p.einheit,
+          minutenJe: p.minutenJe,
+          stunden: Math.round(p.stunden),
+        })),
+        durchrutscher: {
+          verpassteAnrufeProWoche: menge("verpasst"),
+          angeboteOhneNachfassenProMonat: menge("nachfassen"),
+          auftragswert: z.auftragswert,
+        },
+      });
+    } else {
+      delete formular.dataset.ergebnis;
     }
 
     if (knopf) knopf.disabled = !fertig;
@@ -283,14 +437,40 @@ function zeitfresserEinrichten(): void {
     // Die letzte Zeile muss auf „Stunden im Jahr.“ enden, das Anfrageformular ersetzt den Block daran
     const text = [
       "Ergebnis aus dem Zeitfresser-Check:",
-      ...z.punkte.map((p) => `- ${p}`),
-      `Gegenwert: entspricht ${umfang(z)}, rund ${euro.format(z.euro)} im Jahr bei ${EURO_PRO_STUNDE} € pro Stunde.`,
-      `Zeitaufwand im Team: ${z.zeitText} pro Tag, rund ${ganzzahl.format(z.stunden)} Stunden im Jahr.`,
+      ...z.posten.map((p) => `- ${p.aufgabe}: ${ganzzahl.format(p.menge)} ${p.einheitText}, ${stundenText(p.stunden)}`),
+      ...z.durchrutscher.map(
+        (d) =>
+          `- ${d.aufgabe}: ${ganzzahl.format(d.menge)} ${d.einheitText}` +
+          (z.auftragswert > 0 ? `, rund ${euro.format(runden(d.umsatz))} Umsatz im Jahr` : ""),
+      ),
+      ...(z.umsatz > 0
+        ? [`Umsatz, der durchrutscht: rund ${euro.format(z.umsatz)} im Jahr (Auftragswert ${euro.format(z.auftragswert)}).`]
+        : []),
+      ...(z.stunden > 0
+        ? [`Gegenwert: entspricht ${umfang(z)}, rund ${euro.format(z.euro)} im Jahr bei ${EURO_PRO_STUNDE} € pro Stunde.`]
+        : []),
+      z.stunden > 0
+        ? `Zeitaufwand im Team: rund ${ganzzahl.format(z.stunden)} Stunden im Jahr.`
+        : "Zeitaufwand im Team: nicht eingetragen, 0 Stunden im Jahr.",
     ].join("\n");
     window.dispatchEvent(new CustomEvent<string>("anfrage:vorbelegen", { detail: text }));
   });
 
-  formular.addEventListener("change", aktualisieren);
+  // Beim Verlassen aufräumen: nur Ziffern, Auftragswert mit Tausenderpunkt
+  formular.addEventListener("change", (event) => {
+    const feld = event.target;
+    if (feld instanceof HTMLInputElement && feld.inputMode === "numeric" && feld.value.trim() !== "") {
+      const wert = zahlAus(feld);
+      feld.value = feld.hasAttribute("data-auftragswert") ? ganzzahl.format(wert) : String(wert);
+    }
+    aktualisieren();
+  });
+  // Live beim Tippen, kurz gebündelt, damit die Ansage nicht bei jeder Ziffer neu startet
+  let warten = 0;
+  formular.addEventListener("input", () => {
+    window.clearTimeout(warten);
+    warten = window.setTimeout(aktualisieren, 250);
+  });
   formular.addEventListener("submit", (event) => event.preventDefault());
   aktualisieren();
 }
@@ -298,6 +478,11 @@ function zeitfresserEinrichten(): void {
 /* Anfrageformular ---------------------------------------------------------- */
 
 function anfrageEinrichten(): void {
+  // Etwas mehr als die Mindestdauer im Server (3000 ms, koch-plattform api/anfrage)
+  const MINDESTDAUER_MS = 3200;
+  // Wie der Server: keine Zeichen, die in mailto-Links oder Kopfzeilen etwas bedeuten
+  const emailMuster = /^[\p{L}\p{N}._+'-]+@(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{2,}$/u;
+
   const formular = document.querySelector<HTMLFormElement>("[data-anfrage]");
   if (!formular) return;
 
@@ -343,7 +528,7 @@ function anfrageEinrichten(): void {
       statusSetzen("Bitte tragen Sie Ihren Namen ein.");
       return name;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail.value.trim())) {
+    if (!emailMuster.test(mail.value.trim())) {
       mail.setAttribute("aria-invalid", "true");
       statusSetzen("Bitte prüfen Sie Ihre E-Mail-Adresse.");
       return mail;
@@ -360,8 +545,61 @@ function anfrageEinrichten(): void {
     statusSetzen("Gesendet");
   };
 
+  // Strukturiertes Ergebnis des Checks; zusätzlich zum Text in der Nachricht, für die Auswertung
+  let checkUebernommen: CheckErgebnis | null = null;
+  let sendetGerade = false;
+
+  const senden = async () => {
+    const umDirekt = `Bitte schreiben Sie direkt an ${email}.`;
+    statusSetzen("Wird gesendet …");
+    sendetGerade = true;
+    try {
+      // Der Server verwirft Anfragen, die schneller als 3 s nach dem Laden kommen (Spam-Schutz).
+      // Mit wiederhergestellten oder automatisch ausgefüllten Feldern schaffen das auch Menschen,
+      // deshalb hier kurz warten statt still zu verlieren.
+      const wartezeit = MINDESTDAUER_MS - (Date.now() - seitenStart);
+      if (wartezeit > 0) await new Promise((fertig) => window.setTimeout(fertig, wartezeit));
+
+      const antwort = await fetch(ziel, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.value.trim(),
+          firma: firma.value.trim(),
+          email: mail.value.trim(),
+          telefon: telefon.value.trim(),
+          nachricht: nachricht.value.trim(),
+          // Ohne Query und Hash: Kampagnenparameter machen die Adresse sonst beliebig lang
+          seite: window.location.origin + window.location.pathname,
+          website: honig.value,
+          check: checkErgebnis() ?? checkUebernommen,
+          aufruf: aufrufId(),
+          dauer: Date.now() - seitenStart,
+        }),
+      });
+      if (antwort.ok) {
+        erfolg();
+        return;
+      }
+      const daten = (await antwort.json().catch(() => null)) as { fehler?: string } | null;
+      const meldung = typeof daten?.fehler === "string" ? daten.fehler.trim() : "";
+      if (antwort.status === 429) {
+        statusSetzen(`${meldung || "Gerade kommen zu viele Anfragen an."} ${umDirekt}`);
+      } else if (antwort.status === 400 && meldung) {
+        statusSetzen(`${meldung} Sonst erreichen Sie mich direkt unter ${email}.`);
+      } else {
+        statusSetzen(`Senden hat nicht geklappt. ${umDirekt}`);
+      }
+    } catch {
+      statusSetzen(`Senden hat nicht geklappt, vielleicht ist die Verbindung weg. ${umDirekt}`);
+    } finally {
+      sendetGerade = false;
+    }
+  };
+
   formular.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (sendetGerade) return;
     const fehler = pruefen();
     if (fehler) {
       fehler.focus();
@@ -375,25 +613,7 @@ function anfrageEinrichten(): void {
     }
 
     if (ziel) {
-      statusSetzen("Wird gesendet …");
-      try {
-        const antwort = await fetch(ziel, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name.value.trim(),
-            firma: firma.value.trim(),
-            email: mail.value.trim(),
-            telefon: telefon.value.trim(),
-            nachricht: nachricht.value.trim(),
-            seite: window.location.href,
-          }),
-        });
-        if (!antwort.ok) throw new Error(String(antwort.status));
-        erfolg();
-      } catch {
-        statusSetzen(`Senden hat nicht geklappt. Bitte schreiben Sie direkt an ${email}.`);
-      }
+      await senden();
       return;
     }
 
@@ -415,6 +635,7 @@ function anfrageEinrichten(): void {
   // Ergebnis aus dem Zeitfresser-Check übernehmen
   window.addEventListener("anfrage:vorbelegen", (event) => {
     const block = (event as CustomEvent<string>).detail;
+    checkUebernommen = checkErgebnis() ?? checkUebernommen;
     const bisher = nachricht.value.replace(/Ergebnis aus dem Zeitfresser-Check:[\s\S]*?Stunden im Jahr\.\n*/u, "").trim();
     nachricht.value = bisher ? `${block}\n\n${bisher}` : block;
     statusSetzen("Ergebnis aus dem Check übernommen");
@@ -480,6 +701,30 @@ function grat(rnd: () => number, rauheit: number, breite: number): Float32Array 
     profil[x] = (v - min) / (max - min || 1);
   }
   return profil;
+}
+
+// Tonwerte per Bayer-Matrix auf Tinte (1) oder Papier (0) abbilden
+function maske(ton: Float32Array, breite: number, hoehe: number): Uint8Array {
+  const an = new Uint8Array(breite * hoehe);
+  for (let y = 0; y < hoehe; y++) {
+    for (let x = 0; x < breite; x++) {
+      const i = y * breite + x;
+      an[i] = ton[i] > (BAYER[y % 8][x % 8] + 0.5) / 64 ? 1 : 0;
+    }
+  }
+  return an;
+}
+
+function malen(ctx: CanvasRenderingContext2D, an: Uint8Array, breite: number, hoehe: number): void {
+  const bild = ctx.createImageData(breite, hoehe);
+  an.forEach((wert, i) => {
+    const farbe = wert ? TINTE : PAPIER;
+    bild.data[i * 4] = farbe[0];
+    bild.data[i * 4 + 1] = farbe[1];
+    bild.data[i * 4 + 2] = farbe[2];
+    bild.data[i * 4 + 3] = 255;
+  });
+  ctx.putImageData(bild, 0, 0);
 }
 
 function rastern(ctx: CanvasRenderingContext2D, ton: Float32Array, breite: number, hoehe: number): void {

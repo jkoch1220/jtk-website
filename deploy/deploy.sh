@@ -6,6 +6,22 @@ set -e
 SERVER="root@76.13.5.157"
 ZIEL="/var/www/jtkconsulting"
 
+# Das Formular sendet standardmäßig an /api/anfrage auf derselben Domain. Ohne Weiterleitung im
+# Webserver oder ohne laufende Plattform würde jede Anfrage scheitern, daher vorher prüfen.
+# Wer PUBLIC_ANFRAGE_URL selbst setzt (Umgebung oder .env), hat das Ziel bewusst gewählt.
+if [ -z "${PUBLIC_ANFRAGE_URL+gesetzt}" ] && ! grep -qs '^PUBLIC_ANFRAGE_URL=' .env; then
+  # Gesucht wird die Weiterleitung selbst: `handle /api/*` bzw. `location /api/` stehen auch im
+  # 404-Block für die übrigen /api-Pfade und bewiesen deshalb nicht mehr, dass /api/anfrage ankommt.
+  if ! ssh "$SERVER" "{ grep -qsF '@plattform path /api/anfrage' /etc/caddy/Caddyfile || grep -rqsF 'location ~ ^/api/(anfrage' /etc/nginx/; } \
+      && curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:3100/api/gesundheit"; then
+    echo "Abbruch: Das Anfrageformular hätte kein Ziel."
+    echo "Auf dem Server fehlt die Weiterleitung von /api/anfrage (siehe deploy/Caddyfile) oder die Koch-Plattform"
+    echo "läuft nicht (curl http://127.0.0.1:3100/api/gesundheit)."
+    echo "Übergangsweise mit E-Mail-Programm statt Plattform:  PUBLIC_ANFRAGE_URL= sh deploy/deploy.sh"
+    exit 1
+  fi
+fi
+
 npm run build
 ssh "$SERVER" "mkdir -p '$ZIEL'"
 rsync -avz --delete dist/ "$SERVER:$ZIEL/"

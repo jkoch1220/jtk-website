@@ -33,7 +33,7 @@ Inhaber und Geschäftsführer mittelständischer Betriebe in NRW (Handel, Handwe
 ## 3. Der Begleiter
 
 - **Empathie:** „Ich weiß, wie es ist, wenn das Büro den Betrieb ausbremst.“ Als Mitgesellschafter der Tennismehl GmbH erlebt Julian selbst, wo im Mittelstand Zeit verloren geht, von der Lohnabrechnung bis zur Tourenplanung.
-- **Autorität:** Fachinformatiker für Anwendungsentwicklung, früher Software-Architekt und Sales Engineer bei Cognex (industrielle Bildverarbeitung), eigene Projekte (Tennismehl-Portal, mandantenfähige Anfrage-Plattform). Später ergänzen: Kundenstimmen, Kennzahlen aus Projekten.
+- **Autorität:** Berater für digitale Abläufe (Consultant), kein „Entwickler“. Vorher Softwareentwicklung in großen Digitalprojekten für Konzerne und Vertriebsingenieur für Automatisierungstechnik; heute selbst Unternehmer: Mitgesellschafter und eingetragener Geschäftsführer der Tennismehl GmbH. Frühere Arbeitgeber und Kunden werden nicht genannt. Interims-Geschäftsführung wird bewusst nicht als Leistung angeboten (verwässert das Angebot, widerspricht „Sie hängen nie an mir“), höchstens im Erstgespräch. Eigene Projekte (Tennismehl-Portal, mandantenfähige Anfrage-Plattform). Später ergänzen: Kundenstimmen, Kennzahlen aus Projekten.
 
 ## 4. Der Plan
 
@@ -53,7 +53,7 @@ Inhaber und Geschäftsführer mittelständischer Betriebe in NRW (Handel, Handwe
 ## 5. Handlungsaufruf
 
 - **Direkt:** Erstgespräch vereinbaren.
-- **Übergang:** Zeitfresser-Check (2 Minuten). Ankreuzen, was noch von Hand läuft, Zeit schätzen, Stunden, Stellenanteil und Euro pro Jahr sehen (45 € pro Stunde), dazu zu jedem Kreuz einen ersten Schritt. Danach „Meinen Startpunkt besprechen“.
+- **Übergang:** Zeitfresser-Check (2 Minuten). Der Besucher trägt Mengen ein, die er kennt (Anfragen pro Woche, Routineanrufe pro Tag, Rechnungen pro Monat …), statt Zeiten zu schätzen. Gerechnet wird mit sichtbaren, vorsichtigen Richtwerten, die er anpassen kann. Ergebnis: Stunden, Stellenanteil und Euro pro Jahr (45 € pro Stunde), dazu der Umsatz, der durchrutscht (verpasste Anrufe, Angebote ohne Nachfassen, mit eigenem Auftragswert), und die größten Hebel mit Rechenweg. Danach „Meinen Startpunkt besprechen“.
 
 ## 6. Was auf dem Spiel steht
 
@@ -61,6 +61,6 @@ Doppelt getippte Daten, Fehler, die erst beim Kunden auffallen, Anfragen, die li
 
 ## 7. Erfolg
 
-Sie verlieren keine Anfrage mehr, schreiben keine Rechnung mehr von Hand und tippen nichts mehr doppelt. Die KI bereitet vor, Sie entscheiden. Ihr Team hat wieder Zeit für Kunden, und Sie sehen jederzeit, wo Ihr Betrieb steht.
+Sie verlieren keine Anfrage mehr, verpassen keinen Anruf mehr (KI-Telefonassistent, Anbieter bleibt neutral), schreiben keine Rechnung mehr von Hand und tippen nichts mehr doppelt. Die KI bereitet vor, Sie entscheiden. Ihr Team hat wieder Zeit für Kunden, und Sie sehen jederzeit, wo Ihr Betrieb steht.
 
 **Wandel:** vom Betrieb, den das Büro ausbremst, zum Betrieb, der mit der Zeit geht. Und der Chef ist wieder Unternehmer statt Sachbearbeiter im eigenen Betrieb.
