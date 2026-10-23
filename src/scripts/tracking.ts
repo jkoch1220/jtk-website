@@ -315,6 +315,15 @@ function starten(): void {
     document.querySelectorAll<HTMLElement>("section[id]").forEach((s) => beobachter.observe(s));
   }
 
+  let heroGestempelt = false;
+  document.addEventListener(
+    "beleg:feierabend",
+    () => {
+      melden("klick", { ziel: "Hero: alle Akten abgelegt" });
+    },
+    { once: true },
+  );
+
   document.addEventListener(
     "click",
     (event) => {
@@ -335,6 +344,14 @@ function starten(): void {
           return;
         }
         if (start.closest("form[data-check]")) return;
+        // Hero-Stempel: nur der erste je Aufruf, sonst wäre jede Akte ein eigener Klick
+        if (start.closest("[data-beleg-stempeln]")) {
+          if (!heroGestempelt) {
+            heroGestempelt = true;
+            melden("klick", { ziel: "Hero: erste Akte gestempelt" });
+          }
+          return;
+        }
         const element = start.closest("a, button");
         const ziel = element ? klickZiel(element) : null;
         if (ziel) melden("klick", { ziel });

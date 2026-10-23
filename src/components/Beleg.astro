@@ -1,23 +1,67 @@
 ---
-// Hero-Motiv: ein Durchschreibesatz (Original, gelbe und rosa Kopie), dessen
-// Felder sich selbst ausfüllen und der am Ende gestempelt wird.
+// Hero-Motiv: ein Durchschreibesatz (Original, gelbe und rosa Kopie) als Aktenstapel. Die oberste
+// Akte füllt sich selbst aus; mit JavaScript stempelt der Besucher sie ab, und sie fliegt samt
+// Durchschlägen in die Ablage (src/scripts/beleg-stempel.ts). Ohne JavaScript bleibt es das
+// statische Bild: die Rechnung mit Stempel „Erledigt“.
+// Inhalte und Nachrechnung der Beträge stehen in src/data/akten.ts.
 // Schnittmarken und Kohlepapier sind reine Zier.
-// Alle Beträge sind nachgerechnet: 170,00 + 214,50 + 45,00 = 429,50 netto,
-// 19 % USt. = 81,61, gesamt 511,11.
+import { akten, hatJahr, mitJahr, type Feld } from "../data/akten";
+
 const heute = new Date();
-const datum = heute.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const format = (d: Date) => d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const gestern = new Date(heute);
+gestern.setDate(heute.getDate() - 1);
 const monate = ["JAN.", "FEB.", "MÄRZ", "APR.", "MAI", "JUNI", "JULI", "AUG.", "SEP.", "OKT.", "NOV.", "DEZ."];
 const stempelDatum = `${heute.getDate()}. ${monate[heute.getMonth()]} ${heute.getFullYear()}`;
 const jahr = heute.getFullYear();
 
-const positionen = [
-  { pos: "1", text: "Wartung Lüftungsanlage", menge: "2 Std.", betrag: "170,00" },
-  { pos: "2", text: "Filtersatz F7", menge: "1 Stk.", betrag: "214,50" },
-  { pos: "3", text: "Anfahrtspauschale", menge: "1", betrag: "45,00" },
-];
+// Werte mit {jahr} tragen ihr Muster, damit der Browser das laufende Jahr einsetzt
+const jahrNr = (text: string) => (hatJahr(text) ? text : undefined);
+const feldWert = (f: Feld) => (f.art === "datum" ? format(heute) : f.art === "gestern" ? format(gestern) : mitJahr(f.dd, jahr));
+const zuerst = akten[0];
 ---
 
-<figure class="beleg">
+<figure class="beleg" data-beleg-figur>
+  <!-- Tinte für alle Abdrücke, drei Körnungen. Nicht display: none, sonst fehlt der Filter in Firefox. -->
+  <svg class="beleg__tinten" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      {
+        [
+          [4, 11],
+          [7, 19],
+          [13, 23],
+        ].map(([fein, flecken], i) => (
+          <filter
+            id={i === 0 ? "stempel-tinte" : `stempel-tinte-${i + 1}`}
+            x="-6%"
+            y="-12%"
+            width="112%"
+            height="124%"
+            color-interpolation-filters="sRGB"
+          >
+            <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed={fein} result="fein" />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="fein"
+              scale="2.6"
+              xChannelSelector="R"
+              yChannelSelector="G"
+              result="rau"
+            />
+            <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed={flecken} result="flecken" />
+            <feColorMatrix
+              in="flecken"
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
+              result="maske"
+            />
+            <feComposite in="rau" in2="maske" operator="in" />
+          </filter>
+        ))
+      }
+    </defs>
+  </svg>
+
   <div
     class="beleg__stapel"
     data-beleg
@@ -28,125 +72,171 @@ const positionen = [
     <div class="beleg__kopie beleg__kopie--gelb" aria-hidden="true"></div>
     <div class="beleg__kopie beleg__kopie--kohle" aria-hidden="true"></div>
     <div class="beleg__bogen" aria-hidden="true">
-      <p class="beleg__absender">Muster Haustechnik GmbH, Musterweg 3, 40878 Ratingen</p>
-      <p class="beleg__titel">Rechnung</p>
+      {
+        akten.map((akte, i) => (
+          <div
+            class="beleg__akte"
+            data-akte={i}
+            data-aktiv={i === 0 ? "" : undefined}
+            data-stempel={akte.stempel}
+            data-name={akte.name}
+            data-kurz={akte.kurz}
+            data-bildunterschrift={akte.bildunterschrift}
+          >
+            <p class="beleg__absender">{akte.absender}</p>
+            <p class="beleg__titel">{akte.titel}</p>
 
-      <dl class="beleg__meta">
-        <div>
-          <dt>Rechnungs-Nr.</dt>
-          <dd><span data-wert data-rechnungsnr>{jahr}-0418</span></dd>
-        </div>
-        <div>
-          <dt>Datum</dt>
-          <dd><span data-wert data-datum>{datum}</span></dd>
-        </div>
-        <div>
-          <dt>Kunden-Nr.</dt>
-          <dd><span data-wert>10482</span></dd>
-        </div>
-      </dl>
+            <dl class="beleg__meta">
+              {akte.meta.map((f) => (
+                <div>
+                  <dt>{f.dt}</dt>
+                  <dd>
+                    <span
+                      data-wert
+                      data-jahr-nr={jahrNr(f.dd)}
+                      data-datum={f.art ? "" : undefined}
+                      data-tage={f.art === "gestern" ? "-1" : undefined}
+                    >
+                      {feldWert(f)}
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
 
-      <div class="beleg__empfaenger">
-        <span>Empfänger</span>
-        <span><span data-wert>Mustermann Gebäudeservice GmbH</span></span>
-        <span><span data-wert>Musterstraße 12, 41460 Neuss</span></span>
-      </div>
+            <div class="beleg__empfaenger">
+              <span>{akte.partei.bezeichnung}</span>
+              {akte.partei.zeilen.map((z) => (
+                <span>
+                  <span data-wert>{z}</span>
+                </span>
+              ))}
+            </div>
 
-      <table class="beleg__tabelle">
-        <thead>
-          <tr>
-            <th scope="col">Pos.</th>
-            <th scope="col">Bezeichnung</th>
-            <th scope="col" class="rechts">Menge</th>
-            <th scope="col" class="rechts">Betrag €</th>
-          </tr>
-        </thead>
-        <tbody>
+            <table class="beleg__tabelle">
+              <thead>
+                <tr>
+                  {akte.spalten.map((s, j) => (
+                    <th scope="col" class={j > 1 ? "rechts" : undefined}>
+                      {s}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {akte.zeilen.map((zeile) => (
+                  <tr>
+                    {zeile.map((zelle, j) => (
+                      <td class={j > 1 ? "rechts" : undefined}>
+                        <span data-wert>{zelle}</span>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <dl class="beleg__summen">
+              {akte.summen.map((f, j) => (
+                <div class={j === 2 ? "gesamt" : undefined}>
+                  <dt>{f.dt}</dt>
+                  <dd>
+                    <span data-wert>{f.dd}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+
+            <div class="beleg__fuss">
+              <span>{akte.fuss}</span>
+              <span class="beleg__format" data-jahr-nr={jahrNr(akte.plakette)}>
+                {mitJahr(akte.plakette, jahr)}
+              </span>
+            </div>
+
+            {i === 0 && (
+              <svg class="stempel stempel--vorlage" viewBox="0 0 260 104" focusable="false">
+                <g filter="url(#stempel-tinte)">
+                  <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5" />
+                  <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" />
+                  <text
+                    x="130"
+                    y="60"
+                    text-anchor="middle"
+                    fill="currentColor"
+                    font-size="44"
+                    font-weight="800"
+                    letter-spacing="3"
+                    data-stempel-text
+                  >
+                    {akte.stempel}
+                  </text>
+                  <text
+                    x="130"
+                    y="82"
+                    text-anchor="middle"
+                    fill="currentColor"
+                    font-size="12.5"
+                    font-weight="650"
+                    letter-spacing="2.5"
+                    data-stempel-datum
+                  >
+                    {stempelDatum}
+                  </text>
+                </g>
+              </svg>
+            )}
+          </div>
+        ))
+      }
+
+      <!-- Am Tagesende: die Übersicht über alles, was gerade abgestempelt wurde -->
+      <div class="beleg__akte beleg__akte--abschluss" data-akte-abschluss>
+        <p class="beleg__absender">Muster Haustechnik GmbH, Wiedervorlage</p>
+        <p class="beleg__titel">Erledigt heute</p>
+        <dl class="beleg__meta">
+          <div>
+            <dt>Datum</dt>
+            <dd><span data-wert data-datum>{format(heute)}</span></dd>
+          </div>
+          <div>
+            <dt>Akten</dt>
+            <dd><span data-wert>{akten.length}</span></dd>
+          </div>
+          <div>
+            <dt>Offen</dt>
+            <dd><span data-wert>0</span></dd>
+          </div>
+        </dl>
+        <ol class="beleg__uebersicht">
           {
-            positionen.map((p) => (
-              <tr>
-                <td><span data-wert>{p.pos}</span></td>
-                <td><span data-wert>{p.text}</span></td>
-                <td class="rechts"><span data-wert>{p.menge}</span></td>
-                <td class="rechts"><span data-wert>{p.betrag}</span></td>
-              </tr>
+            akten.map((akte) => (
+              <li>
+                <span class="beleg__haken">
+                  <span data-wert>✓</span>
+                </span>
+                <span>
+                  <span data-wert data-jahr-nr={jahrNr(akte.name)}>
+                    {mitJahr(akte.name, jahr)}
+                  </span>
+                </span>
+                <span class="beleg__stand">
+                  <span data-wert>{akte.stempel.toLowerCase()}</span>
+                </span>
+              </li>
             ))
           }
-        </tbody>
-      </table>
-
-      <dl class="beleg__summen">
-        <div>
-          <dt>Netto</dt>
-          <dd><span data-wert>429,50</span></dd>
+        </ol>
+        <dl class="beleg__summen">
+          <div class="gesamt">
+            <dt>Offen</dt>
+            <dd><span data-wert>nichts</span></dd>
+          </div>
+        </dl>
+        <div class="beleg__fuss">
+          <span>Beispielakten. Alle Firmen und Personen sind erfunden.</span>
         </div>
-        <div>
-          <dt>USt. 19 %</dt>
-          <dd><span data-wert>81,61</span></dd>
-        </div>
-        <div class="gesamt">
-          <dt>Gesamt</dt>
-          <dd><span data-wert>511,11 €</span></dd>
-        </div>
-      </dl>
-
-      <div class="beleg__fuss">
-        <span>Zahlbar innerhalb von 14 Tagen ohne Abzug.</span>
-        <span class="beleg__format">E-Rechnung (ZUGFeRD)</span>
       </div>
-
-      <svg class="stempel" viewBox="0 0 260 104" focusable="false">
-        <defs>
-          <filter
-            id="stempel-tinte"
-            x="-6%"
-            y="-12%"
-            width="112%"
-            height="124%"
-            color-interpolation-filters="sRGB"
-          >
-            <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="4" result="fein"></feTurbulence>
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="fein"
-              scale="2.6"
-              xChannelSelector="R"
-              yChannelSelector="G"
-              result="rau"></feDisplacementMap>
-            <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed="11" result="flecken"
-            ></feTurbulence>
-            <feColorMatrix
-              in="flecken"
-              type="matrix"
-              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
-              result="maske"></feColorMatrix>
-            <feComposite in="rau" in2="maske" operator="in"></feComposite>
-          </filter>
-        </defs>
-        <g filter="url(#stempel-tinte)">
-          <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"></rect>
-          <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
-          <text
-            x="130"
-            y="60"
-            text-anchor="middle"
-            fill="currentColor"
-            font-size="44"
-            font-weight="800"
-            letter-spacing="3">ERLEDIGT</text
-          >
-          <text
-            x="130"
-            y="82"
-            text-anchor="middle"
-            fill="currentColor"
-            font-size="12.5"
-            font-weight="650"
-            letter-spacing="2.5"
-            data-stempel-datum>{stempelDatum}</text
-          >
-        </g>
-      </svg>
     </div>
     <div class="beleg__marken" aria-hidden="true">
       {
@@ -157,9 +247,82 @@ const positionen = [
         ))
       }
     </div>
+    <button
+      type="button"
+      class="beleg__stempelknopf"
+      data-beleg-stempeln
+      aria-describedby="beleg-akte-kurz"
+      hidden
+    ></button>
   </div>
+
+  <!-- Schreibtisch unter dem Stapel: links das Stempelkissen, rechts die Ablage -->
+  <div class="beleg__tisch" data-beleg-tisch aria-hidden="true" hidden>
+    <div class="stempelkissen" data-stempelkissen><span class="stempelkissen__filz"></span></div>
+    <div class="ablage" data-ablage>
+      <div class="ablage__blaetter" data-ablage-blaetter></div>
+      <div class="ablage__lippe">
+        <span>Erledigt</span>
+        <span class="ablage__zaehler" data-ablage-zaehler>0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Der Stempel in der Hand. Seine Unterkante (Mitte) ist die Stelle, an der er abdruckt. -->
+  <div class="stempelgriff" data-stempelgriff aria-hidden="true" hidden>
+    <span class="stempelgriff__schatten" data-griff-schatten></span>
+    <div class="stempelgriff__koerper" data-griff-koerper>
+      <svg viewBox="0 0 200 129" focusable="false">
+        <defs>
+          <linearGradient id="griff-holz" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="griff-stopp--licht"></stop>
+            <stop offset="0.55" class="griff-stopp--holz"></stop>
+            <stop offset="1" class="griff-stopp--tief"></stop>
+          </linearGradient>
+          <linearGradient id="griff-hals" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" class="griff-stopp--licht"></stop>
+            <stop offset="0.6" class="griff-stopp--holz"></stop>
+            <stop offset="1" class="griff-stopp--tief"></stop>
+          </linearGradient>
+          <radialGradient id="griff-knauf" cx="0.36" cy="0.32" r="0.75">
+            <stop offset="0" class="griff-stopp--glanz"></stop>
+            <stop offset="0.35" class="griff-stopp--licht"></stop>
+            <stop offset="1" class="griff-stopp--tief"></stop>
+          </radialGradient>
+        </defs>
+        <path class="stempelgriff__hals" d="M88 40C90 58 86 74 80 88H120C114 74 110 58 112 40Z"></path>
+        <ellipse class="stempelgriff__knauf" cx="100" cy="25" rx="25" ry="23"></ellipse>
+        <rect class="stempelgriff__kragen" x="72" y="84" width="56" height="9" rx="3"></rect>
+        <rect class="stempelgriff__block" x="2" y="91" width="196" height="26" rx="2.5"></rect>
+        <rect class="stempelgriff__kante" x="4" y="92" width="192" height="2" rx="1"></rect>
+        <rect class="stempelgriff__etikett" x="58" y="97" width="84" height="15" rx="1"></rect>
+        <text
+          class="stempelgriff__text"
+          x="100"
+          y="108"
+          text-anchor="middle"
+          font-size="9.5"
+          font-weight="800"
+          letter-spacing="1.2"
+          data-griff-text>{zuerst.stempel}</text
+        >
+        <rect class="stempelgriff__gummi" x="6" y="117" width="188" height="10" rx="1"></rect>
+        <rect class="stempelgriff__tinte" x="6" y="126.5" width="188" height="2.5" rx="1"></rect>
+      </svg>
+    </div>
+  </div>
+
   <figcaption>
-    <span id="beleg-beschreibung">So entsteht Ihre nächste Rechnung: automatisch erstellt und als E-Rechnung verschickt.</span>
-    <button type="button" class="beleg__nochmal" data-beleg-nochmal hidden>Noch einmal ausfüllen</button>
+    <span class="beleg__unterschrift">
+      <span class="beleg__hinweis" data-beleg-hinweis hidden>
+        <span class="nur-maus">Nehmen Sie den Stempel und erledigen Sie die Rechnung.</span>
+        <span class="nur-touch">Tippen Sie auf die Rechnung, um sie abzustempeln.</span>
+      </span>
+      <span data-beleg-unterschrift>{zuerst.bildunterschrift}</span>
+      <a class="beleg__kontakt" href="#kontakt" data-beleg-kontakt hidden>Kostenloses Erstgespräch vereinbaren</a>
+    </span>
+    <button type="button" class="beleg__nochmal" data-beleg-nochmal hidden>Stapel neu auflegen</button>
+    <span class="sr-only" id="beleg-akte-kurz" data-beleg-kurz></span>
+    <span class="sr-only" role="status" data-beleg-ansage></span>
   </figcaption>
 </figure>

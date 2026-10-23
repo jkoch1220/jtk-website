@@ -125,14 +125,15 @@ const nachtCss =
         <script is:inline>
           // Animation vorbereiten, bevor die Seite sichtbar wird. Startet das
           // Hauptskript nicht, wird nach 2,5 s alles normal angezeigt.
+          // "stempeln" verbirgt den statischen Stempel im Hero (auch bei reduzierter
+          // Bewegung), denn mit Skript setzt ihn der Besucher selbst.
           (function () {
-            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-              var root = document.documentElement;
-              root.classList.add("bewegung");
-              setTimeout(function () {
-                if (!window.__belegGestartet) root.classList.remove("bewegung");
-              }, 2500);
-            }
+            var root = document.documentElement;
+            root.classList.add("stempeln");
+            if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) root.classList.add("bewegung");
+            setTimeout(function () {
+              if (!window.__belegGestartet) root.classList.remove("bewegung", "stempeln");
+            }, 2500);
           })();
         </script>
       )

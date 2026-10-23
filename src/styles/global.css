@@ -140,6 +140,13 @@
   --kontaktschatten: rgb(var(--sch) / 0.24);
   --klebeband-deckkraft: 0.85;
   --kohle-schimmer: rgb(255 255 255 / 0.08); /* Glanzstreifen auf dem Kohlepapier im Hero */
+  /* Handstempel im Hero: Holz und Gummi liegen unter der Lampe, hell wie dunkel gleich */
+  --griff-holz: #b5793f;
+  --griff-holz-licht: #d9a467;
+  --griff-holz-glanz: #f3d3a1;
+  --griff-holz-tief: #7b4a22;
+  --griff-gummi: #2b2633;
+  --griff-etikett: #f7f2e6;
   --glut: #f0902a; /* Brenn-Animation im Pixeljahr: Gelb, Glut, Glut-Rot, Flächenrot */
   --glut-rot: #e2512f;
   --knuell-licht: rgb(255 255 255 / 0.6); /* Lichtseite der Papierkugel im Zeitfresser-Check */
@@ -1084,6 +1091,7 @@ a:hover {
 /* Nur der Stapel liegt schräg; Bildunterschrift und Link stehen gerade wie der übrige Satz */
 .beleg {
   --ausbruch: calc(var(--marg) * 0.4);
+  position: relative;
   grid-column: 8 / -1;
   justify-self: end;
   width: min(680px, calc(100% + var(--ausbruch)));
@@ -1184,6 +1192,8 @@ a:hover {
 
 .beleg__bogen {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-area: 1 / 1;
   padding: 7cqi 7cqi 7.5cqi;
   background: var(--insel-licht), var(--bogen);
@@ -1411,6 +1421,355 @@ a:hover {
   font-stretch: var(--breit);
 }
 
+/* Beleg: Stempeln und Ablage ---------------------------------------------------
+   Alle Akten liegen im selben Rasterfeld übereinander, der Bogen ist so hoch wie die höchste.
+   Sichtbar ist nur die aktive; ohne JavaScript ist das die Rechnung mit statischem Stempel. */
+.beleg__akte {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.beleg__akte:not([data-aktiv]) {
+  visibility: hidden;
+}
+
+/* Tagesübersicht am Ende: abgestempelte Akten mit Haken */
+.beleg__akte--abschluss {
+  display: flex;
+  flex-direction: column;
+}
+
+.beleg__akte--abschluss .beleg__absender {
+  align-self: flex-start;
+}
+
+/* Der Fuß steht unten wie auf den anderen Akten, darüber ist Platz für den letzten Stempel */
+.beleg__akte--abschluss .beleg__fuss {
+  margin-top: auto;
+}
+
+.beleg__uebersicht {
+  margin: 5cqi 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--linie-stark);
+}
+
+.beleg__uebersicht li {
+  display: grid;
+  grid-template-columns: 9% minmax(0, 1fr) auto;
+  gap: 2cqi;
+  align-items: baseline;
+  padding: 0.7em 0 0.55em;
+  border-bottom: 1px solid var(--linie);
+}
+
+.beleg__haken [data-wert] {
+  color: var(--stempel);
+  font-weight: 700;
+}
+
+.beleg__stand {
+  color: var(--tinte-matt);
+}
+
+/* Filter der Tinte: unsichtbar, aber nicht display: none (sonst fehlt er in Firefox) */
+.beleg__tinten {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Mit JavaScript setzt der Besucher den Stempel; der statische bleibt bis dahin verborgen */
+.stempeln [data-beleg] .stempel--vorlage {
+  visibility: hidden;
+}
+
+.ist-stempelbar .stempel--vorlage {
+  display: none;
+}
+
+/* Abdrücke sitzen an der Klickstelle, Lage und Drehung setzt das Skript */
+.stempel--abdruck {
+  bottom: auto;
+  transform: none;
+}
+
+/* Der Knopf liegt deckungsgleich über dem Bogen und dreht mit dem Stapel */
+.beleg__stempelknopf {
+  position: relative;
+  z-index: 2;
+  grid-area: 1 / 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Der Rahmen liegt innen auf dem Bogen: Papier trägt die Inseltinte hell wie nachts, außen
+   verschwände die Seitenfarbe nachts auf den hellen Durchschlägen */
+.beleg__stempelknopf:focus-visible {
+  outline: 2px dashed var(--insel-tinte);
+  outline-offset: -8px;
+}
+
+/* Der Stempel in der Hand ersetzt den Mauszeiger, sobald er unter ihm angekommen ist */
+.beleg.ist-folgt .beleg__stempelknopf {
+  cursor: none;
+}
+
+/* Geist: die abgestempelte Akte samt Durchschlägen auf dem Weg in die Ablage */
+.beleg__geist {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0 4.5% 5.5% 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Schreibtisch unter dem Stapel: Stempelkissen links, Ablage rechts. Er liegt über dem
+   Stapel, so fällt das Blatt hinter die Lippe der Ablage. */
+.beleg__tisch {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 58px;
+  margin-top: 14px;
+  padding: 0 4.5% 0 3%;
+}
+
+.stempelkissen {
+  position: relative;
+  width: 19%;
+  min-width: 60px;
+  height: 20px;
+  border: 2px solid var(--rahmen);
+  border-radius: 5px;
+  background: var(--feld);
+  box-shadow: 3px 3px 0 var(--versatz);
+}
+
+.stempelkissen__filz {
+  position: absolute;
+  inset: 3px;
+  border-radius: 2px;
+  background:
+    radial-gradient(ellipse at 38% 30%, rgb(255 255 255 / 0.22), transparent 60%),
+    var(--stempel-flaeche);
+}
+
+.ablage {
+  position: relative;
+  width: 30%;
+  max-width: 200px;
+  height: 46px;
+}
+
+/* Rückwand */
+.ablage::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 6%;
+  bottom: 16px;
+  left: 6%;
+  border: 2px solid var(--rahmen);
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: var(--papier-tief);
+}
+
+.ablage__blaetter {
+  position: absolute;
+  right: 13%;
+  bottom: 12px;
+  left: 13%;
+  height: 26px;
+}
+
+.ablage__blatt {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 24px;
+  border-radius: 1px;
+  background: var(--insel-bogen);
+  box-shadow: var(--e1);
+  transform: translateY(calc(var(--i, 0) * -2px)) rotate(var(--dreh, 0deg));
+}
+
+/* Angedeuteter Stempel auf jedem abgelegten Blatt */
+.ablage__blatt::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 14%;
+  width: 34%;
+  height: 8px;
+  border: 1.5px solid var(--insel-stempel);
+  border-radius: 2px;
+  opacity: 0.85;
+  transform: rotate(-8deg);
+}
+
+.ablage__lippe {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 22px;
+  padding: 0 8px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--versatz);
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ablage__zaehler {
+  display: inline-block;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Der Handstempel: so breit wie sein Abdruck (37 % des Bogens, der 95,5 % des Stapels misst).
+   Die Mitte seiner Unterkante ist der Punkt, an dem er abdruckt; dort setzt das Skript ihn hin. */
+.stempelgriff {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: calc(37% * 0.955);
+  translate: -50% -100%;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.stempelgriff__koerper {
+  position: relative;
+  transform-origin: 50% 100%;
+}
+
+.stempelgriff__koerper svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* Eigener Schatten: Lage und Deckkraft zeigen die Höhe über dem Papier */
+.stempelgriff__schatten {
+  position: absolute;
+  right: 4%;
+  bottom: -7px;
+  left: 4%;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--sch) / 0.6), transparent);
+  opacity: 0.5;
+}
+
+.griff-stopp--glanz {
+  stop-color: var(--griff-holz-glanz);
+}
+
+.griff-stopp--licht {
+  stop-color: var(--griff-holz-licht);
+}
+
+.griff-stopp--holz {
+  stop-color: var(--griff-holz);
+}
+
+.griff-stopp--tief {
+  stop-color: var(--griff-holz-tief);
+}
+
+.stempelgriff__knauf {
+  fill: url(#griff-knauf);
+}
+
+.stempelgriff__hals {
+  fill: url(#griff-hals);
+}
+
+.stempelgriff__kragen {
+  fill: var(--griff-holz-tief);
+}
+
+.stempelgriff__block {
+  fill: url(#griff-holz);
+}
+
+.stempelgriff__kante {
+  fill: var(--griff-holz-glanz);
+  opacity: 0.6;
+}
+
+.stempelgriff__etikett {
+  fill: var(--griff-etikett);
+}
+
+.stempelgriff__text {
+  fill: var(--insel-stempel);
+  font-family: var(--schrift);
+  font-stretch: var(--breit);
+}
+
+.stempelgriff__gummi {
+  fill: var(--griff-gummi);
+}
+
+.stempelgriff__tinte {
+  fill: var(--insel-stempel);
+}
+
+@media (max-width: 767px) {
+  .beleg__tisch {
+    height: 48px;
+    margin-top: 10px;
+  }
+
+  .ablage {
+    width: 36%;
+  }
+
+  .ablage__lippe {
+    font-size: 14px;
+  }
+}
+
+/* Hohe Kontraste: kein gemalter Stempel, dann bleibt auch der Mauszeiger */
+@media (forced-colors: active) {
+  .stempelgriff {
+    display: none;
+  }
+
+  .beleg.ist-folgt .beleg__stempelknopf {
+    cursor: pointer;
+  }
+}
+
 .beleg figcaption {
   display: flex;
   flex-wrap: wrap;
@@ -1425,6 +1784,48 @@ a:hover {
 
 .beleg figcaption > span {
   text-wrap: balance;
+}
+
+/* Mit Stempel wechselt der Text je Akte; die feste Mindesthöhe hält den Hero ruhig */
+.beleg.ist-stempelbar figcaption {
+  min-height: 5em;
+  align-content: flex-start;
+}
+
+.beleg__unterschrift {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.beleg__hinweis {
+  color: var(--tinte);
+  font-weight: 560;
+}
+
+.beleg__hinweis .nur-maus {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .beleg__hinweis .nur-maus {
+    display: inline;
+  }
+
+  .beleg__hinweis .nur-touch {
+    display: none;
+  }
+}
+
+.beleg__kontakt {
+  color: var(--tinte);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.beleg__kontakt:hover {
+  text-decoration-thickness: 2px;
 }
 
 .beleg__nochmal {
@@ -1448,10 +1849,6 @@ a:hover {
    nimmt es die Klasse nach kurzer Zeit wieder weg. */
 .bewegung [data-beleg] [data-wert] {
   clip-path: inset(0 100% 0 0);
-}
-
-.bewegung [data-beleg] .stempel {
-  opacity: 0;
 }
 
 .bewegung [data-beleg] .beleg__kopie {
@@ -4975,6 +5372,7 @@ html.check-leiste-an {
   }
 
   .beleg__nochmal,
+  .beleg__kontakt,
   .check__link,
   .leise-knopf {
     display: inline-flex;
@@ -5201,6 +5599,15 @@ html.modus-wechsel::view-transition-new(root) {
   .schreibtisch.schreibtisch--desktop {
     height: auto;
     overflow: visible;
+  }
+
+  /* Hero: gedruckt wird die oberste Akte, ohne Stempel in der Hand und ohne Ablage */
+  .stempelgriff,
+  .beleg__tisch,
+  .beleg__stempelknopf,
+  .beleg__geist,
+  .beleg__hinweis {
+    display: none !important;
   }
 
   .schreibtisch.schreibtisch--desktop .meldung {

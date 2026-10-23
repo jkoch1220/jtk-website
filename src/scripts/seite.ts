@@ -7,12 +7,8 @@ import { BAYER, palette } from "./berge-szene";
 import { panoramaEinrichten } from "./berge-buehne";
 import { meldungenEinrichten } from "./meldungen";
 import { zeitfresserEinrichten } from "./zeitfresser";
-
-declare global {
-  interface Window {
-    __belegGestartet?: boolean;
-  }
-}
+import { belegEinrichten } from "./beleg-stempel";
+import { mitJahr } from "../data/akten";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -48,85 +44,27 @@ function rueckmeldung(knopf: HTMLButtonElement, text: string): void {
   }, 2200);
 }
 
-/* Datum im Beleg auf heute setzen ------------------------------------------ */
+/* Datum und Jahr im Beleg auf heute setzen ------------------------------- */
 
+// Gebaut wird die Seite einmal; Datum und Nummern sollen trotzdem von heute sein.
+// data-tage verschiebt das Datum (−1: gestern), data-jahr-nr ist ein Muster mit {jahr}.
 function datumSetzen(): void {
   const heute = new Date();
-  const datum = heute.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   const monate = ["JAN.", "FEB.", "MÄRZ", "APR.", "MAI", "JUNI", "JULI", "AUG.", "SEP.", "OKT.", "NOV.", "DEZ."];
   const stempel = `${heute.getDate()}. ${monate[heute.getMonth()]} ${heute.getFullYear()}`;
 
-  document.querySelectorAll<HTMLElement>("[data-datum]").forEach((el) => (el.textContent = datum));
-  document.querySelectorAll<HTMLElement>("[data-rechnungsnr]").forEach((el) => {
-    el.textContent = `${heute.getFullYear()}-0418`;
+  document.querySelectorAll<HTMLElement>("[data-datum]").forEach((el) => {
+    const tag = new Date(heute);
+    tag.setDate(heute.getDate() + Number(el.dataset.tage ?? 0));
+    el.textContent = tag.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+  });
+  document.querySelectorAll<HTMLElement>("[data-jahr-nr]").forEach((el) => {
+    el.textContent = mitJahr(el.dataset.jahrNr ?? "", heute.getFullYear());
   });
   document.querySelectorAll<SVGTextElement>("[data-stempel-datum]").forEach((el) => (el.textContent = stempel));
 }
 
-/* Hero: Rechnung füllt sich selbst aus ------------------------------------ */
-
-function belegAnimieren(): void {
-  const beleg = document.querySelector<HTMLElement>("[data-beleg]");
-  const nochmal = document.querySelector<HTMLButtonElement>("[data-beleg-nochmal]");
-  if (!beleg) return;
-
-  window.__belegGestartet = true;
-
-  if (bewegungReduziert) {
-    document.documentElement.classList.remove("bewegung");
-    return;
-  }
-
-  const werte = beleg.querySelectorAll<HTMLElement>("[data-wert]");
-  const kopien = beleg.querySelectorAll<HTMLElement>(".beleg__kopie");
-  const bogen = beleg.querySelector<HTMLElement>(".beleg__bogen");
-  const stempel = beleg.querySelector<SVGSVGElement>(".stempel");
-
-  // Endlage der Kopien aus dem CSS lesen. Die Klasse "bewegung" hält bis hierhin
-  // den Startzustand; sie wird entfernt und im selben Takt durch Inline-Stile
-  // ersetzt, damit nichts aufblitzt.
-  document.documentElement.classList.remove("bewegung");
-  const kopieZiele = Array.from(kopien).map((kopie) => {
-    const m = new DOMMatrix(getComputedStyle(kopie).transform);
-    return { x: m.e, y: m.f, rotation: (Math.atan2(m.b, m.a) * 180) / Math.PI };
-  });
-
-  gsap.set(werte, { clipPath: "inset(0 100% 0 0)" });
-  gsap.set(kopien, { x: 0, y: 0, rotation: 0 });
-  gsap.set(stempel, { autoAlpha: 0, scale: 1.45 });
-
-  const zeitleiste = gsap.timeline({ paused: true });
-
-  zeitleiste
-    .to(werte, {
-      clipPath: "inset(0 0% 0 0)",
-      duration: 0.15,
-      ease: "none",
-      stagger: 0.07,
-      delay: 0.35,
-    })
-    .to(
-      kopien,
-      {
-        x: (i: number) => kopieZiele[i].x,
-        y: (i: number) => kopieZiele[i].y,
-        rotation: (i: number) => kopieZiele[i].rotation,
-        duration: 0.5,
-        ease: "power3.out",
-        stagger: { each: 0.07, from: "end" },
-      },
-      "+=0.12",
-    )
-    .to(stempel, { autoAlpha: 1, scale: 1, duration: 0.13, ease: "power4.in" }, "-=0.12")
-    .to(bogen, { y: 3, duration: 0.05, ease: "power1.out", yoyo: true, repeat: 1 });
-
-  zeitleiste.play(0);
-
-  if (nochmal) {
-    nochmal.hidden = false;
-    nochmal.addEventListener("click", () => zeitleiste.restart(false, false));
-  }
-}
+/* Hero: Aktenstapel zum Abstempeln steht in ./beleg-stempel ------------------ */
 
 /* Problem: Meldungen wegklicken steht in ./meldungen ------------------------ */
 
@@ -450,7 +388,7 @@ function kopierKnoepfeEinrichten(): void {
 }
 
 datumSetzen();
-belegAnimieren();
+belegEinrichten(bewegungReduziert);
 meldungenEinrichten();
 zeitfresserEinrichten();
 anfrageEinrichten();
