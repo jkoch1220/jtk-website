@@ -46,6 +46,16 @@ type Verlust = {
   schritt: string;
 };
 
+type Urteil = {
+  kicker: string;
+  titel: string;
+  text: string;
+  stempelOben: string;
+  stempelUnten: string;
+  telefon: string;
+  schritt: string;
+};
+
 type Daten = {
   aufgaben: Aufgabe[];
   durchrutscher: Verlust[];
@@ -53,6 +63,7 @@ type Daten = {
   teamStandard: number;
   auftragswerte: number[];
   stundensatz: number;
+  urteile: Urteil[];
   kontakt: BelegDaten["kontakt"];
 };
 
@@ -69,6 +80,12 @@ const PUNKTE_MAX = 20;
 const ZAEHLDAUER_MS = 400;
 const DATEINAME = "Zeitfresser-Beleg-JTK.pdf";
 const ANSAGE_PAUSE_MS = 1500;
+// Ab diesen Kosten im Jahr wird das Urteil eine Stufe dringender. Wer schon alles digital macht,
+// bekommt bis zu 50 % mehr Spielraum, unsortierte Karten zählen dabei wie von Hand.
+const URTEIL_GRENZEN = [5000, 15000, 40000];
+const URTEIL_SPIELRAUM = 0.5;
+// Ab Stufe 2 ist der Anruf ernst gemeint, der Stempel wird rot
+const URTEIL_ROT_AB = 2;
 // Der Annahmedienst nimmt Stunden und Minuten nur bis 100.000 an
 const STUNDEN_DECKEL = 100_000;
 
@@ -203,6 +220,11 @@ export function zeitfresserEinrichten(): void {
   const pixelText = finde("[data-pixeljahr-text]");
   const vergleichListe = finde("[data-vergleich]");
   const umsatzZeile = finde("[data-ergebnis-umsatz]");
+  const urteilBox = finde("[data-urteil]");
+  const urteilKicker = finde("[data-urteil-kicker]");
+  const urteilTitel = finde("[data-urteil-titel]");
+  const urteilText = finde("[data-urteil-text]");
+  const urteilTelefon = finde<HTMLAnchorElement>("[data-urteil-telefon]");
   const ausstellenKnopf = finde<HTMLButtonElement>("[data-beleg-ausstellen]");
   const besprechenKnoepfe = alle<HTMLButtonElement>("[data-check-besprechen]");
   const ansage = finde("[data-check-ansage]");
@@ -223,6 +245,9 @@ export function zeitfresserEinrichten(): void {
   const zettelSumme = finde("[data-zettel-summe]");
   const zettelSummeTitel = finde("[data-zettel-summe-titel]");
   const zettelHinweis = finde("[data-zettel-hinweis]");
+  const stempelOben = finde<SVGTextElement>("[data-stempel-oben]");
+  const stempelUnten = finde<SVGTextElement>("[data-stempel-unten]");
+  const stempelText = finde("[data-stempel-text]");
   const hebelListe = finde("[data-hebel-liste]");
   const hebelTitel = finde("[data-hebel-titel]");
   const pdfKnopf = finde<HTMLButtonElement>("[data-beleg-pdf]");
@@ -308,6 +333,19 @@ export function zeitfresserEinrichten(): void {
   };
   type Zustand = ReturnType<typeof zustand>;
   const hatErgebnis = (z: Zustand) => z.stunden > 0 || z.umsatz > 0;
+
+  // Gerechnet mit den angezeigten, gerundeten Beträgen, damit Urteil und Tafel zusammenpassen
+  const urteilStufe = (z: Zustand) => {
+    const digital = Array.from(sortiert.values()).filter((s) => s === "digital").length;
+    const spielraum = 1 + URTEIL_SPIELRAUM * (digital / (anzahl || 1));
+    const kosten = z.euro + z.umsatz;
+    return URTEIL_GRENZEN.filter((grenze) => kosten >= grenze * spielraum).length;
+  };
+  const urteil = (z: Zustand) => {
+    const stufe = urteilStufe(z);
+    return { stufe, ...(daten.urteile[stufe] ?? daten.urteile[daten.urteile.length - 1]) };
+  };
+  const urteilSatz = (z: Zustand, text: string) => text.replace("{betrag}", euro(z.euro + z.umsatz));
 
   // Programmatische Änderungen melden, wie es Regler und Checkboxen von selbst tun
   const geaendert = () => formular.dispatchEvent(new Event("change", { bubbles: true }));
@@ -396,6 +434,7 @@ export function zeitfresserEinrichten(): void {
     const teile: string[] = [];
     if (z.stunden > 0) teile.push(`Handarbeit kostet rund ${euro(z.euro)} im Jahr.`);
     if (z.umsatz > 0) teile.push(`Dazu entgehen rund ${euro(z.umsatz)} Umsatz.`);
+    teile.push(`Urteil: ${urteil(z).titel}`);
     return teile.join(" ");
   };
 
@@ -687,6 +726,11 @@ export function zeitfresserEinrichten(): void {
     hinweis: hinweisText(z),
     hebel: hebel(z),
     hebelTitel: hebelUeberschrift(hebel(z).length),
+    stempel: (() => {
+      const u = urteil(z);
+      return { oben: u.stempelOben, unten: u.stempelUnten, rot: u.stufe >= URTEIL_ROT_AB };
+    })(),
+    schritt: urteil(z).schritt,
     kontakt: daten.kontakt,
   });
 
@@ -733,6 +777,20 @@ export function zeitfresserEinrichten(): void {
     if (zettelSummeTitel) zettelSummeTitel.textContent = d.summeTitel;
     if (hebelTitel) hebelTitel.textContent = hebelUeberschrift(d.hebel.length);
     if (zettelHinweis) zettelHinweis.textContent = d.hinweis;
+    if (zettel) zettel.classList.toggle("stempel-blau", !d.stempel.rot);
+    // Kurze Wörter nicht auf volle Breite ziehen, sonst stehen die Buchstaben weit auseinander
+    if (stempelOben) {
+      stempelOben.textContent = d.stempel.oben;
+      stempelOben.setAttribute("textLength", String(Math.min(214, d.stempel.oben.length * 27)));
+    }
+    if (stempelUnten) {
+      stempelUnten.textContent = d.stempel.unten;
+      stempelUnten.setAttribute("textLength", String(Math.min(196, d.stempel.unten.length * 10.4)));
+    }
+    if (stempelText) {
+      const ende = /[?.!]$/.test(d.stempel.unten) ? "" : ".";
+      stempelText.textContent = `Stempel: ${d.stempel.oben}, ${d.stempel.unten}${ende}`;
+    }
     if (hebelListe) {
       hebelListe.replaceChildren(
         ...d.hebel.map((h) => {
@@ -810,6 +868,22 @@ export function zeitfresserEinrichten(): void {
       umsatzZeile.hidden = z.umsatz <= 0 || nurUmsatz;
       if (z.umsatz > 0) {
         umsatzZeile.textContent = `Dazu entgehen Ihnen rund ${euro(z.umsatz)} Umsatz im Jahr durch ${quellenText(z)}.`;
+      }
+    }
+
+    if (urteilBox) {
+      // Ohne Betrag nur, wenn das 0 € wirklich stimmt: fertig sortiert, nichts von Hand, Durchrutscher geprüft.
+      // Sonst stünde „Entwarnung“ da, bis die Vorschläge übernommen sind und das Urteil auf „sofort“ springt.
+      const handKarten = Array.from(sortiert.values()).some((s) => s === "hand");
+      urteilBox.hidden = !begonnen || (!fertig && (sortierModus || handKarten || !rutschtGeprueft));
+      const u = urteil(z);
+      urteilBox.dataset.stufe = String(u.stufe);
+      if (urteilKicker) urteilKicker.textContent = u.kicker;
+      if (urteilTitel) urteilTitel.textContent = u.titel;
+      if (urteilText) urteilText.textContent = urteilSatz(z, u.text);
+      if (urteilTelefon) {
+        urteilTelefon.hidden = !u.telefon;
+        urteilTelefon.textContent = u.telefon ? `${u.telefon}: ${daten.kontakt.telefonAnzeige}` : "";
       }
     }
 
@@ -1020,6 +1094,8 @@ export function zeitfresserEinrichten(): void {
     stapelAnsicht();
     stapelZeigen("weiter");
     ansichtAktualisieren();
+    // Das Urteil hängt am Sortiermodus, also neu rechnen, ohne das Ergebnis anzusagen
+    geaendertStill();
     stapel?.focus({ preventScroll: true });
     ansagen(stapelAnsage, `Karte 1 von ${anzahl}: ${aufgabeNach.get(kartenId(karten[0]))?.name ?? ""}.`);
   });

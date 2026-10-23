@@ -293,6 +293,49 @@ const wuensche = [
   "Eigenes Werkzeug nach Maß",
 ];
 
+// Ehrliches Urteil, live auf der Tafel und als Stempel auf dem Beleg. Stufe nach Kosten im Jahr
+// (Handarbeit plus Umsatz, der durchrutscht), Grenzen und Rechnung in zeitfresser.ts (URTEIL_GRENZEN).
+// {betrag} wird durch den gerundeten Betrag ersetzt. Stempel: oben höchstens 10, unten höchstens 20 Zeichen.
+// schritt: „Nächster Schritt“ unten im PDF, höchstens rund 60 Zeichen.
+const urteile = [
+  {
+    kicker: "Entwarnung",
+    titel: "Rufen Sie auf gar keinen Fall einen Koch an.",
+    text: "Ihr Büro läuft. Ein Berater wäre hier rausgeworfenes Geld, und das sagt Ihnen ausgerechnet einer, der davon lebt. Machen Sie einfach so weiter.",
+    stempelOben: "ENTWARNUNG",
+    stempelUnten: "KOCH NICHT ANRUFEN",
+    telefon: "",
+    schritt: "Keiner. Machen Sie einfach so weiter.",
+  },
+  {
+    kicker: "Läuft",
+    titel: "Läuft. Dafür braucht es keinen Koch.",
+    text: "Rund {betrag} im Jahr sind ärgerlich, aber kein Notstand. Ein, zwei Posten gehen Sie an einem ruhigen Nachmittag selbst an. Anrufen müssen Sie dafür nicht.",
+    stempelOben: "LÄUFT",
+    stempelUnten: "KEIN ANRUF NÖTIG",
+    telefon: "",
+    schritt: "Die Hebel oben selbst angehen, an einem ruhigen Nachmittag.",
+  },
+  {
+    kicker: "Lohnt sich vielleicht",
+    titel: "Sie könnten mal Julian Koch anrufen. Kein Muss.",
+    text: "Rund {betrag} im Jahr: kein Notfall, aber mehr als Kleingeld. 15 Minuten am Telefon zeigen, ob sich etwas lohnt. Wenn nicht, sagt Julian Koch Ihnen das.",
+    stempelOben: "VORMERKEN",
+    stempelUnten: "JULIAN KOCH ANRUFEN?",
+    telefon: "Mal unverbindlich anrufen",
+    schritt: "Wenn Sie mögen: Erstgespräch, 15 Minuten, unverbindlich.",
+  },
+  {
+    kicker: "Sofort",
+    titel: "Rufen Sie sofort an. Ein Fax wäre zu langsam.",
+    text: "Rund {betrag} im Jahr sind kein Fall mehr für die Ablage. In 15 Minuten wissen Sie, wo Sie anfangen. Ihr Kaffee wird nicht mal kalt.",
+    stempelOben: "DRINGEND",
+    stempelUnten: "JULIAN KOCH ANRUFEN",
+    telefon: "Jetzt Julian Koch anrufen",
+    schritt: "Kostenloses Erstgespräch, 15 Minuten, am besten heute.",
+  },
+];
+
 const pro = { Tag: "pro Tag", Woche: "pro Woche", Monat: "pro Monat" };
 const einheitText = (a: Aufgabe, menge: number) => `${menge === 1 ? a.einzahl : a.mehrzahl} ${pro[a.einheit]}`;
 const ganzzahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
@@ -304,6 +347,7 @@ const daten = {
   teamStandard: TEAM_STANDARD,
   auftragswerte,
   stundensatz: STUNDENSATZ,
+  urteile,
   kontakt: {
     name: kontakt.name,
     firma: kontakt.firma,
@@ -710,6 +754,13 @@ const tage = Array.from({ length: 220 });
               <ul class="ergebnis__vergleich" data-vergleich hidden></ul>
               <p class="ergebnis__umsatz" data-ergebnis-umsatz hidden></p>
 
+              <div class="urteil" data-urteil hidden>
+                <p class="urteil__kicker" data-urteil-kicker></p>
+                <p class="urteil__titel" data-urteil-titel></p>
+                <p class="urteil__text" data-urteil-text></p>
+                <a class="urteil__telefon" href={kontakt.telefonLink} data-urteil-telefon hidden></a>
+              </div>
+
               <div class="ergebnis__knoepfe">
                 <button type="button" class="retro-knopf retro-knopf--voll" data-beleg-ausstellen disabled>
                   Beleg ausstellen
@@ -808,7 +859,9 @@ const tage = Array.from({ length: 220 });
                           fill="currentColor"
                           font-size="40"
                           font-weight="800"
-                          textLength="214" lengthAdjust="spacingAndGlyphs">DRINGEND</text
+                          textLength="214"
+                          lengthAdjust="spacingAndGlyphs"
+                          data-stempel-oben>DRINGEND</text
                         >
                         <text
                           x="130"
@@ -817,11 +870,13 @@ const tage = Array.from({ length: 220 });
                           fill="currentColor"
                           font-size="13"
                           font-weight="650"
-                          textLength="196" lengthAdjust="spacingAndGlyphs">JULIAN KOCH ANRUFEN</text
+                          textLength="196"
+                          lengthAdjust="spacingAndGlyphs"
+                          data-stempel-unten>JULIAN KOCH ANRUFEN</text
                         >
                       </g>
                     </svg>
-                    <span class="sr-only">Stempel: Dringend, Julian Koch anrufen.</span>
+                    <span class="sr-only" data-stempel-text>Stempel: Dringend, Julian Koch anrufen.</span>
                   </div>
                   <dl class="zettel__summen">
                     <div>

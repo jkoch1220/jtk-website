@@ -235,9 +235,9 @@ export function spielErstellen(B0: number, H0: number, fest0: number): Spiel {
   let farbenSumme = -1;
   // Int32-Sichten auf Tabelle und Ausgabe, nur neu, wenn der Renderer einen anderen Puffer reicht
   let tabQuelle: Uint32Array | null = null;
-  let tabI = new Int32Array(0);
+  let tabI: Int32Array = new Int32Array(0);
   let ausQuelle: Uint32Array | null = null;
-  let ausI = new Int32Array(0);
+  let ausI: Int32Array = new Int32Array(0);
 
   // Maße, die mit dem Zeigerradius wachsen: Dann wirkt das Spiel auf dem Handy wie auf 2560 px
   let FEDER_MAX = 0; // Höchstbeschleunigung der Feder: Weit Geschleuderte fließen gleichmäßig heim
@@ -342,7 +342,7 @@ export function spielErstellen(B0: number, H0: number, fest0: number): Spiel {
 
   // Während eines Schritts: die Tabelle und die Farbe des Papiers. Ob ein Pixel Himmel ist, entscheidet die
   // sichtbare Farbe, nicht die Rolle: Tagsüber sind Sterne und Dunst Papier und sollen ruhen.
-  let tab = new Int32Array(0);
+  let tab: Int32Array = new Int32Array(0);
   let papier = 0;
   const himmel = (i: number, bild: Uint8Array, vorn: Uint8Array) => vorn[i] === 0 && tab[bild[i]] === papier;
   // Beweglichkeit eines Pixels: nach Ebene, im Himmel leicht, nur die Scheibe schwer

@@ -17,6 +17,10 @@ export type BelegDaten = {
   hinweis: string;
   hebel: { titel: string; schritt: string }[];
   hebelTitel: string;
+  // Das Urteil des Checks: rot, wenn ein Anruf sich lohnt, sonst blau wie die Tinte
+  stempel: { oben: string; unten: string; rot: boolean };
+  // „Nächster Schritt“ in der Leiste unten, passend zum Urteil
+  schritt: string;
   kontakt: { name: string; firma: string; telefonAnzeige: string; telefonLink: string; email: string; web: string };
 };
 
@@ -193,7 +197,7 @@ function zufall(startwert: number): () => number {
 }
 
 // Stempel mit leicht ausgefranster Tinte: erst sauber zeichnen, dann Löcher stanzen
-function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number): void {
+function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number, text: BelegDaten["stempel"]): void {
   const hoehe = breite * 0.4;
   const aufloesung = MASSSTAB * 2;
   const blatt = document.createElement("canvas");
@@ -203,8 +207,9 @@ function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number): void
   if (!s) return;
   s.scale(aufloesung, aufloesung);
   const k = breite / 260;
-  s.strokeStyle = FARBE.stempel;
-  s.fillStyle = FARBE.stempel;
+  const farbe = text.rot ? FARBE.stempel : FARBE.tinte;
+  s.strokeStyle = farbe;
+  s.fillStyle = farbe;
   const rahmen = (rx: number, ry: number, rb: number, rh: number, radius: number, dicke: number) => {
     s.lineWidth = dicke;
     s.beginPath();
@@ -216,10 +221,10 @@ function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number): void
   rahmen(12 * k, 12 * k, 236 * k, 80 * k, 3 * k, 1.6 * k);
   s.textAlign = "center";
   schrift(s, 42 * k, 800);
-  s.fillText("DRINGEND", 130 * k, 60 * k);
+  s.fillText(text.oben, 130 * k, 60 * k, 214 * k);
   schrift(s, 13 * k, 650);
   if ("letterSpacing" in s) (s as Ctx & { letterSpacing: string }).letterSpacing = `${2 * k}px`;
-  s.fillText("JULIAN KOCH ANRUFEN", 130 * k, 82 * k);
+  s.fillText(text.unten, 130 * k, 82 * k, 200 * k);
 
   const rnd = zufall(4711);
   s.globalCompositeOperation = "destination-out";
@@ -337,7 +342,7 @@ function bogenInhalt(ctx: Ctx, x: number, y: number, b: number, d: BelegDaten): 
   summe(d.summeTitel, euro(d.summe), true);
   linie(ctx, summeLinks, cy, rechts, FARBE.tinte, 0.9);
   linie(ctx, summeLinks, cy + 2.5, rechts, FARBE.tinte, 0.9);
-  stempel(ctx, links + innen * 0.2, summenOben + 33, innen * 0.36);
+  stempel(ctx, links + innen * 0.2, summenOben + 33, innen * 0.36, d.stempel);
   cy += 18;
 
   // Hinweis
@@ -440,7 +445,7 @@ function seiteZeichnen(ctx: Ctx, d: BelegDaten): { hoehe: number; links: PdfLink
   schrift(ctx, 16, 400, PIXEL);
   ctx.fillText("Nächster Schritt", rand + 14, cy + 22);
   schrift(ctx, 9.5, 520);
-  ctx.fillText("Kostenloses Erstgespräch, 15 Minuten, unverbindlich.", rand + 14, cy + 38);
+  ctx.fillText(d.schritt, rand + 14, cy + 38, breite * 0.6);
   ctx.fillStyle = FARBE.matt;
   schrift(ctx, 8.5);
   ctx.fillText(`${d.kontakt.name}, ${d.kontakt.firma}`, rand + 14, cy + 50);

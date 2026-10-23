@@ -3432,6 +3432,55 @@ a:hover {
   line-height: 1.4;
 }
 
+/* Ehrliches Urteil: blau, solange kein Anruf nötig ist, ab Stufe 2 rot gerahmt */
+.urteil {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+}
+
+.urteil[data-stufe="2"],
+.urteil[data-stufe="3"] {
+  border-color: var(--stempel);
+}
+
+.urteil__kicker {
+  color: var(--tinte-matt);
+  font-family: var(--pixel);
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.urteil[data-stufe="2"] .urteil__kicker,
+.urteil[data-stufe="3"] .urteil__kicker {
+  color: var(--stempel);
+}
+
+.urteil__titel {
+  font-size: var(--t-text);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.urteil[data-stufe="3"] .urteil__titel {
+  color: var(--stempel);
+}
+
+.urteil__text {
+  font-size: var(--t-klein);
+  line-height: 1.45;
+}
+
+.urteil__telefon {
+  justify-self: start;
+  color: var(--stempel);
+  font-weight: 650;
+  text-underline-offset: 0.2em;
+}
+
 .ergebnis__knoepfe {
   display: flex;
   flex-wrap: wrap;
@@ -3645,6 +3694,20 @@ html.check-leiste-an {
   width: 7%;
 }
 
+.zettel__abschluss {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 3cqi;
+  align-items: center;
+  margin-top: 3cqi;
+}
+
+.zettel__stempelfeld {
+  position: relative;
+  min-width: 0;
+}
+
+/* Nach den Grundregeln, sonst überschreiben die das schmale Raster */
 @container (max-width: 380px) {
   .zettel__pos {
     display: none;
@@ -3668,19 +3731,6 @@ html.check-leiste-an {
   }
 }
 
-.zettel__abschluss {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  gap: 3cqi;
-  align-items: center;
-  margin-top: 3cqi;
-}
-
-.zettel__stempelfeld {
-  position: relative;
-  min-width: 0;
-}
-
 .zettel__stempel {
   display: block;
   width: 100%;
@@ -3690,6 +3740,10 @@ html.check-leiste-an {
   mix-blend-mode: multiply;
   transform: rotate(-8deg);
   overflow: visible;
+}
+
+.zettel.stempel-blau .zettel__stempel {
+  color: var(--tinte);
 }
 
 .zettel__stempel text {
