@@ -12,6 +12,7 @@
 
 import { gsap } from "gsap";
 import { FEIERABEND, STEMPEL_ZEICHEN_MAX, mitJahr } from "../data/akten";
+import { spiele } from "./klang";
 import { ploppen } from "./zeitfresser-stapel";
 
 declare global {
@@ -487,6 +488,8 @@ export function belegEinrichten(ruhig: boolean): void {
     anstossen();
 
     const kontakt = () => {
+      // Vor dem ruhig-Abbruch: Der Stempel klingt auch ohne Bewegung
+      spiele("stempel");
       // Genau unter dem Gummi, auch wenn die Hand am Rand nach innen korrigiert hat
       springen();
       const { abdruck, skala } = abdruckSetzen(d.akte, stelle, l, d.text, neigung, d.unterzeile);
@@ -590,6 +593,8 @@ export function belegEinrichten(ruhig: boolean): void {
 
   const wegsortieren = (akte: HTMLElement) => {
     const naechste = akten[index + 1] ?? abschluss;
+    // Die Akte löst sich vom Satz, leiser als der Stempel davor
+    spiele("papier", { db: 6 });
 
     if (ruhig) {
       // Ruhig: alte Akte blendet aus, die nächste ein, ohne Flug und ohne Druck
@@ -796,7 +801,10 @@ export function belegEinrichten(ruhig: boolean): void {
     if (schwebt && !drueckt) parken();
   });
 
-  nochmal?.addEventListener("click", neuAuflegen);
+  nochmal?.addEventListener("click", () => {
+    spiele("papier");
+    neuAuflegen();
+  });
 
   // Scrollt die Seite unter der stillstehenden Maus, wandert der Stempel mit
   window.addEventListener(

@@ -6,6 +6,8 @@
    nach. Zustand und Verlauf bleiben in zeitfresser.ts, hier geht es nur um Bewegung.
    Geworfen wird immer eine Kopie (Geist), die echte nächste Karte ist sofort bedienbar. */
 
+import { spiele } from "./klang";
+
 export type Sortierung = "hand" | "digital";
 // ruhe: ohne Bewegung, weiter: die nächste Karte rückt nach, zurueck: Karte kommt von der Seite
 export type Wechsel = "ruhe" | "weiter" | "zurueck";
@@ -219,6 +221,7 @@ export function stapelSpielEinrichten(o: Optionen) {
     }
     // Einrasten spürbar machen, wo das Gerät es kann
     if (rast && !gerastet) {
+      spiele("klick", { variante: "rast" });
       try {
         navigator.vibrate?.(8);
       } catch {
@@ -474,6 +477,8 @@ export function stapelSpielEinrichten(o: Optionen) {
   const landen = (art: Sortierung, id: string) => {
     const stand = o.gelandet(id, art);
     const knopf = knoepfe[art];
+    // Vor dem ruhig-Abbruch; lag die Karte schon da, ploppt es tiefer
+    if (stand) spiele("plopp", stand === "mehr" ? {} : { variante: "tief" });
     if (!knopf || ruhig()) return;
     // Lag die Karte schon hier (zweite Runde), wackelt der Knopf nur, die Zahl bleibt.
     // Nur die Ziffer ploppt, die Log-Zeile an der Plakette bleibt ruhig.

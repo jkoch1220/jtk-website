@@ -17,6 +17,7 @@ import {
 import { lebenErwecken, type Leben } from "./berge-leben";
 import { spielErstellen, type Spiel } from "./berge-spiel";
 import { flugStarten, type Flug } from "./berge-flug";
+import { spiele } from "./klang";
 
 /* Bühne des Bergbilds: ein Canvas, eine Schleife. Jedes Bild entsteht aus der Szene (Ebenen mit
    Parallax-Versatz), dem Leben (Palettenzyklen, Tiere, Wind), der Maus (Pixel wegdrücken) und beim
@@ -801,6 +802,7 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
       const { x, y } = lage(e);
       if (e.pointerType === "mouse") {
         zeigerSetzen(x, y, e.timeStamp);
+        spiele("plopp", { pan: (x / p.B) * 2 - 1 });
         p.spiel?.stoss(x, y, 0.8);
         p.leben?.stoss(x, y);
         p.canvas.setPointerCapture(e.pointerId);
@@ -823,6 +825,7 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
       ) {
         const { x, y } = lage(e);
         zeigerSetzen(x, y, e.timeStamp);
+        spiele("plopp", { pan: (x / p.B) * 2 - 1 });
         p.spiel?.stoss(x, y, 0.8);
         p.leben?.stoss(x, y);
       }

@@ -7,6 +7,7 @@
    form[data-check].dataset.ergebnis. Die Daten kommen aus Zeitfresser.astro. */
 
 import { belegPdfErstellen, dateiAnbieten, type BelegDaten } from "./beleg-pdf";
+import { spiele } from "./klang";
 import {
   FLUGZEIT_MS,
   ploppen,
@@ -810,6 +811,8 @@ export function zeitfresserEinrichten(): void {
 
   let letzteAnsage = "";
   let ansageWarten = 0;
+  // Urteilsstufe der letzten Ansage: Nur ein Anstieg ins Ernste klingt
+  let ansageStufe = 0;
   let mitErgebnis = false;
   let checkImBild = false;
   let tafelImBild = false;
@@ -937,7 +940,11 @@ export function zeitfresserEinrichten(): void {
     ansageWarten = window.setTimeout(() => {
       const fokus = document.activeElement;
       if (fokus instanceof HTMLInputElement && fokus.type === "range") return;
-      const text = ansageText(zustand());
+      const z = zustand();
+      const text = ansageText(z);
+      const stufe = urteilStufe(z);
+      if (stufe >= URTEIL_ROT_AB && stufe > ansageStufe) spiele("achtung");
+      ansageStufe = stufe;
       if (text && text !== letzteAnsage) {
         letzteAnsage = text;
         ansagen(ansage, text);
@@ -961,6 +968,7 @@ export function zeitfresserEinrichten(): void {
         !document.activeElement ||
         document.activeElement === document.body ||
         (stapelBereich?.contains(document.activeElement) ?? false);
+      spiele("hinweis");
       stapelAnsicht();
       if (fokusHier) fertigBox?.focus({ preventScroll: true });
     };
@@ -985,6 +993,9 @@ export function zeitfresserEinrichten(): void {
     verlauf.push({ aenderungen: [[id, vorher]], index, modus: true });
     sortiert.set(id, art);
     if (art === "hand") begonnen = true;
+    // Von Hand raschelt Papier, digital ploppt es hell
+    if (art === "hand") spiele("papier");
+    else spiele("plopp", { variante: "hoch" });
     if (spiel?.werfen(karte, art, wurf)) fliegend.set(id, vorher);
     index += 1;
     const name = aufgabeNach.get(id)?.name ?? "";
@@ -1169,6 +1180,8 @@ export function zeitfresserEinrichten(): void {
     belegBereich.hidden = false;
     belegFuellen(z);
     if (pdfStatus) pdfStatus.textContent = "";
+    // Ohne Bewegung druckt der Klang nur eine Zeile (das Werk wählt die Kurzfassung)
+    if (zettel) spiele("drucker", { anim: true, einzeln: true });
     if (zettel && !ruhig()) {
       zettel.classList.remove("wird-gedruckt");
       void zettel.offsetWidth;
@@ -1176,6 +1189,8 @@ export function zeitfresserEinrichten(): void {
       window.clearTimeout(druckEnde);
       druckEnde = window.setTimeout(() => zettel.classList.remove("wird-gedruckt"), 2000);
     }
+    // Der Stempel landet mit dem Ende des Drucks (global.css), ohne Bewegung gleich
+    spiele("stempel", { in: ruhig() ? 0.15 : 1.2, einzeln: true });
     ausstellenKnopf.textContent = "Neuen Beleg ausstellen";
     zettelTitel?.focus({ preventScroll: true });
     belegBereich.scrollIntoView({ block: "start", behavior: ruhig() ? "auto" : "smooth" });
@@ -1193,8 +1208,10 @@ export function zeitfresserEinrichten(): void {
     try {
       const datei = await belegPdfErstellen(belegDaten(z));
       dateiAnbieten(datei, DATEINAME);
+      spiele("hinweis");
       if (pdfStatus) pdfStatus.textContent = "Fertig. Ihr Beleg liegt als PDF bereit, heben Sie das Beweisstück gut auf.";
     } catch {
+      spiele("stopp");
       if (pdfStatus) {
         pdfStatus.textContent = "Das PDF hat leider nicht geklappt. Ein Bildschirmfoto vom Beleg tut es auch.";
       }

@@ -8,8 +8,11 @@
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { spiele } from "./klang";
 
 type Zeichen = "info" | "warnung" | "fehler";
+// Klang zum Symbol einer neuen Meldung (bei ausgeschaltetem Ton passiert nichts)
+const SYMBOLKLANG = { info: "hinweis", warnung: "achtung", fehler: "stopp" } as const;
 
 type Aktion =
   | { art: "zu" } // Fenster schließen, zählt als Schließung (es kommen neue)
@@ -438,6 +441,7 @@ export function meldungenEinrichten(): void {
   };
 
   const blinken = (f: Fenster) => {
+    spiele("ding"); // auch bei reduzierter Bewegung
     if (!bewegung()) return;
     f.el.classList.remove("meldung--blinkt");
     void f.el.offsetWidth;
@@ -567,7 +571,7 @@ export function meldungenEinrichten(): void {
     }
   };
 
-  const meldungOeffnen = (m: Meldung, platz: Platz = {}, titel = m.titel): Fenster => {
+  const meldungOeffnen = (m: Meldung, platz: Platz = {}, titel = m.titel, erinnerung = false): Fenster => {
     const el = klonen(m.symbol);
     el.classList.add("meldung--neu");
     el.dataset.meldungId = m.id;
@@ -585,6 +589,8 @@ export function meldungenEinrichten(): void {
     f.bereitAb = performance.now() + SPERRE_MS;
     const oben = einreihen(f);
     aufploppen(f);
+    // Kommt auch per Timer (Eskalation, Erinnerung): Nur wer den Schreibtisch sieht, hört ihn
+    if (tischSichtbar) spiele(erinnerung ? "plopp" : SYMBOLKLANG[m.symbol]);
     if (m.symbol === "fehler") wackeln();
     const fokus = oben && imTisch();
     // Bekommt das Fenster den Fokus, liest der Screenreader den Text über aria-describedby
@@ -727,7 +733,7 @@ export function meldungenEinrichten(): void {
         return;
       }
       ausstehend--;
-      meldungOeffnen(m, {}, titel);
+      meldungOeffnen(m, {}, titel, true);
     };
     spaeter(versuchen, ERINNERUNG_MS);
   };
@@ -824,6 +830,7 @@ export function meldungenEinrichten(): void {
     offene.push(f);
     stapeln();
     aufploppen(f);
+    spiele("frage");
     ansagen(`Neue Meldung: ${titel}`);
     fokussieren(f);
     return f;
@@ -886,6 +893,8 @@ export function meldungenEinrichten(): void {
     offene = offene.filter((f) => f.art === "abschluss");
     stapeln();
     if (warImTisch) tisch.focus({ preventScroll: true });
+    // Zu jedem zuklappenden Fenster ein tiefer Klick, im Takt des stagger (höchstens acht)
+    zuSchliessen.slice(0, 8).forEach((_, i) => spiele("klick", { variante: "tief", in: i * 0.07 }));
     gsap.to(
       zuSchliessen.map((f) => f.el),
       {
@@ -956,6 +965,7 @@ export function meldungenEinrichten(): void {
       hineinsetzen(abschluss, (b - leerEl.offsetWidth) / 2, Math.max(0, (h - leerEl.offsetHeight) / 2.4));
       offene.push(abschluss);
       aufploppen(abschluss);
+      spiele("abmelden");
       ansagen(bilanz?.textContent ?? "Alle Meldungen weggeklickt.");
     }
     aktivieren(abschluss);
@@ -1086,6 +1096,8 @@ export function meldungenEinrichten(): void {
     }
   };
 
+  const verpufft = new WeakMap<Fenster, number>(); // letztes „ding“ je hängendem Fenster
+
   tisch.addEventListener("click", (e) => {
     const knopf = (e.target as Element).closest<HTMLElement>("button");
     const el = knopf?.closest<HTMLElement>(".meldung");
@@ -1096,7 +1108,15 @@ export function meldungenEinrichten(): void {
       zuruecksetzen();
       return;
     }
-    if (f.haengt) return; // Keine Rückmeldung: Klicks verpuffen
+    if (f.haengt) {
+      // Keine Rückmeldung: Klicks verpuffen, mit leisem „ding“ höchstens alle 1,5 s je Fenster
+      const jetzt = performance.now();
+      if (jetzt - (verpufft.get(f) ?? -Infinity) >= 1500) {
+        verpufft.set(f, jetzt);
+        spiele("ding", { db: 8 });
+      }
+      return;
+    }
     // Gerade erst aufgeploppt: Der zweite Klick eines Doppelklicks trifft nicht gleich den nächsten Knopf
     if (performance.now() < f.bereitAb) return;
     if (f.dialog) {

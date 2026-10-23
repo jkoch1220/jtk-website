@@ -6,6 +6,7 @@
 
 import { aufrufId, seitenStart } from "./tracking";
 import { turnstileToken, turnstileVorbereiten, turnstileZuruecksetzen } from "./turnstile";
+import { spiele } from "./klang";
 
 type TerminOrt = "meet" | "telefon";
 type FreieZeit = { start: number; label: string };
@@ -399,6 +400,7 @@ function terminEinrichten(): void {
       });
       const daten = (await antwort.json().catch(() => null)) as BuchungAntwort | null;
       if (antwort.ok) {
+        spiele("erfolg");
         erfolg(daten?.termin?.start ?? start, daten?.termin?.ort ?? gewaehlterOrt, daten?.termin?.meetLink ?? null);
         return;
       }
@@ -407,6 +409,7 @@ function terminEinrichten(): void {
       if (antwort.status === 409) {
         gewaehlterStart = 0;
         const nochWas = await laden();
+        spiele("achtung");
         statusSetzen(meldung || "Dieser Termin ist gerade vergeben worden – bitte wählen Sie einen anderen.");
         if (nochWas) {
           zeitenTitel.focus();
@@ -415,6 +418,7 @@ function terminEinrichten(): void {
           zumFormular.focus();
         }
       } else if (antwort.status === 400 && meldung) {
+        spiele("stopp");
         statusSetzen(meldung);
         const betroffen = feldZurMeldung(meldung);
         if (betroffen) {
@@ -423,15 +427,18 @@ function terminEinrichten(): void {
           fokus.focus();
         }
       } else if (antwort.status === 429) {
+        spiele("stopp");
         statusSetzen(meldung || "Gerade kommen zu viele Buchungen an.");
         auswegZeigen("Schreiben Sie mir stattdessen eine Nachricht, ich melde mich mit einem Termin.");
       } else {
+        spiele("stopp");
         statusSetzen("Die Buchung hat nicht geklappt.");
         auswegZeigen(
           meldung || "Die Terminbuchung ist gerade nicht erreichbar – bitte schreiben Sie mir über das Formular.",
         );
       }
     } catch {
+      spiele("stopp");
       statusSetzen("Die Buchung hat nicht geklappt, vielleicht ist die Verbindung weg.");
       auswegZeigen("Schreiben Sie mir stattdessen eine Nachricht, ich melde mich mit einem Termin.");
     } finally {
@@ -447,6 +454,7 @@ function terminEinrichten(): void {
     if (sendetGerade || gebucht) return;
     const fehler = pruefen();
     if (fehler) {
+      spiele("ding");
       fehler.focus();
       return;
     }

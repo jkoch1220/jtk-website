@@ -190,6 +190,18 @@ const kaesten = Array.from({ length: 20 });
         <div class="taskleiste__fenster" data-taskleiste-fenster role="group" aria-label="Offene Fenster"></div>
         <div class="taskleiste__info">
           <span data-taskleiste-zaehler>Offen: 3</span>
+          {/* Derselbe Schalter wie im Kopf, klang.ts hält beide gleich und schaltet sie frei */}
+          <button type="button" class="taskleiste__ton" data-ton-schalter aria-pressed="false" hidden>
+            <span class="sr-only">Ton</span>
+            <svg class="ton-symbol" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path d="M1 4h3v4H1zM4 3h1v6H4zM5 2h1v8H5zM6 1h1v10H6z" />
+              <path
+                class="ton-symbol__wellen"
+                d="M8 4h1v1H8zM9 5h1v2H9zM8 7h1v1H8zM9 2h1v1H9zM10 3h1v1h-1zM11 4h1v4h-1zM10 8h1v1h-1zM9 9h1v1H9z"
+              />
+              <path class="ton-symbol__aus" d="M8 4h1v1H8zM11 4h1v1h-1zM9 5h2v2H9zM8 7h1v1H8zM11 7h1v1h-1z" />
+            </svg>
+          </button>
           <time class="taskleiste__uhr" data-taskleiste-uhr>--:--</time>
         </div>
       </div>

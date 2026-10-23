@@ -127,6 +127,7 @@
   --feld: var(--bogen); /* eingelassene Flächen: Eingabefelder, Reglerspur, Pixeljahr */
   --feld-schatten: inset 2px 2px 0 var(--hauch);
   --auf-gelb: var(--tinte); /* Zeichen auf Gelb (Warnsymbol) */
+  --ton-an: var(--rahmen); /* Lautsprecher bei Ton an (Kopf und Taskleiste) */
   --nacht-schein: rgb(74 73 168 / 0.35);
   --nacht-raster: var(--tinte-tief);
   --nacht-oben: var(--tinte-tief);
@@ -830,7 +831,8 @@ a:hover {
   }
 }
 
-@media (max-width: 420px) {
+/* Die Kurzform beginnt so früh, dass Marke, Knopf und beide Schalter in eine Zeile passen */
+@media (max-width: 559px) {
   .kopf__lang {
     display: none;
   }
@@ -900,9 +902,76 @@ a:hover {
   display: none;
 }
 
-@media (max-width: 420px) {
+/* Schalter Ton an/aus, links neben hell/dunkel und in derselben Machart. Ohne JavaScript per hidden
+   verborgen, klang.ts schaltet ihn frei. Gedrückt = Ton an: eingelassen, Schallbögen statt Kreuz.
+   Abstand zum Nachbarn 10 px, so berühren sich die beiden Trefferflächen nicht. */
+.ton-schalter {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-right: calc(10px - 1.5rem);
+  padding: 0;
+  border: 1.5px solid var(--linie-stark);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--tinte);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+/* Trefferfläche 46 × 46 px wie beim Nachbarn */
+.ton-schalter::before {
+  content: "";
+  position: absolute;
+  inset: -4.5px;
+}
+
+.ton-schalter:hover {
+  border-color: var(--tinte);
+}
+
+.ton-schalter:active {
+  translate: 1px 1px;
+}
+
+.ton-schalter .ton-symbol {
+  width: 24px;
+  height: 24px;
+}
+
+.ton-schalter[aria-pressed="true"] {
+  background: var(--papier-tief);
+  box-shadow: var(--feld-schatten);
+  color: var(--ton-an);
+}
+
+/* Lautsprecher im 12er-Raster: aus mit Kreuz, an mit zwei Schallbögen */
+.ton-symbol {
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+.ton-symbol__wellen,
+[aria-pressed="true"] > .ton-symbol .ton-symbol__aus {
+  display: none;
+}
+
+[aria-pressed="true"] > .ton-symbol .ton-symbol__wellen {
+  display: inline;
+}
+
+@media (max-width: 559px) {
   .kopf__innen {
     gap: 12px;
+  }
+
+  .ton-schalter {
+    margin-right: -2px;
   }
 }
 
@@ -911,6 +980,40 @@ a:hover {
    Query bleibt für Browser ohne Container-Abfragen. */
 .kopf {
   container: kopf / inline-size;
+}
+
+/* Schmal (390 bis 409 px): beide Schalter 36 px, Abstände 8 px. Die Trefferflächen bleiben bei
+   44 px und stoßen nur aneinander. Darunter fehlt der Platz für den Tonschalter. */
+@container kopf (390px <= width < 410px) {
+  .kopf__innen {
+    gap: 8px;
+  }
+
+  .modus-schalter,
+  .ton-schalter {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ton-schalter {
+    margin-right: 0;
+  }
+
+  .ton-schalter::before {
+    inset: -4px -3.5px -4px -4.5px;
+  }
+}
+
+@media (max-width: 389px) {
+  .ton-schalter {
+    display: none;
+  }
+}
+
+@container kopf (max-width: 389px) {
+  .ton-schalter {
+    display: none;
+  }
 }
 
 @media (max-width: 359px) {
@@ -925,17 +1028,26 @@ a:hover {
   }
 }
 
-/* Breit: in der Achse der Passermarken im rechten Rand, der Satzspiegel des Kopfs bleibt frei */
-@media (min-width: 1680px) {
-  .modus-schalter {
+/* Breit: in der Achse der Passermarken im rechten Rand, der Satzspiegel des Kopfs bleibt frei.
+   Der Tonschalter steht 10 px links daneben, noch im Rand. Erst ab 1720 px bleiben zwischen ihm
+   und dem Satzspiegel mindestens 20 px, darunter stehen beide in der Zeile. */
+@media (min-width: 1720px) {
+  .modus-schalter,
+  .ton-schalter {
     position: absolute;
     top: calc((var(--kopf-hoehe) - 40px) / 2);
     right: calc((100% - var(--satz-b)) / 2 - var(--marg-b) + clamp(20px, 2vw, 40px) - 5px);
   }
+
+  .ton-schalter {
+    right: calc((100% - var(--satz-b)) / 2 - var(--marg-b) + clamp(20px, 2vw, 40px) - 5px + 50px);
+    margin-right: 0;
+  }
 }
 
 @media print {
-  .modus-schalter {
+  .modus-schalter,
+  .ton-schalter {
     display: none;
   }
 }
@@ -2521,6 +2633,45 @@ a:hover {
   box-shadow: var(--feld-schatten);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/* Tonschalter im Infobereich: nur das Symbol, ohne Rahmen. Trefferfläche 44 × 44 px, seitlich
+   bleibt sie im Abstand zu Zähler und Uhr. */
+.taskleiste__ton {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  margin-top: 2px; /* gleicht das untere Polster des Infobereichs aus, das der Schrift gilt */
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.taskleiste__ton::before {
+  content: "";
+  position: absolute;
+  inset: -11px -9px;
+}
+
+.taskleiste__ton:active {
+  translate: 1px 1px;
+}
+
+.taskleiste__ton[aria-pressed="true"] {
+  color: var(--ton-an);
+}
+
+.taskleiste .taskleiste__ton:focus-visible {
+  outline-offset: 0;
+}
+
+.taskleiste__ton .ton-symbol {
+  width: 18px;
+  height: 18px;
 }
 
 @media (max-width: 639px) {

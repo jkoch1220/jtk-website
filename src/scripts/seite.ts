@@ -8,6 +8,7 @@ import { panoramaEinrichten } from "./berge-buehne";
 import { meldungenEinrichten } from "./meldungen";
 import { zeitfresserEinrichten } from "./zeitfresser";
 import { belegEinrichten } from "./beleg-stempel";
+import { klangEinrichten, spiele } from "./klang";
 import { mitJahr } from "../data/akten";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -176,11 +177,13 @@ function anfrageEinrichten(): void {
       // Ein Token gilt nur einmal, auch wenn das Senden scheitert
       turnstileZuruecksetzen(formular);
       if (antwort.ok) {
+        spiele("erfolg");
         erfolg();
         return;
       }
       const daten = (await antwort.json().catch(() => null)) as { fehler?: string } | null;
       const meldung = typeof daten?.fehler === "string" ? daten.fehler.trim() : "";
+      spiele("stopp");
       if (antwort.status === 429) {
         statusSetzen(`${meldung || "Gerade kommen zu viele Anfragen an."} ${umDirekt}`);
       } else if (antwort.status === 400 && meldung) {
@@ -189,6 +192,7 @@ function anfrageEinrichten(): void {
         statusSetzen(`Senden hat nicht geklappt. ${umDirekt}`);
       }
     } catch {
+      spiele("stopp");
       statusSetzen(`Senden hat nicht geklappt, vielleicht ist die Verbindung weg. ${umDirekt}`);
     } finally {
       sendetGerade = false;
@@ -200,6 +204,7 @@ function anfrageEinrichten(): void {
     if (sendetGerade) return;
     const fehler = pruefen();
     if (fehler) {
+      spiele("ding");
       fehler.focus();
       return;
     }
@@ -226,6 +231,7 @@ function anfrageEinrichten(): void {
 
   kopierKnopf?.addEventListener("click", async () => {
     const ok = await kopieren(text(), textfeld);
+    if (ok) spiele("plopp");
     rueckmeldung(kopierKnopf, ok ? "Kopiert" : "Text unten markiert");
     statusSetzen(ok ? `Text kopiert. Bitte an ${email} schicken.` : "Text markiert. Bitte kopieren und per E-Mail schicken.");
   });
@@ -382,12 +388,14 @@ function kopierKnoepfeEinrichten(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-kopiere]").forEach((knopf) => {
     knopf.addEventListener("click", async () => {
       const ok = await kopieren(knopf.dataset.kopiere ?? "");
+      if (ok) spiele("plopp");
       rueckmeldung(knopf, ok ? "Kopiert" : "Bitte markieren und kopieren");
     });
   });
 }
 
 datumSetzen();
+klangEinrichten();
 belegEinrichten(bewegungReduziert);
 meldungenEinrichten();
 zeitfresserEinrichten();
