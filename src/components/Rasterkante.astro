@@ -1,12 +1,21 @@
 ---
-// Naht zwischen hellem und dunklem Band: gerasterter Übergang in Kunstpixeln,
-// dieselbe Bayer-Matrix wie im Bergbild. Die Kachel entsteht beim Bauen als SVG.
+// Naht zwischen hellem und dunklem Band: gerasterter Übergang in Kunstpixeln, dieselbe
+// Bayer-Matrix wie im Bergbild. Die Kachel ist nur eine Maske; die Farben kommen aus den
+// Tokens und schalten mit hell/dunkel um, ohne zweite Kachel und ohne Skript.
+type Flaeche = "papier" | "bogen" | "nacht" | "nacht-oben";
 interface Props {
-  von: string;
-  nach: string;
+  von: Flaeche;
+  nach: Flaeche;
 }
 
 const { von, nach } = Astro.props;
+
+const FARBE: Record<Flaeche, string> = {
+  papier: "var(--papier)",
+  bogen: "var(--bogen)",
+  nacht: "var(--tinte-nacht)",
+  "nacht-oben": "var(--nacht-oben)",
+};
 
 const BAYER = [
   [0, 32, 8, 40, 2, 34, 10, 42],
@@ -19,17 +28,31 @@ const BAYER = [
   [63, 31, 55, 23, 61, 29, 53, 21],
 ];
 
-const zellen: string[] = [];
+// Gesetzte Zellen einer Zeile werden zu einem Pfadstück zusammengefasst, das hält die Kachel klein
+const an = (x: number, y: number) => (y + 0.5) / 16 > (BAYER[y % 8][x % 8] + 0.5) / 64;
+const pfad: string[] = [];
 for (let y = 0; y < 16; y++) {
-  const dichte = (y + 0.5) / 16;
-  for (let x = 0; x < 8; x++) {
-    if (dichte > (BAYER[y % 8][x % 8] + 0.5) / 64) zellen.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+  for (let x = 0; x < 8; ) {
+    if (!an(x, y)) {
+      x++;
+      continue;
+    }
+    let breite = 1;
+    while (x + breite < 8 && an(x + breite, y)) breite++;
+    pfad.push(`M${x} ${y}h${breite}v1h-${breite}z`);
+    x += breite;
   }
 }
 const svg =
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 16" width="8" height="16" shape-rendering="crispEdges">` +
-  `<rect width="8" height="16" fill="${von}"/><g fill="${nach}">${zellen.join("")}</g></svg>`;
-const kachel = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 16' width='8' height='16' shape-rendering='crispEdges'>` +
+  `<path d='${pfad.join("")}'/></svg>`;
+// Nur die Zeichen kodieren, die in einer Daten-URL stören
+const maske = `url("data:image/svg+xml,${svg.replace(/%/g, "%25").replace(/#/g, "%23").replace(/</g, "%3C").replace(/>/g, "%3E")}")`;
 ---
 
-<div class="rasterkante voll" aria-hidden="true" style={`--kachel: ${kachel}`}></div>
+<div
+  class="rasterkante voll"
+  aria-hidden="true"
+  style={`--rk-von: ${FARBE[von]}; --rk-nach: ${FARBE[nach]}; --rk-maske: ${maske}`}
+>
+</div>

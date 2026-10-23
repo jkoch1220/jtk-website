@@ -148,13 +148,15 @@ const positionen = [
         </g>
       </svg>
     </div>
-    {
-      ["ol", "or", "ul", "ur"].map((ecke) => (
-        <svg class={`schnittmarke schnittmarke--${ecke}`} viewBox="0 0 18 18" aria-hidden="true" focusable="false">
-          <path d="M0.5 18V0.5H18" />
-        </svg>
-      ))
-    }
+    <div class="beleg__marken" aria-hidden="true">
+      {
+        ["ol", "or", "ul", "ur"].map((ecke) => (
+          <svg class={`schnittmarke schnittmarke--${ecke}`} viewBox="0 0 18 18" focusable="false">
+            <path d="M0.5 18V0.5H18" />
+          </svg>
+        ))
+      }
+    </div>
   </div>
   <figcaption>
     <span id="beleg-beschreibung">So entsteht Ihre nächste Rechnung: automatisch erstellt und als E-Rechnung verschickt.</span>

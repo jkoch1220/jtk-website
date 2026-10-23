@@ -40,12 +40,17 @@ function navigationEinrichten(): void {
   const abschnitte = Array.from(document.querySelectorAll<HTMLElement>("main section[id]"));
   if (!links.size || !abschnitte.length) return;
 
+  // Merkt sich, welche Abschnitte gerade im Streifen in Bildmitte liegen. Liegt keiner darin
+  // (Hero ganz oben, auch nach einem Sprung ohne Zwischenstände), ist nichts markiert.
+  const imStreifen = new Set<string>();
   const beobachter = new IntersectionObserver(
     (eintraege) => {
       for (const e of eintraege) {
-        if (!e.isIntersecting) continue;
-        links.forEach((a, id) => a.classList.toggle("ist-aktiv", id === e.target.id));
+        if (e.isIntersecting) imStreifen.add(e.target.id);
+        else imStreifen.delete(e.target.id);
       }
+      const aktiv = abschnitte.filter((s) => imStreifen.has(s.id)).pop()?.id;
+      links.forEach((a, id) => a.classList.toggle("ist-aktiv", id === aktiv));
     },
     { rootMargin: "-45% 0px -50% 0px" },
   );
@@ -90,37 +95,58 @@ function ueberschriftenDrucken(): void {
 
 /* Hero: die Durchschläge hängen beim Scrollen etwas nach --------------------- */
 
+// --lag sitzt direkt an den drei Kopien: So rechnet der Browser pro Bild nur deren Stil neu,
+// nicht den ganzen Stapel samt Inhalt. Den Weg legt das CSS fest (translate mit --lag);
+// transform gehört der Ausfüll-Animation in seite.ts.
 function kopienNachziehen(): void {
-  const stapel = document.querySelector<HTMLElement>(".beleg__stapel");
-  if (!stapel) return;
+  const kopien = Array.from(document.querySelectorAll<HTMLElement>(".beleg__stapel .beleg__kopie"));
+  if (!kopien.length) return;
   const mm = gsap.matchMedia();
   mm.add("(min-width: 1100px)", () => {
+    // GSAP schreibt beim ersten Lesen der Transformation inline "translate: none" (CSSPlugin,
+    // für unabhängige Transformationen). Danach rührt es translate nicht mehr an; ohne diese
+    // Zeile bliebe das Nachhängen aus dem CSS wirkungslos.
+    kopien.forEach((kopie) => kopie.style.removeProperty("translate"));
     const trigger = ScrollTrigger.create({
       trigger: ".hero",
       start: "top top",
       end: "bottom top",
-      onUpdate: (self) => stapel.style.setProperty("--lag", self.progress.toFixed(3)),
+      onUpdate: (self) => {
+        const lag = self.progress.toFixed(3);
+        kopien.forEach((kopie) => kopie.style.setProperty("--lag", lag));
+      },
     });
     return () => {
       trigger.kill();
-      stapel.style.removeProperty("--lag");
+      kopien.forEach((kopie) => kopie.style.removeProperty("--lag"));
     };
   });
 }
 
 /* Problem: die Meldungen springen auf ------------------------------------ */
 
+// Nur Deckkraft und Größe: Die Fenster bleiben fokussierbar und für Screenreader lesbar,
+// auch bevor sie aufgesprungen sind. Kommt der Tastaturfokus früher, stehen sie sofort da.
 function meldungenAuftreten(): void {
-  if (!document.querySelector(".schreibtisch")) return;
-  gsap.from(".meldung:not(.meldung--leer)", {
+  const tisch = document.querySelector<HTMLElement>(".schreibtisch");
+  if (!tisch) return;
+  const auftritt = gsap.from(".meldung:not(.meldung--leer)", {
     scale: 0.92,
-    autoAlpha: 0,
+    opacity: 0,
     duration: 0.18,
     ease: "steps(3)",
     stagger: 0.12,
-    clearProps: "transform,opacity,visibility",
-    scrollTrigger: { trigger: ".schreibtisch", start: "top 70%", once: true },
+    clearProps: "transform,opacity",
+    scrollTrigger: { trigger: tisch, start: "top 70%", once: true },
   });
+  tisch.addEventListener(
+    "focusin",
+    () => {
+      auftritt.scrollTrigger?.kill();
+      auftritt.progress(1);
+    },
+    { once: true },
+  );
 }
 
 /* Leistungen: die Linien des Hauptbuchs werden gezogen -------------------- */
@@ -202,8 +228,30 @@ function massliniePlanen(): void {
   });
 }
 
+/* Start- und Endpunkte neu messen, wenn sich die Seitenhöhe ändert ---------- */
+
+// ScrollTrigger misst nur beim Laden und bei Größenänderung des Fensters. Der Zeitfresser-Check
+// macht die Seite beim Benutzen aber um Tausende Pixel länger, weggeklickte Meldungen machen
+// sie kürzer. Ein Beobachter auf <main> misst dann neu (gilt für alle Trigger der Seite, auch
+// für Parallax und Auftritt des Bergbilds).
+// refresh(true) wartet gedrosselt (0,2 s) und, solange gescrollt wird, bis zum Ende des Scrollens:
+// Ein Refresh springt kurz an den Seitenanfang und zurück und würde ein laufendes sanftes
+// Scrollen abbrechen, etwa den Weg zum gerade ausgestellten Beleg.
+function hoeheBeobachten(): void {
+  const inhalt = document.querySelector("main");
+  if (!inhalt || !("ResizeObserver" in window)) return;
+  let hoehe = Math.round(inhalt.getBoundingClientRect().height);
+  new ResizeObserver(() => {
+    const neu = Math.round(inhalt.getBoundingClientRect().height);
+    if (neu === hoehe) return;
+    hoehe = neu;
+    ScrollTrigger.refresh(true);
+  }).observe(inhalt);
+}
+
 kopfEinrichten();
 navigationEinrichten();
+hoeheBeobachten();
 
 if (!ruhig) {
   ueberschriftenDrucken();

@@ -28,12 +28,14 @@
     kopie-gelb   #F3E6A0  erster Durchschlag
     kopie-rosa   #F2CDD5  zweiter Durchschlag
     stempel      #C9283A  Stempelfarbe
+  Dunkel: Kohlepapier, Werte in nacht.css; Kreide schreibt, Leuchttinte druckt, Papier unter
+  der Lampe bleibt Papier.
 
   Tiefe: eine Lichtquelle oben links. Weiche Schatten fallen nach rechts unten
   und sind in Nacht-Tinte getönt, nie schwarz (--e1 bis --e3). Retro-Fenster
   haben den harten Versatzschatten 6/6 (--e-retro), auf Nacht --e-retro-nacht.
-  Ebenen: Papier und Riesenziffern, Haarlinien, Bänder, Bögen und Akten,
-  Retro-Fenster, Stempel, Lochrand, Kopfzeile.
+  Ebenen: Papier, Haarlinien, Bänder, Bögen und Akten, Retro-Fenster, Stempel,
+  Lochrand, Kopfzeile.
 
   Schrift: Mona Sans (variabel, selbst gehostet)
     Display  Breite 125 %, Gewicht 520–540, enge Laufweite
@@ -90,6 +92,10 @@
   --papier-tief: #e4e4ea;
   --auf-nacht: #ffffff;
   --auf-nacht-matt: rgb(255 255 255 / 0.74);
+  --auf-nacht-linie: rgb(255 255 255 / 0.18); /* Linien auf Nacht (Kontakt) */
+  --auf-nacht-linie-leise: rgb(255 255 255 / 0.12); /* Haarlinie im Fuß */
+  --auf-nacht-kontur: rgb(255 255 255 / 0.16); /* Wortmarke im Fuß */
+  --auf-nacht-unterstrich: rgb(255 255 255 / 0.5); /* Unterstrich von Links auf Nacht */
   --fokus: var(--tinte);
 
   /* Schatten: Licht oben links, Farbe Nacht-Tinte */
@@ -99,16 +105,68 @@
     6px 18px 36px -18px rgb(var(--sch) / 0.22);
   --e3: 0 1px 1px rgb(var(--sch) / 0.08), 2px 8px 16px -8px rgb(var(--sch) / 0.14),
     8px 28px 56px -24px rgb(var(--sch) / 0.28), 18px 64px 120px -48px rgb(var(--sch) / 0.32);
-  --e-retro: 6px 6px 0 var(--tinte);
-  --e-retro-tief: 6px 6px 0 var(--tinte), 14px 30px 60px -24px rgb(var(--sch) / 0.4);
+  --e-retro: 6px 6px 0 var(--versatz);
+  --e-retro-tief: 6px 6px 0 var(--versatz), 14px 30px 60px -24px rgb(var(--sch) / 0.4);
   --e-retro-nacht: 6px 6px 0 #0c0b2e, 10px 40px 80px -30px rgb(0 0 0 / 0.55);
-  --e-nacht: 0 1px 0 rgb(255 255 255 / 0.06) inset, 18px 48px 96px -40px rgb(0 0 0 / 0.55);
+  --e-nacht: 0 1px 0 rgb(255 255 255 / 0.06) inset, 18px 48px 96px -40px rgb(var(--sch) / 0.25);
 
   /* Druckbogen-Geometrie */
   --satz: min(100vw - 2 * var(--rand), clamp(1328px, 1328px + (100vw - 1920px) * 0.42, 1600px));
   --marg: clamp(0px, (100vw - 1440px) / 2, clamp(240px, 240px + (100vw - 1920px) / 16, 280px));
   --satz-einzug: max(var(--rand), (100vw - var(--satz)) / 2);
   --loch: 0px;
+
+  /* Rollen für hell und dunkel. Hier der helle Wert (= bisheriges Verhalten),
+     die dunklen Werte stehen in src/styles/nacht.css. */
+  --rahmen: var(--tinte); /* Rahmen, Titelleisten, volle Knöpfe, gewählte Zustände */
+  --rahmen-matt: var(--tinte-matt); /* inaktive Titelleisten (Desktop im Problem-Band) */
+  --auf-rahmen: var(--bogen); /* Schrift und Zeichen auf --rahmen (Fenster, Retro-Knöpfe, Auswahl) */
+  --auf-knopf: var(--papier); /* Schrift auf vollen .knopf, Textauswahl, Sprunglink */
+  --versatz: var(--tinte); /* harter Pixelschatten */
+  --stempel-flaeche: var(--stempel); /* rote Flächen; --stempel bleibt für rote Schrift und Linien */
+  --feld: var(--bogen); /* eingelassene Flächen: Eingabefelder, Reglerspur, Pixeljahr */
+  --feld-schatten: inset 2px 2px 0 var(--hauch);
+  --auf-gelb: var(--tinte); /* Zeichen auf Gelb (Warnsymbol) */
+  --nacht-schein: rgb(74 73 168 / 0.35);
+  --nacht-raster: var(--tinte-tief);
+  --nacht-oben: var(--tinte-tief);
+  --fenster-auf-nacht: #fff;
+  --geist-rand: rgb(255 255 255 / 0.12);
+  --geist-leiste: rgb(255 255 255 / 0.08);
+  --linierung: rgb(43 42 126 / 0.05);
+  --loch-farbe: var(--papier-tief);
+  --loch-schatten: rgb(var(--sch) / 0.22);
+  --loch-licht: transparent;
+  --kontaktschatten: rgb(var(--sch) / 0.24);
+  --klebeband-deckkraft: 0.85;
+  --kohle-schimmer: rgb(255 255 255 / 0.08); /* Glanzstreifen auf dem Kohlepapier im Hero */
+  --glut: #f0902a; /* Brenn-Animation im Pixeljahr: Gelb, Glut, Glut-Rot, Flächenrot */
+  --glut-rot: #e2512f;
+  --knuell-licht: rgb(255 255 255 / 0.6); /* Lichtseite der Papierkugel im Zeitfresser-Check */
+  --knitter-glanz: rgb(255 255 255 / 0.16); /* Glanz und Lichtkanten der Knitterfalten auf der Karte */
+  --knitter-kante: 1;
+  /* Oberkante des weißen Bands: Haarlinie, dazu ein weicher Schatten, den das Papier darüber
+     nach unten auf das Band wirft (Licht oben links, nie nach oben) */
+  --e-band: 0 -1px 0 var(--linie), inset 0 22px 26px -26px rgb(var(--sch) / 0.2);
+  --e-brief: var(--e2), 12px 36px 72px -36px rgb(var(--sch) / 0.14), 0 1px 0 rgb(255 255 255 / 0.06) inset;
+  --e-zettel: 0 1px 1px rgb(43 42 126 / 0.06), 0 22px 44px -22px rgb(43 42 126 / 0.35);
+
+  /* Papier unter der Lampe (Rechnung, Beleg, Foto): hell = die Seitenwerte */
+  --insel-bogen: var(--bogen);
+  --insel-tinte: var(--tinte);
+  --insel-matt: var(--tinte-matt);
+  --insel-linie: var(--linie);
+  --insel-linie-stark: var(--linie-stark);
+  --insel-hauch: var(--hauch);
+  --insel-gelb: var(--kopie-gelb);
+  --insel-rosa: var(--kopie-rosa);
+  --insel-kohle: var(--tinte-tief);
+  --insel-stempel: var(--stempel);
+  --insel-licht: none;
+
+  /* Satzspiegel in %, für Bänder (.bogen) und den Schalter im Kopf */
+  --satz-b: min(100% - 2 * var(--rand), clamp(1328px, 1328px + (100% - 1920px) * 0.42, 1600px));
+  --marg-b: clamp(0px, (100% - 1440px) / 2, clamp(240px, 240px + (100% - 1920px) / 16, 280px));
 
   color-scheme: light;
 }
@@ -125,6 +183,13 @@
   }
 }
 
+/* Niedrige Fenster (Handy quer): schmalere Kopfzeile, damit mehr vom Inhalt ins Bild passt */
+@media (max-height: 500px) {
+  :root {
+    --kopf-hoehe: 56px;
+  }
+}
+
 /* Grundlagen ------------------------------------------------------------ */
 
 *,
@@ -133,11 +198,19 @@
   box-sizing: border-box;
 }
 
+/* scroll-padding hält Ankerziele und fokussierte Felder unter der klebenden Kopfzeile;
+   Lenis rechnet es bei Ankersprüngen ebenfalls ein. */
 html {
   overflow-x: clip;
+  scroll-padding-top: calc(var(--kopf-hoehe) + 8px);
   background: var(--papier);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Beim Fokussieren bleibt auch die Beschriftung über dem Feld sichtbar */
+:where(input, select, textarea) {
+  scroll-margin-top: 2.25rem;
 }
 
 body {
@@ -219,8 +292,8 @@ a:hover {
 }
 
 ::selection {
-  background: var(--tinte);
-  color: var(--papier);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
 }
 
 [hidden] {
@@ -245,8 +318,8 @@ a:hover {
   top: -100px;
   z-index: 20;
   padding: 0.75rem 1rem;
-  background: var(--tinte);
-  color: var(--papier);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
 }
 
 .sprung:focus {
@@ -268,11 +341,6 @@ a:hover {
   column-gap: var(--spalt);
 }
 
-.abschnitt {
-  padding-block: var(--abstand) 0;
-  scroll-margin-top: calc(var(--kopf-hoehe) + 8px);
-}
-
 .abschnitt__kopf {
   grid-column: 1 / span 4;
   display: grid;
@@ -285,29 +353,17 @@ a:hover {
   max-width: 34ch;
 }
 
-.abschnitt__inhalt {
-  grid-column: 6 / -1;
-  min-width: 0;
-}
-
 @media (max-width: 960px) {
-  .abschnitt__kopf,
-  .abschnitt__inhalt {
+  .abschnitt__kopf {
     grid-column: 1 / -1;
-  }
-
-  .abschnitt__inhalt {
-    margin-top: 2.5rem;
   }
 }
 
 /* Druckbogen: Bänder über die volle Breite ------------------------------- */
 
-/* Spurbreiten in %, bezogen auf das Band: so entsteht auch mit Scrollleiste
-   kein Überlauf. */
+/* Spurbreiten in % (--satz-b, --marg-b aus :root), bezogen auf das Band: so entsteht
+   auch mit Scrollleiste kein Überlauf. */
 .bogen {
-  --satz-b: min(100% - 2 * var(--rand), clamp(1328px, 1328px + (100% - 1920px) * 0.42, 1600px));
-  --marg-b: clamp(0px, (100% - 1440px) / 2, clamp(240px, 240px + (100% - 1920px) / 16, 280px));
   position: relative;
   display: grid;
   grid-template-columns:
@@ -350,21 +406,15 @@ a:hover {
   min-width: 0;
 }
 
-section[id] {
-  scroll-margin-top: calc(var(--kopf-hoehe) + 8px);
-}
-
 .band--bogen {
   z-index: 1;
   background: var(--bogen);
-  box-shadow:
-    0 -1px 0 var(--linie),
-    4px -24px 48px -32px rgb(var(--sch) / 0.25);
+  box-shadow: var(--e-band);
 }
 
 .band--nacht,
 .band--nacht-ruhig {
-  --fokus: #fff;
+  --fokus: var(--auf-nacht);
   color: var(--auf-nacht);
 }
 
@@ -372,20 +422,20 @@ section[id] {
   padding-block: clamp(5rem, 3rem + 5vw, 9rem);
   background-color: var(--tinte-nacht);
   background-image:
-    radial-gradient(ellipse 70% 60% at 50% 45%, rgb(74 73 168 / 0.35), transparent),
-    conic-gradient(var(--tinte-tief) 25%, transparent 0 50%, var(--tinte-tief) 0 75%, transparent 0);
+    radial-gradient(ellipse 70% 60% at 50% 45%, var(--nacht-schein), transparent),
+    conic-gradient(var(--nacht-raster) 25%, transparent 0 50%, var(--nacht-raster) 0 75%, transparent 0);
   background-size: auto, 4px 4px;
 }
 
 .band--nacht-ruhig {
   padding-block: clamp(5rem, 3rem + 5vw, 9rem) var(--abstand);
-  background: linear-gradient(180deg, var(--tinte-tief) 0%, var(--tinte-nacht) 100%);
+  background: linear-gradient(180deg, var(--nacht-oben) 0%, var(--tinte-nacht) 100%);
 }
 
 .band--nacht .fenster,
 .band--nacht-ruhig .fenster {
   --fokus: var(--tinte);
-  border-color: #fff;
+  border-color: var(--fenster-auf-nacht);
   box-shadow: var(--e-retro-nacht);
 }
 
@@ -423,6 +473,14 @@ section[id] {
   justify-items: end;
   align-content: start;
   padding-right: clamp(24px, 2.5vw, 48px);
+}
+
+/* Die linke Marginalie liegt auf eigener Ebene über dem Satz (unter Lochrand und Kopf).
+   So wird der klebende Kolumnentitel zuletzt gezeichnet und zwingt nicht alles, was im
+   Band nach ihm kommt, wegen Überlappung in eigene Compositing-Ebenen. */
+.bogen:not(.band--nacht) > .rand--l {
+  position: relative;
+  z-index: 5;
 }
 
 .bogen > .rand--r {
@@ -510,52 +568,36 @@ section[id] {
   }
 }
 
-/* Riesenziffer: Abschnittsnummer als Kontur hinter dem Satz */
-.riesenziffer {
-  display: none;
-}
-
-@media (min-width: 1440px) {
-  .bogen > .riesenziffer {
-    display: block;
-    grid-column: voll;
-    grid-row: 1;
-    align-self: start;
-    z-index: 0;
-    margin-top: -0.12em;
-    color: transparent;
-    font-size: min(30vw, 720px);
-    font-stretch: var(--breit);
-    font-weight: 300;
-    line-height: 0.8;
-    letter-spacing: -0.04em;
-    -webkit-text-stroke: 1px rgb(43 42 126 / 0.1);
-    pointer-events: none;
-    user-select: none;
-  }
-
-  .riesenziffer--r {
-    justify-self: end;
-    margin-right: -6vw;
-  }
-
-  .riesenziffer--l {
-    justify-self: start;
-    margin-left: -6vw;
-  }
-}
-
 /* Rasterkante: Naht zwischen hellen und dunklen Bändern in Kunstpixeln */
 .rasterkante {
+  display: grid;
   height: 64px;
-  background: var(--kachel) 0 0 / 32px 64px repeat-x;
+  background: var(--rk-von);
+  pointer-events: none;
+}
+
+/* Die Maske ist das einzige Rasterelement und füllt die Kante. Als Maske bildet sie einen eigenen
+   Stapelkontext und malt wie eine positionierte Ebene (z-index 0) in Dokumentreihenfolge, also über
+   vorausgehenden positionierten Ebenen: Formularlinierung des Hero, ohne JavaScript auch der weiche
+   Schatten des letzten Fensters im Problem-Band. Gewollt; gegenüber der früheren Kachel ändert sich
+   das nur um wenige Farbstufen, sichtbar ist es nicht.
+   pixelated hält die Zellen auch bei 125 und 150 % Zoom scharf (sonst weiche Zeilenkanten). */
+.rasterkante::after {
+  content: "";
+  background: var(--rk-nach);
+  -webkit-mask: var(--rk-maske) 0 0 / 32px 64px repeat-x;
+  mask: var(--rk-maske) 0 0 / 32px 64px repeat-x;
   image-rendering: pixelated;
 }
 
 @media (max-width: 767px) {
   .rasterkante {
     height: 48px;
-    background-size: 24px 48px;
+  }
+
+  .rasterkante::after {
+    -webkit-mask-size: 24px 48px;
+    mask-size: 24px 48px;
   }
 }
 
@@ -577,8 +619,10 @@ section[id] {
     display: block;
     width: var(--loch);
     background:
-      radial-gradient(circle at 50% 50%, var(--papier-tief) 0 6px, transparent 6.5px) 0 12px / 40px 48px repeat-y,
-      radial-gradient(circle at calc(50% - 1px) calc(50% - 1px), rgb(var(--sch) / 0.22) 0 7px, transparent 7.5px) 0
+      radial-gradient(circle at 50% 50%, var(--loch-farbe) 0 6px, transparent 6.5px) 0 12px / 40px 48px repeat-y,
+      radial-gradient(circle at calc(50% - 1px) calc(50% - 1px), var(--loch-schatten) 0 7px, transparent 7.5px) 0
+        12px / 40px 48px repeat-y,
+      radial-gradient(circle at calc(50% + 1px) calc(50% + 1px), var(--loch-licht) 0 7px, transparent 7.5px) 0
         12px / 40px 48px repeat-y,
       var(--papier);
     pointer-events: none;
@@ -636,16 +680,19 @@ section[id] {
 }
 
 .knopf:hover {
-  background: var(--tinte);
-  color: var(--papier);
+  border-color: var(--rahmen);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
 }
 
 .knopf--voll {
-  background: var(--tinte);
-  color: var(--papier);
+  border-color: var(--rahmen);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
 }
 
 .knopf--voll:hover {
+  border-color: var(--tinte);
   background: transparent;
   color: var(--tinte);
 }
@@ -658,13 +705,15 @@ section[id] {
 
 .knopf[aria-disabled="true"]:hover,
 .knopf:disabled:hover {
+  border-color: var(--tinte);
   background: transparent;
   color: var(--tinte);
 }
 
 .knopf--voll[aria-disabled="true"]:hover {
-  background: var(--tinte);
-  color: var(--papier);
+  border-color: var(--rahmen);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
 }
 
 /* Kopfzeile -------------------------------------------------------------- */
@@ -736,6 +785,14 @@ section[id] {
   background-size: 100% 1.5px;
 }
 
+/* Im Kontakt-Abschnitt ist der Knopf selbst der aktive Punkt: gefüllt wie beim Zeigen,
+   aber ohne Anheben */
+.kopf__nav .kopf__kontakt.ist-aktiv {
+  border-color: var(--rahmen);
+  background: var(--rahmen);
+  color: var(--auf-knopf);
+}
+
 .kopf__nav .kopf__kontakt {
   display: inline-flex;
   align-items: center;
@@ -752,9 +809,10 @@ section[id] {
 }
 
 .kopf__nav .kopf__kontakt:hover {
-  background: var(--tinte);
+  border-color: var(--rahmen);
+  background: var(--rahmen);
   box-shadow: var(--e1);
-  color: var(--papier);
+  color: var(--auf-knopf);
   text-decoration: none;
   transform: translate(-1px, -1px);
 }
@@ -767,6 +825,110 @@ section[id] {
 
 @media (max-width: 420px) {
   .kopf__lang {
+    display: none;
+  }
+}
+
+/* Schalter hell/dunkel: gilt nur für diese Seite, ohne JavaScript ausgeblendet (dann gilt das
+   System). Gedrückt = dunkel: eingelassen, der Mond leuchtet. */
+.kopf__nav {
+  margin-left: auto;
+}
+
+.modus-schalter {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid var(--linie-stark);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--tinte);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+/* Trefferfläche 46 × 46 px (gemessen ab der Innenkante des 1,5-px-Rands) */
+.modus-schalter::before {
+  content: "";
+  position: absolute;
+  inset: -4.5px;
+}
+
+.modus-schalter:hover {
+  border-color: var(--tinte);
+}
+
+.modus-schalter:active {
+  translate: 1px 1px;
+}
+
+.modus-schalter svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+.modus-schalter__sterne {
+  fill: transparent;
+}
+
+:root[data-theme="dark"] .modus-schalter {
+  background: var(--papier-tief);
+  box-shadow: var(--feld-schatten);
+  color: var(--kopie-gelb);
+}
+
+:root[data-theme="dark"] .modus-schalter__sterne {
+  fill: var(--tinte);
+}
+
+:root:not([data-theme]) .modus-schalter {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .kopf__innen {
+    gap: 12px;
+  }
+}
+
+/* Unter 360 px verborgen, dann gilt das System. Maßgeblich ist die Breite des Kopfs, nicht die des
+   Fensters: Eine klassische Scrollleiste nähme sonst den Platz, den der Schalter braucht. Die Media
+   Query bleibt für Browser ohne Container-Abfragen. */
+.kopf {
+  container: kopf / inline-size;
+}
+
+@media (max-width: 359px) {
+  .modus-schalter {
+    display: none;
+  }
+}
+
+@container kopf (max-width: 359px) {
+  .modus-schalter {
+    display: none;
+  }
+}
+
+/* Breit: in der Achse der Passermarken im rechten Rand, der Satzspiegel des Kopfs bleibt frei */
+@media (min-width: 1680px) {
+  .modus-schalter {
+    position: absolute;
+    top: calc((var(--kopf-hoehe) - 40px) / 2);
+    right: calc((100% - var(--satz-b)) / 2 - var(--marg-b) + clamp(20px, 2vw, 40px) - 5px);
+  }
+}
+
+@media print {
+  .modus-schalter {
     display: none;
   }
 }
@@ -784,7 +946,7 @@ section[id] {
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: repeating-linear-gradient(to bottom, transparent 0 31px, rgb(43 42 126 / 0.05) 31px 32px);
+    background: repeating-linear-gradient(to bottom, transparent 0 31px, var(--linierung) 31px 32px);
     -webkit-mask-image: linear-gradient(to left, #000 0 35%, transparent 75%);
     mask-image: linear-gradient(to left, #000 0 35%, transparent 75%);
     pointer-events: none;
@@ -815,6 +977,16 @@ section[id] {
 
   .hero > .bogen > .rasterkante {
     margin-top: 0;
+  }
+}
+
+/* Mit Marginalien beginnt der Satz oben mit fester Polsterung (Restraum nach unten), damit
+   die Versalhöhe der h1 wie in allen Abschnitten knapp unter der klebenden Randnummer „01“
+   steht (Kopf + 48 px). Zentriert rutschte sie auf hohen Bildschirmen weit darunter. */
+@media (min-width: 1600px) {
+  .hero__satz {
+    align-content: start;
+    padding-top: 48px;
   }
 }
 
@@ -883,29 +1055,56 @@ section[id] {
 
 /* Beleg (Hero-Formular) ------------------------------------------------- */
 
+/* Nur der Stapel liegt schräg; Bildunterschrift und Link stehen gerade wie der übrige Satz */
 .beleg {
+  --ausbruch: calc(var(--marg) * 0.4);
   grid-column: 8 / -1;
   justify-self: end;
-  width: min(680px, calc(100% + var(--marg) * 0.55));
+  width: min(680px, calc(100% + var(--ausbruch)));
   min-width: 0;
-  margin: 0 calc(var(--marg) * -0.55) 0 0;
+  margin: 0 calc(-1 * var(--ausbruch)) 0 0;
+}
+
+.beleg__stapel {
   transform: rotate(-1.2deg);
 }
 
+/* Mit Marginalien endet der Ausbruch vor Passermarke und Blattvermerk (mind. 24 px Luft).
+   Bei schmalem Rand (1600–1680 px) bricht der Beleg deshalb weniger oder gar nicht aus. */
+@media (min-width: 1600px) {
+  .beleg {
+    --ausbruch: max(0px, min(var(--marg) * 0.4, var(--marg) - clamp(20px, 2vw, 40px) - 52px));
+  }
+}
+
+/* Unter dem Text: auf dem Tablet rechts gehängt, damit die Fläche nicht einseitig leer bleibt */
 @media (max-width: 1100px) {
   .beleg {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-self: end;
     width: 100%;
-    max-width: 540px;
+    max-width: 600px;
     margin: 0;
+  }
+
+  .beleg__stapel {
     transform: rotate(-0.6deg);
   }
 }
 
+@media (max-width: 767px) {
+  .beleg {
+    justify-self: start;
+    max-width: 540px;
+  }
+}
+
+/* Ein Raster mit einer Zelle: Bogen und Markenebene liegen deckungsgleich übereinander */
 .beleg__stapel {
   position: relative;
   isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   container-type: inline-size;
   padding: 0 4.5% 5.5% 0;
 }
@@ -919,7 +1118,7 @@ section[id] {
   bottom: -6px;
   z-index: -1;
   height: 22px;
-  background: radial-gradient(ellipse at 50% 0, rgb(var(--sch) / 0.24), transparent 70%);
+  background: radial-gradient(ellipse at 50% 0, var(--kontaktschatten), transparent 70%);
   pointer-events: none;
 }
 
@@ -934,6 +1133,7 @@ section[id] {
   position: absolute;
   inset: 0 4.5% 5.5% 0;
   box-shadow: var(--e1);
+  pointer-events: none;
 }
 
 .beleg__kopie--gelb {
@@ -950,7 +1150,7 @@ section[id] {
 
 .beleg__kopie--kohle {
   background:
-    linear-gradient(115deg, transparent 40%, rgb(255 255 255 / 0.08) 50%, transparent 60%),
+    linear-gradient(115deg, transparent 40%, var(--kohle-schimmer) 50%, transparent 60%),
     var(--tinte-tief);
   transform: translate(-0.8%, 1.2%) rotate(-0.5deg);
   translate: 0 calc(var(--lag, 0) * 5px);
@@ -958,14 +1158,23 @@ section[id] {
 
 .beleg__bogen {
   position: relative;
+  grid-area: 1 / 1;
   padding: 7cqi 7cqi 7.5cqi;
-  background: var(--bogen);
+  background: var(--insel-licht), var(--bogen);
   box-shadow: var(--e3);
   font-size: max(8.5px, 2.45cqi);
   line-height: 1.35;
 }
 
-/* Schnittmarken an den Ecken des Stapels */
+/* Schnittmarken: deckungsgleich mit dem Bogen, 12 px außerhalb seiner Ecken. Sie drehen
+   mit dem Beleg und liegen hinter den Kopien, die sie unten rechts verdecken. */
+.beleg__marken {
+  position: relative;
+  z-index: -1;
+  grid-area: 1 / 1;
+  pointer-events: none;
+}
+
 .schnittmarke {
   display: none;
 }
@@ -980,29 +1189,28 @@ section[id] {
     stroke: var(--tinte);
     stroke-width: 1;
     opacity: 0.35;
-    pointer-events: none;
   }
 
   .schnittmarke--ol {
-    top: -30px;
-    left: -30px;
+    top: -12px;
+    left: -12px;
   }
 
   .schnittmarke--or {
-    top: -30px;
-    right: -30px;
+    top: -12px;
+    right: -12px;
     transform: scaleX(-1);
   }
 
   .schnittmarke--ul {
-    bottom: -30px;
-    left: -30px;
+    bottom: -12px;
+    left: -12px;
     transform: scaleY(-1);
   }
 
   .schnittmarke--ur {
-    bottom: -30px;
-    right: -30px;
+    bottom: -12px;
+    right: -12px;
     transform: scale(-1);
   }
 }
@@ -1189,6 +1397,10 @@ section[id] {
   font-size: var(--t-klein);
 }
 
+.beleg figcaption > span {
+  text-wrap: balance;
+}
+
 .beleg__nochmal {
   padding: 0;
   border: 0;
@@ -1220,6 +1432,28 @@ section[id] {
   transform: none;
 }
 
+/* Papier unter der Lampe ------------------------------------------------------
+   Abbildungen echter Papiere (Rechnung, Beleg aus dem Check, Foto-Abzug) bleiben in beiden
+   Darstellungen Papier. Hell sind die --insel-Werte die Seitenwerte, dunkel gedämpftes Papier. */
+.beleg__kopie,
+.beleg__bogen,
+.zettel__kopie,
+.zettel__bogen,
+.bild-fenster .fenster__inhalt {
+  --bogen: var(--insel-bogen);
+  --tinte: var(--insel-tinte);
+  --tinte-matt: var(--insel-matt);
+  --linie: var(--insel-linie);
+  --linie-stark: var(--insel-linie-stark);
+  --hauch: var(--insel-hauch);
+  --kopie-gelb: var(--insel-gelb);
+  --kopie-rosa: var(--insel-rosa);
+  --tinte-tief: var(--insel-kohle);
+  --stempel: var(--insel-stempel);
+  --fokus: var(--insel-tinte);
+  color: var(--tinte);
+}
+
 /* Retro-Fenster ----------------------------------------------------------- */
 
 .fenster {
@@ -1227,7 +1461,7 @@ section[id] {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background: var(--bogen);
   box-shadow: var(--e-retro);
   color: var(--tinte);
@@ -1244,8 +1478,8 @@ section[id] {
   gap: 0.75rem;
   min-height: 34px;
   padding: 4px 6px 4px 12px;
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
   font-family: var(--pixel);
   font-size: 20px;
   line-height: 1;
@@ -1265,10 +1499,10 @@ section[id] {
   width: 24px;
   height: 24px;
   padding: 0 0 2px;
-  border: 2px solid var(--bogen);
+  border: 2px solid var(--auf-rahmen);
   border-radius: 0;
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
   font-family: var(--pixel);
   font-size: 18px;
   line-height: 1;
@@ -1276,12 +1510,12 @@ section[id] {
 }
 
 .fenster__zu:hover {
-  background: var(--bogen);
-  color: var(--tinte);
+  background: var(--auf-rahmen);
+  color: var(--rahmen);
 }
 
 .fenster__zu:focus-visible {
-  outline: 2px solid var(--bogen);
+  outline: 2px solid var(--auf-rahmen);
   outline-offset: 2px;
 }
 
@@ -1297,7 +1531,7 @@ section[id] {
   justify-content: space-between;
   gap: 0.25rem 1rem;
   padding: 5px 12px;
-  border-top: 2px solid var(--tinte);
+  border-top: 2px solid var(--rahmen);
   background: var(--papier);
   font-family: var(--pixel);
   font-size: 18px;
@@ -1311,10 +1545,10 @@ section[id] {
   justify-content: center;
   min-height: 42px;
   padding: 6px 16px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   border-radius: 0;
   background: var(--bogen);
-  box-shadow: 3px 3px 0 var(--tinte);
+  box-shadow: 3px 3px 0 var(--versatz);
   color: var(--tinte);
   font-family: var(--pixel);
   font-size: 20px;
@@ -1333,20 +1567,20 @@ section[id] {
 
 .retro-knopf:active {
   transform: translate(3px, 3px);
-  box-shadow: 0 0 0 var(--tinte);
+  box-shadow: 0 0 0 var(--versatz);
 }
 
 .retro-knopf--voll,
 .retro-knopf--voll:hover {
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
 }
 
 .retro-knopf:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   transform: none;
-  box-shadow: 3px 3px 0 var(--tinte);
+  box-shadow: 3px 3px 0 var(--versatz);
 }
 
 .pixel-icon {
@@ -1363,8 +1597,13 @@ section[id] {
   font-size: var(--t-statement);
 }
 
+/* Der Schreibtisch ist die zweite Zeile des Bands: im Satzspiegel, ab 1600 px über die Ränder */
+.bogen > .schreibtisch {
+  grid-column: satz;
+  grid-row: 2;
+}
+
 .schreibtisch {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(24px, 3vw, 44px);
@@ -1437,14 +1676,14 @@ section[id] {
     position: absolute;
     z-index: 0;
     display: block;
-    border: 2px solid rgb(255 255 255 / 0.12);
+    border: 2px solid var(--geist-rand);
     pointer-events: none;
   }
 
   .geist span {
     display: block;
     height: 34px;
-    background: rgb(255 255 255 / 0.08);
+    background: var(--geist-leiste);
   }
 
   .geist--a {
@@ -1459,6 +1698,49 @@ section[id] {
     top: 160px;
     width: 340px;
     height: 200px;
+  }
+}
+
+/* Breit: Der Schreibtisch beginnt in der Flucht der Überschrift und bricht nach rechts in
+   den Rand aus wie Beleg und Formular. Die Marginalien laufen neben beiden Zeilen mit,
+   so streckt ihre Höhe die Überschriftenzeile nicht. */
+@media (min-width: 1600px) {
+  .band--nacht > .rand {
+    grid-row: 1 / span 2;
+  }
+
+  .bogen > .schreibtisch {
+    grid-column: satz-start / rand-r-end;
+    min-height: clamp(400px, 22vw, 480px);
+  }
+
+  .schreibtisch .meldung--1 {
+    left: 0;
+    width: min(30%, 560px);
+  }
+
+  .schreibtisch .meldung--2 {
+    left: 34%;
+    top: 112px;
+    width: min(28%, 540px);
+  }
+
+  .schreibtisch .meldung--3 {
+    right: 2%;
+    top: 32px;
+    width: min(30%, 580px);
+  }
+
+  .geist--a {
+    left: 20%;
+    width: 360px;
+    height: 210px;
+  }
+
+  .geist--b {
+    right: 24%;
+    width: 400px;
+    height: 230px;
   }
 }
 
@@ -1496,6 +1778,381 @@ section[id] {
 
   .meldung--3 {
     margin-left: 6px;
+  }
+}
+
+/* Desktop: Mit Script wird der Schreibtisch zum Bildschirm eines alten Büro-PCs.
+   Lage (left/top), Stapel (z-index) und Höhe (--desktop-hoehe) setzt
+   src/scripts/meldungen.ts; transform bleibt frei für GSAP. */
+.schreibtisch.schreibtisch--desktop {
+  position: relative;
+  display: block;
+  height: var(--desktop-hoehe, clamp(520px, 42vw, 640px));
+  min-height: 0;
+  /* clip statt hidden: kein Scroll-Container, den der Fokus verschieben könnte */
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  border: 2px solid var(--geist-rand);
+  background: color-mix(in srgb, var(--tinte-nacht) 55%, transparent);
+}
+
+.schreibtisch--desktop:focus {
+  outline: none;
+}
+
+/* Der Hintergrund des alten PCs: Wiesenhügel unter blauem Himmel in vollen Farben (die Fenster
+   liegen deckend darüber). Ohne Skript (Fenster im Raster) bleibt er aus. */
+.bliss {
+  display: none;
+}
+
+.schreibtisch.schreibtisch--desktop .bliss {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.94;
+  pointer-events: none;
+}
+
+/* Nachts abgedunkelt statt durchscheinend: brightness() hält Blau und Grün satt, wo opacity
+   sie mit dem Nachtband zu Grau vermischen würde. Dieselben Selektoren, mit denen Base.astro
+   nacht.css einhängt. */
+:root[data-theme="dark"] .schreibtisch.schreibtisch--desktop .bliss {
+  opacity: 1;
+  filter: brightness(0.7) saturate(0.95);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .schreibtisch.schreibtisch--desktop .bliss {
+    opacity: 1;
+    filter: brightness(0.7) saturate(0.95);
+  }
+}
+
+.schreibtisch.schreibtisch--desktop .meldung {
+  position: absolute;
+  right: auto;
+  max-width: none;
+  margin: 0;
+  translate: none;
+}
+
+.schreibtisch.schreibtisch--desktop .meldung--dialog {
+  width: min(100% - 24px, 400px);
+}
+
+.schreibtisch.schreibtisch--desktop .meldung--leer {
+  width: min(100% - 24px, 560px);
+}
+
+@media (min-width: 1280px) {
+  .schreibtisch.schreibtisch--desktop .meldung--neu:not(.meldung--dialog) {
+    width: min(32%, 440px);
+  }
+
+  .schreibtisch--desktop .geist--a {
+    top: 12px;
+  }
+}
+
+@media (max-width: 1279px) {
+  .schreibtisch.schreibtisch--desktop .meldung:not(.meldung--dialog, .meldung--leer) {
+    width: min(46%, 420px);
+  }
+}
+
+@media (max-width: 899px) {
+  .schreibtisch.schreibtisch--desktop {
+    height: var(--desktop-hoehe, 560px);
+  }
+
+  .schreibtisch.schreibtisch--desktop .meldung:not(.meldung--dialog, .meldung--leer) {
+    width: min(100% - 28px, 420px);
+  }
+
+  .schreibtisch--desktop .meldung__text p {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Wie ein echter Dialog: kein Text zum Markieren; lange Dateinamen brechen um statt hinauszulaufen */
+.schreibtisch--desktop .meldung {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.schreibtisch--desktop .meldung__text p {
+  overflow-wrap: anywhere;
+}
+
+/* Titelleiste: Griff zum Ziehen, inaktive Fenster gedimmt */
+.schreibtisch--desktop .fenster__titel {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Der Tabstopp sitzt auf dem Titeltext; er füllt die Leiste bis zum ×, der Fokusring umrahmt die ganze Leiste */
+.schreibtisch--desktop .fenster__titeltext {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.schreibtisch--desktop .fenster__titeltext:focus-visible {
+  outline: 2px dashed var(--auf-rahmen);
+  outline-offset: 2px;
+}
+
+@supports selector(:has(a)) {
+  .schreibtisch--desktop .fenster__titeltext:focus-visible {
+    outline: none;
+  }
+
+  .schreibtisch--desktop .fenster__titel:has(> .fenster__titeltext:focus-visible) {
+    outline: 2px dashed var(--auf-rahmen);
+    outline-offset: -5px;
+  }
+}
+
+.schreibtisch--desktop .meldung:not(.meldung--aktiv) > .fenster__titel,
+.schreibtisch--desktop .meldung--haengt > .fenster__titel {
+  background: var(--rahmen-matt);
+}
+
+.schreibtisch--desktop .meldung:not(.meldung--aktiv) .fenster__zu:not(:hover) {
+  background: transparent;
+}
+
+/* Keine Rückmeldung: das Fenster wird blass, der ganze Bildschirm wartet */
+.schreibtisch--desktop .meldung--haengt {
+  opacity: 0.6;
+}
+
+.schreibtisch.schreibtisch--wartet,
+.schreibtisch.schreibtisch--wartet * {
+  cursor: progress;
+}
+
+.schreibtisch.schreibtisch--zieht,
+.schreibtisch.schreibtisch--zieht * {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ein Dialog liegt über dem Fenster: Seine Titelleiste blinkt, wenn man daneben klickt */
+.meldung--blinkt > .fenster__titel {
+  animation: meldung-blinken 0.2s linear 3;
+}
+
+@keyframes meldung-blinken {
+  0%,
+  49% {
+    background: var(--rahmen-matt);
+  }
+}
+
+/* Fortschritt aus Kästchen */
+.fortschritt {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  gap: 3px;
+  height: 28px;
+  margin-top: 18px;
+  padding: 3px;
+  border: 2px solid var(--rahmen);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
+}
+
+.fortschritt span.voll {
+  background: var(--rahmen);
+}
+
+.fortschritt__zahl {
+  margin-top: 8px;
+  font-family: var(--pixel);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: right;
+}
+
+/* Taskleiste: Feierabend, offene Fenster, Zähler und Uhr */
+.taskleiste {
+  --fokus: var(--tinte);
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 4px 6px;
+  border-top: 2px solid var(--fenster-auf-nacht);
+  background: var(--bogen);
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.taskleiste[hidden] {
+  display: none;
+}
+
+.taskleiste button {
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.taskleiste button:focus-visible {
+  outline: 2px solid var(--fokus);
+  outline-offset: -6px;
+}
+
+.taskleiste__feierabend {
+  flex: none;
+  height: 32px;
+  padding: 0 12px 2px;
+  border: 2px solid var(--rahmen);
+  background: var(--rahmen);
+  box-shadow: 2px 2px 0 var(--versatz);
+  color: var(--auf-rahmen);
+}
+
+.taskleiste .taskleiste__feierabend:focus-visible {
+  outline-color: var(--auf-rahmen);
+}
+
+.taskleiste__feierabend:active {
+  translate: 2px 2px;
+  box-shadow: none;
+}
+
+.taskleiste__fenster {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 2px 2px 0;
+  overflow: hidden;
+}
+
+.taskleiste__eintrag {
+  display: flex;
+  flex: 0 1 168px;
+  align-items: center;
+  gap: 6px;
+  min-width: 30px;
+  height: 32px;
+  padding: 0 8px 2px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  box-shadow: 2px 2px 0 var(--versatz);
+  color: var(--tinte);
+  text-align: left;
+}
+
+.taskleiste__eintrag:hover {
+  background: var(--papier);
+}
+
+.taskleiste__eintrag[aria-pressed="true"] {
+  translate: 2px 2px;
+  background: var(--papier);
+  box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--versatz) 30%, transparent);
+}
+
+.taskleiste__eintrag .pixel-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.taskleiste__eintrag span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskleiste__info {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 10px 2px;
+  border: 1px solid var(--linie-stark);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .taskleiste {
+    gap: 4px;
+    padding-inline: 4px;
+  }
+
+  .taskleiste__feierabend {
+    padding-inline: 6px;
+  }
+
+  /* Einträge schrumpfen gleichmäßig, statt rechts abgeschnitten zu werden */
+  .taskleiste__fenster {
+    gap: 3px;
+  }
+
+  .taskleiste__eintrag {
+    flex: 0 1 34px;
+    justify-content: center;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .taskleiste__eintrag .pixel-icon {
+    flex: none;
+  }
+
+  .taskleiste__eintrag span {
+    display: none;
+  }
+
+  .taskleiste__info {
+    gap: 6px;
+    padding-inline: 6px;
+  }
+}
+
+/* Sehr schmal (unter 360 px) braucht die Taskleiste den Platz für die Fenster, nicht für die Uhr */
+@media (max-width: 359px) {
+  .taskleiste__uhr {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .taskleiste {
+    height: 50px;
+  }
+
+  .taskleiste__feierabend,
+  .taskleiste__eintrag,
+  .taskleiste__info {
+    height: 40px;
   }
 }
 
@@ -1549,16 +2206,38 @@ section[id] {
 
 /* Der Check ist ein kleines Spiel und bekommt die volle Breite:
    Kopf oben, darunter das Fenster mit Spielfeld links und Ergebnis rechts. */
-.check {
-  --glut: #f0902a;
-}
-
 .check__kopf {
-  grid-column: 1 / span 8;
+  grid-column: 1 / -1;
 }
 
 .check__kopf p {
   max-width: 60ch;
+}
+
+/* Der Abstand zur Überschrift kommt allein aus dem gap des Kopfs, wie in den übrigen Abschnitten */
+.check__kopf .kicker {
+  margin-bottom: 0;
+}
+
+@media (min-width: 1100px) {
+  .check__kopf {
+    grid-template-columns: subgrid;
+    align-items: end;
+  }
+
+  .check__kopf > * {
+    grid-column: 1 / -1;
+  }
+
+  /* oben, damit der Kicker direkt über ihr bleibt, auch wenn die Einleitung höher ist */
+  .check__kopf h2 {
+    grid-column: 1 / span 6;
+    align-self: start;
+  }
+
+  .check__kopf > p:not(.kicker) {
+    grid-column: 8 / -1;
+  }
 }
 
 .check__band {
@@ -1569,12 +2248,6 @@ section[id] {
   grid-column: 1 / -1;
   box-shadow: var(--e-retro-tief);
   margin-top: clamp(2rem, 1.5rem + 2vw, 3rem);
-}
-
-@media (max-width: 960px) {
-  .check__kopf {
-    grid-column: 1 / -1;
-  }
 }
 
 .check__buehne {
@@ -1588,6 +2261,18 @@ section[id] {
   display: grid;
   gap: 36px;
   min-width: 0;
+}
+
+/* Breit: Spielfeld und Ergebnis teilen sich das Fenster wie 7 zu 5 Satzspalten, und der
+   Kartenstapel wächst mit. So klafft zwischen Karte und Ergebnis keine leere Fläche. */
+@media (min-width: 1440px) {
+  .check__buehne {
+    grid-template-columns: minmax(0, 7fr) minmax(300px, 5fr);
+  }
+
+  .stapel-bereich {
+    --stapel-breite: 40rem;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1622,8 +2307,8 @@ section[id] {
   width: 28px;
   height: 28px;
   padding-bottom: 2px;
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
   font-family: var(--pixel);
   font-size: 20px;
   font-stretch: normal;
@@ -1632,6 +2317,7 @@ section[id] {
 }
 
 .check__hilfe {
+  max-width: 62ch;
   color: var(--tinte-matt);
   font-size: var(--t-klein);
   line-height: 1.45;
@@ -1674,9 +2360,12 @@ section[id] {
   margin-bottom: 18px;
 }
 
+/* Alle Karten liegen im selben Feld, das höchste bestimmt die Höhe. So springen die Knöpfe
+   darunter nicht, wenn die nächste Karte kürzer ist. */
 .stapel {
+  position: relative;
   display: grid;
-  max-width: 560px;
+  max-width: var(--stapel-breite, 560px);
   padding: 0 14px 16px 0;
 }
 
@@ -1689,18 +2378,14 @@ section[id] {
   grid-area: 1 / 1;
 }
 
+/* Mit Script zeigt der Stapel nur die oberste und die nächste Karte */
+.stapel.ist-bereit > .karte:not(.ist-oben, .ist-unten) {
+  visibility: hidden;
+}
+
 .stapel__unter {
-  border: 2px solid var(--tinte);
-  background: var(--bogen);
-}
-
-.stapel__unter--1 {
-  z-index: 2;
-  transform: translate(7px, 8px);
-}
-
-.stapel__unter--2 {
   z-index: 1;
+  border: 2px solid var(--rahmen);
   background: var(--papier);
   transform: translate(14px, 16px);
 }
@@ -1713,7 +2398,7 @@ section[id] {
   gap: 10px;
   min-height: 210px;
   padding: 0 clamp(16px, 3vw, 24px) 24px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background-color: var(--bogen);
   /* Karteikarte: feine Linien */
   background-image: repeating-linear-gradient(
@@ -1722,18 +2407,36 @@ section[id] {
     var(--hauch) 27px 28px
   );
   background-position: 0 58px;
-  box-shadow: 4px 4px 0 var(--tinte);
+  box-shadow: 4px 4px 0 var(--versatz);
   cursor: grab;
   /* Waagerecht wischt das Script, senkrecht scrollen und zoomen bleiben frei */
   touch-action: pan-y pinch-zoom;
   user-select: none;
   -webkit-user-select: none;
-  transition: transform 0.2s ease;
+  /* transform setzt das Script Bild für Bild, hier nur das Anheben */
+  transition:
+    scale 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.12s ease;
 }
 
+/* Die nächste Karte: lesbar, aber noch nicht dran */
+.karte.ist-unten {
+  z-index: 2;
+  cursor: default;
+}
+
+/* Angehoben: etwas größer, der Pixelschatten wird länger */
 .karte.wird-gezogen {
   cursor: grabbing;
-  transition: none;
+  scale: 1.03;
+  box-shadow:
+    8px 9px 0 var(--versatz),
+    0 18px 32px -14px rgb(var(--sch) / 0.4);
+}
+
+.karte.ist-eingerastet[data-richtung="hand"] {
+  border-color: var(--stempel);
 }
 
 .karte__kopf {
@@ -1753,7 +2456,7 @@ section[id] {
 
 .karte__bisher {
   padding: 1px 8px 2px;
-  border: 1.5px solid var(--tinte);
+  border: 1.5px solid var(--rahmen);
   font-size: 16px;
 }
 
@@ -1770,12 +2473,50 @@ section[id] {
 .karte__satz {
   max-width: 40ch;
   color: var(--tinte-matt);
+  text-wrap: pretty;
 }
 
-/* Beim Wischen erscheint, wohin die Karte geht */
+/* Vorgeschmack beim Ziehen: links Knitterfalten, rechts Bildschirmraster */
+.karte__knitter,
+.karte__raster {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.karte__knitter {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='%23000'%3E%3Cpath fill-opacity='.06' d='M0 22 34 30 30 62 0 70Z'/%3E%3Cpath fill-opacity='.09' d='M30 62 70 54 82 100 12 100Z'/%3E%3Cpath fill-opacity='.04' d='M58 12 100 26 100 70 70 54Z'/%3E%3C/g%3E%3Cpath fill='none' stroke='%23000' stroke-opacity='.22' stroke-width='1.2' vector-effect='non-scaling-stroke' d='M0 22 34 30 58 12 100 26M12 100 30 62 34 30M30 62 70 54 100 70M58 12 70 54 82 100M0 70 30 62M34 30 70 54'/%3E%3C/svg%3E")
+      center / 100% 100% no-repeat,
+    linear-gradient(118deg, var(--knitter-glanz), rgb(var(--sch) / 0.08) 46%, var(--knitter-glanz) 58%, rgb(var(--sch) / 0.1));
+}
+
+/* Lichtkanten der Falten auf eigener Ebene: nachts gedämpft, sonst leuchten sie grell */
+.karte__knitter::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='%23fff' stroke-opacity='.55' stroke-width='1.2' vector-effect='non-scaling-stroke' d='M0 23.5 34 31.5 58 13.5 100 27.5M13.5 100 31.5 62 35.5 30M30 63.5 70 55.5 100 71.5M59.5 12 71.5 54 83.5 100'/%3E%3C/svg%3E")
+    center / 100% 100% no-repeat;
+  opacity: var(--knitter-kante);
+}
+
+.karte__raster {
+  background:
+    repeating-linear-gradient(to bottom, color-mix(in srgb, var(--rahmen) 22%, transparent) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(to right, color-mix(in srgb, var(--rahmen) 12%, transparent) 0 1px, transparent 1px 4px),
+    color-mix(in srgb, var(--rahmen) 6%, transparent);
+}
+
+/* Beim Wischen erscheint, wohin die Karte geht: Text, Pfeil und Farbe */
 .karte__marke {
   position: absolute;
   top: 54px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 10px 6px;
   border: 3px solid currentColor;
   background: var(--bogen);
@@ -1784,62 +2525,274 @@ section[id] {
   line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  opacity: 0;
   pointer-events: none;
+}
+
+.karte__marke .pfeil {
+  width: 16px;
+  height: 16px;
 }
 
 .karte__marke--hand {
   right: 16px;
   color: var(--stempel);
-  opacity: var(--hand, 0);
-  transform: rotate(8deg);
+  rotate: 8deg;
 }
 
 .karte__marke--digital {
   left: 16px;
-  color: var(--tinte);
-  opacity: var(--digital, 0);
-  transform: rotate(-8deg);
+  color: var(--rahmen);
+  rotate: -8deg;
 }
 
-.karte--neu {
-  animation: karte-neu 0.24s ease-out;
+/* Über der Schwelle: Der Stempel sitzt, mit kleinem Ruck */
+.karte.ist-eingerastet .karte__marke {
+  animation: marke-rast 0.24s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
-@keyframes karte-neu {
+@keyframes marke-rast {
   from {
-    transform: translate(7px, 8px);
+    transform: scale(1.3);
   }
 }
 
-.karte--geist {
-  z-index: 5;
+/* Geworfene Kopien: liegen über dem Stapel, fangen keine Zeiger */
+.stapel__geist {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
   pointer-events: none;
-  transition:
-    transform 0.36s cubic-bezier(0.4, 0.1, 0.7, 1),
-    opacity 0.36s ease-in;
 }
 
-.karte--raus-hand {
+.karte--geist {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  overflow: hidden;
+  box-shadow:
+    8px 9px 0 var(--versatz),
+    0 18px 32px -14px rgb(var(--sch) / 0.4);
+  will-change: transform, opacity;
+}
+
+/* Digital: Schrift wird zu Pixeln, die Karte zum Bildschirm */
+.karte--geist.wird-digital .karte__titel,
+.karte--geist.wird-digital .karte__satz {
+  color: var(--rahmen);
+  font-family: var(--pixel);
+  font-stretch: normal;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+}
+
+.papierkugel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
   opacity: 0;
-  transform: translateX(-125%) rotate(-16deg);
+  will-change: transform, opacity;
 }
 
-.karte--raus-digital {
+.papierkugel svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Knüllpapier ist eine Spur grauer als die Karte, so hebt sich die Kugel in beiden Modi ab */
+.papierkugel__form {
+  fill: var(--bogen);
+  fill: color-mix(in srgb, var(--bogen) 80%, var(--tinte));
+  stroke: var(--rahmen);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.papierkugel__dunkel {
+  fill: rgb(var(--sch) / 0.16);
+}
+
+.papierkugel__hell {
+  fill: var(--knuell-licht);
+}
+
+.papierkugel__falte {
+  fill: none;
+  stroke: rgb(var(--sch) / 0.4);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.datenzeile {
+  position: absolute;
+  top: 50%;
+  right: 4%;
+  left: 4%;
+  height: 26px;
+  margin-top: -13px;
+  padding: 0 10px 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
+  font-family: var(--pixel);
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
   opacity: 0;
-  transform: translateX(125%) rotate(16deg);
+  transform-origin: right center;
+  will-change: transform, opacity;
 }
 
+/* Über dem Stapel, damit die Log-Zeilen nicht hinter dem Rand verschwinden (Geister fliegen darüber) */
 .stapel__knoepfe {
+  position: relative;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  max-width: 560px;
+  max-width: var(--stapel-breite, 560px);
   margin-top: 18px;
 }
 
+/* Beim Ziehen hebt sich der Zielknopf, über der Schwelle ist er gedrückt */
 .stapel__knopf {
+  position: relative;
   flex: 1 1 200px;
   gap: 10px;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.06s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.stapel__knopf .pfeil {
+  transition: translate 0.12s ease;
+}
+
+.stapel__knopf.ist-ziel[data-sortieren="hand"] {
+  border-color: var(--stempel);
+  background: color-mix(in srgb, var(--stempel) 10%, var(--bogen));
+  color: var(--stempel);
+}
+
+.stapel__knopf.ist-ziel[data-sortieren="digital"] {
+  background: color-mix(in srgb, var(--rahmen) 12%, var(--bogen));
+}
+
+.stapel__knopf.ist-ziel[data-sortieren="hand"] .pfeil {
+  translate: -4px 0;
+}
+
+.stapel__knopf.ist-ziel[data-sortieren="digital"] .pfeil {
+  translate: 4px 0;
+}
+
+.stapel__knopf.ist-eingerastet {
+  box-shadow: 0 0 0 var(--versatz);
+  transform: translate(3px, 3px);
+}
+
+.stapel__knopf.ist-eingerastet[data-sortieren="hand"] {
+  border-color: var(--stempel-flaeche);
+  background: var(--stempel-flaeche);
+  color: var(--auf-rahmen);
+}
+
+.stapel__knopf.ist-eingerastet[data-sortieren="digital"] {
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
+}
+
+/* Zähler am Knopf: links die Ablage, rechts die Datenbank */
+.stapel__zahl {
+  position: absolute;
+  top: -12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 3px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  color: var(--tinte);
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+[data-sortieren="hand"] .stapel__zahl {
+  left: -6px;
+  color: var(--stempel);
+}
+
+[data-sortieren="digital"] .stapel__zahl {
+  right: -6px;
+}
+
+.stapel__zahl svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  shape-rendering: crispEdges;
+}
+
+/* Nur die Ziffer ploppt beim Landen */
+.stapel__zahl [data-stapel-zahl] {
+  display: inline-block;
+}
+
+/* Log-Zeile an der Plakette: steigt darüber auf, bei untereinander stehenden Knöpfen
+   gleitet sie daneben zur Seite */
+.stapel__log {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  font-size: 16px;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.stapel__log--seitlich {
+  top: 50%;
+  bottom: auto;
+  margin-top: -9px;
+  padding: 1px 4px 2px;
+  background: var(--bogen);
+}
+
+[data-sortieren="hand"] .stapel__log {
+  left: 0;
+  color: var(--stempel);
+}
+
+[data-sortieren="digital"] .stapel__log {
+  right: 0;
+  color: var(--rahmen);
+}
+
+[data-sortieren="hand"] .stapel__log--seitlich {
+  left: calc(100% + 6px);
+}
+
+[data-sortieren="digital"] .stapel__log--seitlich {
+  right: calc(100% + 6px);
+}
+
+/* Breit liegt die linke Marginalie über dem Satz. Solange eine Karte gezogen wird, federt
+   oder fliegt, kommt der Satz nach vorn (gleiche Ebene, liegt im Dokument später). */
+@media (min-width: 1600px) {
+  .bogen > .satz:has(.karte.wird-gezogen, .karte.ist-federnd, .stapel__geist) {
+    z-index: 5;
+  }
 }
 
 .pfeil {
@@ -1858,7 +2811,7 @@ section[id] {
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 560px;
+  max-width: var(--stapel-breite, 560px);
   margin-top: 18px;
 }
 
@@ -1878,7 +2831,7 @@ section[id] {
   gap: 2px;
   height: 14px;
   padding: 2px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
 }
 
 .stapel__balken span {
@@ -1886,12 +2839,12 @@ section[id] {
 }
 
 .stapel__balken span[data-stand="hand"] {
-  background: var(--stempel);
+  background: var(--stempel-flaeche);
 }
 
 .stapel__balken span[data-stand="digital"] {
   background: transparent;
-  box-shadow: inset 0 0 0 2px var(--tinte);
+  box-shadow: inset 0 0 0 2px var(--rahmen);
 }
 
 .stapel__balken span.ist-jetzt {
@@ -1903,7 +2856,7 @@ section[id] {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 4px 20px;
-  max-width: 560px;
+  max-width: var(--stapel-breite, 560px);
   margin-top: 6px;
 }
 
@@ -1911,7 +2864,7 @@ section[id] {
   display: grid;
   justify-items: start;
   gap: 6px;
-  max-width: 560px;
+  max-width: var(--stapel-breite, 560px);
   padding: 14px 16px;
   border: 2px dashed var(--linie-stark);
   background: var(--papier);
@@ -1966,17 +2919,17 @@ section[id] {
   align-items: center;
   min-height: 42px;
   padding: 6px 16px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background: var(--bogen);
-  box-shadow: 3px 3px 0 var(--tinte);
+  box-shadow: 3px 3px 0 var(--versatz);
   font-family: var(--pixel);
   font-size: 20px;
   line-height: 1;
 }
 
 .team__wahl input:checked + span {
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
   box-shadow: none;
   transform: translate(3px, 3px);
 }
@@ -2049,25 +3002,25 @@ section[id] {
 
 .regler__eingabe::-webkit-slider-runnable-track {
   height: 12px;
-  border: 2px solid var(--tinte);
-  background: linear-gradient(to right, var(--tinte) var(--anteil), var(--bogen) var(--anteil));
+  border: 2px solid var(--rahmen);
+  background: linear-gradient(to right, var(--rahmen) var(--anteil), var(--feld) var(--anteil));
 }
 
 .regler__eingabe::-moz-range-track {
   box-sizing: border-box;
   height: 12px;
-  border: 2px solid var(--tinte);
-  background: linear-gradient(to right, var(--tinte) var(--anteil), var(--bogen) var(--anteil));
+  border: 2px solid var(--rahmen);
+  background: linear-gradient(to right, var(--rahmen) var(--anteil), var(--feld) var(--anteil));
 }
 
 .regler__eingabe::-webkit-slider-thumb {
   width: 22px;
   height: 22px;
   margin-top: -7px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   border-radius: 0;
   background: var(--bogen);
-  box-shadow: 2px 2px 0 var(--tinte);
+  box-shadow: 2px 2px 0 var(--versatz);
   -webkit-appearance: none;
   appearance: none;
 }
@@ -2076,10 +3029,10 @@ section[id] {
   box-sizing: border-box;
   width: 22px;
   height: 22px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   border-radius: 0;
   background: var(--bogen);
-  box-shadow: 2px 2px 0 var(--tinte);
+  box-shadow: 2px 2px 0 var(--versatz);
 }
 
 .regler__eingabe:active::-webkit-slider-thumb {
@@ -2123,14 +3076,22 @@ section[id] {
   grid-column: 1 / -1;
 }
 
+/* Schmale Handys: Beschriftung über dem Feld, sonst läuft „Durchschnittlicher“ darunter */
+@media (max-width: 420px) {
+  .regler--feld {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}
+
 .zahlfeld {
   width: 4.5rem;
   min-height: 42px;
   padding: 4px 10px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   border-radius: 0;
-  background: var(--bogen);
-  box-shadow: inset 2px 2px 0 var(--hauch);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
   color: var(--tinte);
   font-family: var(--pixel);
   font-size: 22px;
@@ -2160,7 +3121,7 @@ section[id] {
 
 .rutscht {
   padding: 16px 18px 18px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background: var(--papier);
 }
 
@@ -2201,7 +3162,7 @@ section[id] {
   gap: 8px;
   min-height: 40px;
   padding: 6px 14px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background: var(--bogen);
   font-size: var(--t-klein);
   font-weight: 520;
@@ -2218,13 +3179,13 @@ section[id] {
 }
 
 .chip input:checked + span {
-  background: var(--tinte);
-  color: var(--bogen);
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
 }
 
 .chip input:checked + span::before {
   background: currentColor;
-  box-shadow: inset 0 0 0 2px var(--tinte);
+  box-shadow: inset 0 0 0 2px var(--rahmen);
 }
 
 /* 5. Richtwerte */
@@ -2279,9 +3240,9 @@ section[id] {
   gap: 16px;
   min-width: 0;
   padding: clamp(16px, 2vw, 22px);
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   background: var(--papier);
-  scroll-margin-top: calc(var(--kopf-hoehe) + 16px);
+  scroll-margin-top: 8px;
 }
 
 @media (min-width: 961px) {
@@ -2343,8 +3304,8 @@ section[id] {
 .pixeljahr__rahmen {
   position: relative;
   padding: 6px;
-  border: 2px solid var(--tinte);
-  background: var(--bogen);
+  border: 2px solid var(--rahmen);
+  background: var(--feld);
 }
 
 /* 44 Spalten = Wochen, 5 Zeilen = Arbeitstage, gefüllt Woche für Woche */
@@ -2358,12 +3319,12 @@ section[id] {
 
 .pixeljahr__tag {
   aspect-ratio: 1;
-  background: var(--bogen);
+  background: var(--feld);
   box-shadow: inset 0 0 0 1px var(--linie-stark);
 }
 
 .pixeljahr__tag.ist-weg {
-  background: var(--stempel);
+  background: var(--stempel-flaeche);
   box-shadow: none;
 }
 
@@ -2381,10 +3342,10 @@ section[id] {
     transform: scale(1.3);
   }
   70% {
-    background: #e2512f;
+    background: var(--glut-rot);
   }
   100% {
-    background: var(--stempel);
+    background: var(--stempel-flaeche);
     transform: none;
   }
 }
@@ -2394,10 +3355,10 @@ section[id] {
   top: -14px;
   right: -10px;
   padding: 3px 8px 5px;
-  border: 2px solid var(--tinte);
-  background: var(--stempel);
-  box-shadow: 2px 2px 0 var(--tinte);
-  color: var(--bogen);
+  border: 2px solid var(--rahmen);
+  background: var(--stempel-flaeche);
+  box-shadow: 2px 2px 0 var(--versatz);
+  color: var(--auf-rahmen);
   font-family: var(--pixel);
   font-size: 22px;
   line-height: 1;
@@ -2430,12 +3391,12 @@ section[id] {
 .pixeljahr__muster {
   width: 10px;
   height: 10px;
-  background: var(--bogen);
+  background: var(--feld);
   box-shadow: inset 0 0 0 1px var(--linie-stark);
 }
 
 .pixeljahr__muster--weg {
-  background: var(--stempel);
+  background: var(--stempel-flaeche);
   box-shadow: none;
 }
 
@@ -2461,7 +3422,7 @@ section[id] {
   left: 0;
   width: 8px;
   height: 8px;
-  background: var(--stempel);
+  background: var(--stempel-flaeche);
 }
 
 .ergebnis__umsatz {
@@ -2504,9 +3465,9 @@ html.check-leiste-an {
     justify-content: space-between;
     gap: 12px;
     padding: 8px 12px 9px;
-    border: 2px solid var(--tinte);
+    border: 2px solid var(--rahmen);
     background: var(--bogen);
-    box-shadow: 4px 4px 0 var(--tinte);
+    box-shadow: 4px 4px 0 var(--versatz);
     font-family: var(--pixel);
     font-size: 20px;
     line-height: 1;
@@ -2522,6 +3483,24 @@ html.check-leiste-an {
   }
 }
 
+/* Handy quer: Leiste und Karte werden flacher, so passen Karte und Sortierknöpfe gemeinsam
+   zwischen Kopf und Leiste */
+@media (max-width: 960px) and (max-height: 500px) {
+  .check__leiste {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+    padding: 4px 10px 5px;
+    font-size: 18px;
+  }
+
+  .check__leiste-euro {
+    font-size: 22px;
+  }
+
+  .karte {
+    min-height: 176px;
+  }
+}
+
 /* 6. Beleg: das Beweisstück */
 
 .belegbereich {
@@ -2532,7 +3511,7 @@ html.check-leiste-an {
   margin-top: clamp(36px, 4vw, 56px);
   padding-top: clamp(28px, 3vw, 40px);
   border-top: 2px dashed var(--linie-stark);
-  scroll-margin-top: calc(var(--kopf-hoehe) + 16px);
+  scroll-margin-top: 8px;
 }
 
 @media (max-width: 960px) {
@@ -2571,10 +3550,8 @@ html.check-leiste-an {
 .zettel__bogen {
   position: relative;
   padding: 6.5cqi 6.5cqi 6cqi;
-  background: var(--bogen);
-  box-shadow:
-    0 1px 1px rgb(43 42 126 / 0.06),
-    0 22px 44px -22px rgb(43 42 126 / 0.35);
+  background: var(--insel-licht), var(--bogen);
+  box-shadow: var(--e-zettel);
   font-size: max(11px, 2.35cqi);
   line-height: 1.35;
 }
@@ -2851,7 +3828,7 @@ html.check-leiste-an {
   width: 28px;
   height: 28px;
   padding-bottom: 2px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   font-family: var(--pixel);
   font-size: 20px;
   line-height: 1;
@@ -2871,11 +3848,16 @@ html.check-leiste-an {
 
 @media (prefers-reduced-motion: reduce) {
   .karte,
-  .karte--geist {
+  .stapel__knopf,
+  .stapel__knopf .pfeil {
     transition: none;
   }
 
-  .karte--neu,
+  .karte.wird-gezogen {
+    scale: none;
+  }
+
+  .karte.ist-eingerastet .karte__marke,
   .pixeljahr__tag.brennt,
   .zettel.wird-gedruckt .zettel__bogen,
   .zettel.wird-gedruckt .zettel__kopie,
@@ -2919,10 +3901,10 @@ html.check-leiste-an {
   width: 100%;
   min-height: 46px;
   padding: 10px 12px;
-  border: 2px solid var(--tinte);
+  border: 2px solid var(--rahmen);
   border-radius: 0;
-  background: var(--bogen);
-  box-shadow: inset 2px 2px 0 var(--hauch);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
   color: var(--tinte);
   font: inherit;
   font-size: 1rem;
@@ -2998,9 +3980,6 @@ html.check-leiste-an {
 
 .bild-fenster .fenster__inhalt {
   padding: 0;
-}
-
-.bild-fenster .fenster__inhalt {
   background: var(--bogen);
 }
 
@@ -3187,9 +4166,11 @@ html.check-leiste-an {
   box-shadow: var(--e2);
 }
 
-/* Reiter oben links */
+/* Reiter oben links. Reiner Druckvermerk: leerer Alternativtext, damit er nicht vorgelesen
+   wird (die erste Zeile ist der Rückfall für Browser ohne diese Schreibweise). */
 .akte::before {
   content: attr(data-akte);
+  content: attr(data-akte) / "";
   position: absolute;
   top: -28px;
   left: 0;
@@ -3332,14 +4313,19 @@ html.check-leiste-an {
   grid-column: 1 / span 8;
 }
 
-/* Maßlinie von Kante zu Kante, auf Höhe der Ziffernmitte */
+/* Maßlinie auf Höhe der Ziffernmitte. Ohne Lochrand (bis 1599 px) reicht sie über den
+   Satzspiegel: Sie beginnt am ersten Endstrich (eine halbe Spalte vor Schritt 1), die
+   rechte Pfeilspitze endet in derselben Flucht. Ab 1600 px läuft sie von Lochrand zu
+   Lochrand, mit Pfeilen an beiden Enden. */
 .bogen > .ablauf__linie {
+  grid-column: satz;
   grid-row: 2;
   align-self: start;
   display: flex;
   align-items: center;
   height: 16px;
   margin-top: calc(clamp(2.5rem, 2rem + 2vw, 4rem) + var(--ziffer) * 0.425 - 8px);
+  margin-inline: calc(var(--spalt) / -2 - 2px);
   color: var(--tinte);
   pointer-events: none;
 }
@@ -3365,18 +4351,26 @@ html.check-leiste-an {
   stroke-width: 1.5;
 }
 
+/* Ohne Lochrand beginnt die Linie am ersten Endstrich, der linke Pfeil entfällt
+   (er läge hinter der freigestellten Ziffer 1) */
 .ablauf__pfeil--l {
   margin-right: -9px;
+  visibility: hidden;
 }
 
 .ablauf__pfeil--r {
   margin-left: -9px;
 }
 
-@media (min-width: 1440px) {
+@media (min-width: 1600px) {
   .bogen > .ablauf__linie {
     grid-column: voll;
+    margin-inline: 0;
     padding-inline: calc(var(--loch) + 16px);
+  }
+
+  .ablauf__pfeil--l {
+    visibility: visible;
   }
 }
 
@@ -3403,7 +4397,10 @@ html.check-leiste-an {
 
 .ablauf li::before {
   content: counter(schritt);
-  margin-bottom: clamp(1rem, 0.5rem + 1vw, 1.75rem);
+  justify-self: start;
+  margin: 0 0 clamp(1rem, 0.5rem + 1vw, 1.75rem) -0.1em;
+  padding-inline: 0.1em 0.14em;
+  background: var(--papier); /* stellt die Ziffer frei: Die Maßlinie läuft hinter ihr durch */
   color: var(--tinte);
   font-size: var(--ziffer);
   font-stretch: var(--breit);
@@ -3423,10 +4420,6 @@ html.check-leiste-an {
   width: 1.5px;
   height: 16px;
   background: var(--tinte);
-}
-
-.ablauf li:first-child::after {
-  display: none;
 }
 
 .ablauf.ist-vorbereitet li::before {
@@ -3561,7 +4554,9 @@ html.check-leiste-an {
   padding-block: 0 calc(var(--abstand) * 0.5);
 }
 
-/* Der Brief liegt halb auf dem Nacht-See, halb auf dem Papier */
+/* Der Brief liegt mit der Oberkante auf der Nacht-Tinte unter dem See, der Rest auf
+   dem Papier. Er ist groß, darum ein flacher, schwach getönter Schatten statt --e3.
+   Eine Spalte in Lead-Größe mit Briefzeilenlänge, mit Silbentrennung für ruhigen Flatterrand. */
 .ueber-bogen {
   position: relative;
   z-index: 3;
@@ -3569,19 +4564,30 @@ html.check-leiste-an {
   margin-top: calc(-1 * clamp(96px, 10vw, 200px));
   padding: clamp(28px, 4vw, 72px);
   background: var(--bogen);
-  box-shadow:
-    var(--e3),
-    0 1px 0 rgb(255 255 255 / 0.06) inset,
-    10px 36px 72px -36px rgb(var(--sch) / 0.35);
+  box-shadow: var(--e-brief);
   font-size: var(--t-lead);
   line-height: 1.5;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  hyphenate-limit-chars: 8 4 4;
+}
+
+/* 54ch ergeben in dieser Schrift rund 65 bis 70 Zeichen je Zeile. Die Linie über dem
+   Nachsatz läuft über den ganzen Bogen. */
+.ueber-bogen p {
+  max-width: 54ch;
+}
+
+.ueber-bogen .ueber__privat {
+  max-width: none;
 }
 
 .ueber-bogen p + p {
   margin-top: 1.25rem;
 }
 
-/* Klebestreifen */
+/* Klebestreifen, immer auf der Seite gegenüber der Sonne: So trifft sein Gelb nicht auf
+   die Glitzerspur im See. Das Bergbild meldet die Seite über data-sonne. */
 .ueber-bogen::before {
   content: "";
   position: absolute;
@@ -3590,13 +4596,18 @@ html.check-leiste-an {
   width: 96px;
   height: 24px;
   background: var(--kopie-gelb);
-  opacity: 0.85;
+  opacity: var(--klebeband-deckkraft);
   transform: rotate(-3deg);
   pointer-events: none;
 }
 
+.begleiter:has([data-sonne="links"]) .ueber-bogen:not(:has(.bild-fenster))::before {
+  right: clamp(28px, 4vw, 72px);
+  left: auto;
+  transform: rotate(3deg);
+}
+
 .ueber__privat {
-  column-span: all;
   margin-top: 1.5rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--linie);
@@ -3612,12 +4623,6 @@ html.check-leiste-an {
 }
 
 @media (min-width: 1280px) {
-  .ueber-bogen {
-    column-count: 2;
-    column-gap: 64px;
-    column-rule: 1px solid var(--linie);
-  }
-
   /* Das Foto steckt wie ein Abzug oben rechts am Brief: Es ragt über den See nach oben
      und endet im oberen Innenrand, damit es keinen Text verdeckt. */
   .ueber-bogen .bild-fenster {
@@ -3638,16 +4643,21 @@ html.check-leiste-an {
   }
 }
 
+/* Mobil bleibt die Rasterkante als Band lesbar, der Streifen ragt nur knapp darüber */
 @media (max-width: 767px) {
   .ueber-bogen {
-    margin-top: -48px;
+    margin-top: -24px;
+  }
+
+  .ueber-bogen::before {
+    top: -6px;
   }
 }
 
 /* Kontakt ---------------------------------------------------------------- */
 
 .kontakt h2 {
-  grid-column: 1 / span 7;
+  grid-column: 1 / -1;
   font-size: var(--t-statement);
 }
 
@@ -3672,7 +4682,7 @@ html.check-leiste-an {
   gap: 0.6rem;
   margin-top: 0.5rem;
   padding-top: 1.25rem;
-  border-top: 1px solid rgb(255 255 255 / 0.18);
+  border-top: 1px solid var(--auf-nacht-linie);
 }
 
 .kontakt__wege > p:first-child {
@@ -3688,7 +4698,7 @@ html.check-leiste-an {
 
 .kontakt__wege a {
   overflow-wrap: anywhere;
-  text-decoration-color: rgb(255 255 255 / 0.5);
+  text-decoration-color: var(--auf-nacht-unterstrich);
 }
 
 .kontakt__ort {
@@ -3696,10 +4706,18 @@ html.check-leiste-an {
 }
 
 .kontakt__formular {
+  --ausbruch: calc(var(--marg) * 0.4);
   grid-column: 7 / -1;
   grid-row: 3;
   align-self: start;
-  margin: clamp(2.5rem, 2rem + 2vw, 4rem) calc(var(--marg) * -0.4) 0 0;
+  margin: clamp(2.5rem, 2rem + 2vw, 4rem) calc(-1 * var(--ausbruch)) 0 0;
+}
+
+/* Mit Marginalien endet der Ausbruch samt Versatzschatten vor dem Blattvermerk (mind. 24 px Luft) */
+@media (min-width: 1600px) {
+  .kontakt__formular {
+    --ausbruch: max(0px, min(var(--marg) * 0.4, var(--marg) - clamp(20px, 2vw, 40px) - 60px));
+  }
 }
 
 @media (max-width: 1000px) {
@@ -3740,34 +4758,56 @@ html.check-leiste-an {
   color: var(--tinte);
 }
 
+/* Schmale Bildschirme: Überschriften nehmen die Satzbreite, die Zeilenlänge begrenzt
+   allein max-width: 18ch. So brechen sie nicht in viele kurze Zeilen um. */
+@media (max-width: 1099px) {
+  .problem__titel,
+  .ueber-band > .satz h2,
+  .ablauf-band > .satz h2,
+  .projekte__kopf {
+    grid-column: 1 / span 10;
+  }
+}
+
+@media (max-width: 767px) {
+  .problem__titel,
+  .ueber-band > .satz h2,
+  .ablauf-band > .satz h2,
+  .projekte__kopf {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Fußzeile --------------------------------------------------------------- */
 
 /* Der Fuß läuft im Dunkeln weiter, auch auf den Rechtsseiten */
 .fuss {
-  --fokus: #fff;
+  --fokus: var(--auf-nacht);
   overflow: hidden;
   background: var(--tinte-nacht);
   color: var(--auf-nacht-matt);
 }
 
-/* Farbkontrollstreifen wie am Rand eines Druckbogens */
+/* Farbkontrollstreifen wie am Rand eines Druckbogens: sitzt auf der Haarlinie des Fußes
+   und beginnt an der Satzkante mit einer vollen Farbgruppe */
 .kontrollstreifen {
   height: 12px;
-  background: repeating-linear-gradient(
+  pointer-events: none;
+  background: var(--satz-einzug) 0 / 168px 12px repeat-x repeating-linear-gradient(
     90deg,
-    var(--tinte) 0 12px,
+    var(--rahmen) 0 12px,
     var(--tinte-tief) 12px 24px,
     var(--tinte-matt) 24px 36px,
     var(--kopie-gelb) 36px 48px,
     var(--kopie-rosa) 48px 60px,
-    var(--stempel) 60px 72px,
-    var(--bogen) 72px 84px,
+    var(--stempel-flaeche) 60px 72px,
+    var(--auf-nacht) 72px 84px,
     transparent 84px 168px
   );
 }
 
 .fuss__satz {
-  padding-top: clamp(2rem, 1.5rem + 2vw, 3.5rem);
+  padding-top: 0;
 }
 
 @media (min-width: 1440px) {
@@ -3783,7 +4823,7 @@ html.check-leiste-an {
   justify-content: space-between;
   gap: 1rem 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: 1px solid var(--auf-nacht-linie-leise);
   font-size: var(--t-klein);
 }
 
@@ -3804,9 +4844,10 @@ html.check-leiste-an {
   text-decoration: underline;
 }
 
-/* Wortmarke als Kontur, unten angeschnitten */
+/* Wortmarke als Kontur, unten knapp unter der Grundlinie angeschnitten: Es fallen nur die
+   Unterlängen weg, der Haken des J bleibt (sonst liest sie sich als „ITK“) */
 .fuss__marke {
-  margin: clamp(3rem, 2rem + 3vw, 5rem) 0 -0.2em;
+  margin: clamp(3rem, 2rem + 3vw, 5rem) 0 0;
   padding-left: var(--satz-einzug);
   color: transparent;
   font-size: calc(var(--satz) / 7.2);
@@ -3815,7 +4856,7 @@ html.check-leiste-an {
   letter-spacing: -0.03em;
   line-height: 0.8;
   white-space: nowrap;
-  -webkit-text-stroke: 1px rgb(255 255 255 / 0.16);
+  -webkit-text-stroke: 1px var(--auf-nacht-kontur);
   user-select: none;
 }
 
@@ -3838,14 +4879,6 @@ html.check-leiste-an {
   font-size: var(--t-h3);
 }
 
-.recht .platzhalter {
-  padding: 1rem 1.25rem;
-  border: 1px dashed var(--linie-stark);
-  border-radius: 2px;
-  background: var(--bogen);
-  color: var(--tinte-matt);
-}
-
 .recht ul {
   display: grid;
   gap: 0.4rem;
@@ -3853,10 +4886,140 @@ html.check-leiste-an {
   padding-left: 1.2rem;
 }
 
+/* Tippziele: auf Touch-Geräten und schmalen Bildschirmen mindestens 44 px. Die
+   Trefferfläche wächst unsichtbar (Polster mit Gegenrand bzw. ::after), das Bild bleibt. */
+@media (max-width: 767px), (pointer: coarse) {
+  .retro-knopf,
+  .kopf__nav .kopf__kontakt {
+    min-height: 44px;
+  }
+
+  .beleg__nochmal,
+  .check__link,
+  .leise-knopf {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .fenster__zu {
+    position: relative;
+  }
+
+  .fenster__zu::after {
+    content: "";
+    position: absolute;
+    inset: -12px;
+  }
+
+  .marke,
+  .hero__telefon a,
+  .fuss__links a,
+  .anfrage__hinweis a,
+  .kontakt__wege a,
+  .check__leiste a {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+
+  /* Der Telefonlink unter „Adresse kopieren“: Sein Polster darf den Knopf nicht überdecken */
+  .kontakt__wege {
+    row-gap: 14px;
+  }
+
+  /* Kopf-Navigation auf Touch-Tablets: Die Trefferfläche wächst unsichtbar, der Strich bleibt */
+  .kopf__nav a:not(.kopf__kontakt) {
+    position: relative;
+  }
+
+  .kopf__nav a:not(.kopf__kontakt)::after {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
+
+  .team__wahl span,
+  .chip span,
+  .zahlfeld {
+    min-height: 44px;
+  }
+
+  /* Regler: 44 px hohe Trefferfläche und ein griffiger Daumen, die Spur bleibt 12 px */
+  .regler__eingabe {
+    height: 44px;
+  }
+
+  .regler__eingabe::-webkit-slider-thumb {
+    width: 32px;
+    height: 32px;
+    margin-top: -12px;
+  }
+
+  .regler__eingabe::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* Seitenwechsel ----------------------------------------------------------- */
 
 @view-transition {
   navigation: auto;
+}
+
+/* Umschalten hell/dunkel: Die Seite rastert sich in acht Stufen um, über dieselbe Bayer-Matrix
+   wie die Rasterkanten (4-px-Zellen, mobil 3 px). Nur beim Schalter; Seitenwechsel blenden wie
+   bisher. Ohne View Transitions oder bei reduzierter Bewegung schaltet die Seite sofort um. */
+html.modus-wechsel *,
+html.modus-wechsel *::before,
+html.modus-wechsel *::after {
+  transition: none !important;
+}
+
+html.modus-wechsel::view-transition-old(root),
+html.modus-wechsel::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.modus-wechsel::view-transition-new(root) {
+  mask-size: 32px 32px;
+  animation: umrastern 480ms steps(1, end) both;
+}
+
+@media (max-width: 767px) {
+  html.modus-wechsel::view-transition-new(root) {
+    mask-size: 24px 24px;
+  }
+}
+
+@keyframes umrastern {
+  0% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM4 0h1v1h-1zM2 2h1v1h-1zM6 2h1v1h-1zM0 4h1v1h-1zM4 4h1v1h-1zM2 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  12.5% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM2 0h1v1h-1zM4 0h1v1h-1zM6 0h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  25% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM2 0h1v1h-1zM4 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM3 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM5 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM3 7h1v1h-1zM7 7h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  37.5% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h-1zM2 0h1v1h-1zM4 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM6 6h1v1h-1zM1 7h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  50% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h3v1h-3zM4 0h3v1h-3zM1 1h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM7 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h2v1h-2zM1 3h1v1h-1zM3 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM0 4h3v1h-3zM4 4h3v1h-3zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM2 6h3v1h-3zM6 6h2v1h-2zM1 7h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  62.5% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h8v1h-8zM1 1h1v1h-1zM3 1h1v1h-1zM5 1h1v1h-1zM7 1h1v1h-1zM0 2h8v1h-8zM1 3h1v1h-1zM3 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM0 4h8v1h-8zM1 5h1v1h-1zM3 5h1v1h-1zM5 5h1v1h-1zM7 5h1v1h-1zM0 6h8v1h-8zM1 7h1v1h-1zM3 7h1v1h-1zM5 7h1v1h-1zM7 7h1v1h-1z'/%3E%3C/svg%3E");
+  }
+  75% {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h8v1h-8zM0 1h2v1h-2zM3 1h3v1h-3zM7 1h1v1h-1zM0 2h8v1h-8zM1 3h3v1h-3zM5 3h3v1h-3zM0 4h8v1h-8zM0 5h2v1h-2zM3 5h3v1h-3zM7 5h1v1h-1zM0 6h8v1h-8zM1 7h3v1h-3zM5 7h3v1h-3z'/%3E%3C/svg%3E");
+  }
+  87.5%,
+  100% {
+    mask-image: none;
+  }
 }
 
 /* Reduzierte Bewegung --------------------------------------------------- */
@@ -3901,4 +5064,70 @@ html.check-leiste-an {
 .recht h1 {
   font-size: clamp(2.25rem, 1.5rem + 2.5vw, 3.75rem);
   line-height: 1.05;
+}
+
+/* Schmal: Die versetzten Blätter hinter Akten und Zusage bleiben innerhalb des Bildschirms
+   (auch beim Antippen und bei reduzierter Bewegung, daher !important wie oben) */
+@media (max-width: 767px) {
+  .akte__blatt,
+  .akte:hover .akte__blatt {
+    transform: translate(4px, 4px) rotate(0.3deg) !important;
+  }
+
+  .akte__blatt + .akte__blatt,
+  .akte:hover .akte__blatt + .akte__blatt {
+    transform: translate(8px, 8px) rotate(0.6deg) !important;
+  }
+
+  .zusage__kopie--gelb,
+  .ablauf__zusage:hover .zusage__kopie--gelb {
+    transform: translate(4px, 5px) rotate(0.3deg) !important;
+  }
+
+  .zusage__kopie--rosa,
+  .ablauf__zusage:hover .zusage__kopie--rosa {
+    transform: translate(8px, 10px) rotate(0.6deg) !important;
+  }
+}
+
+/* Druck --------------------------------------------------------------------- */
+
+/* Wer druckt, bevor alles einmal im Bild war, bekäme sonst die Startzustände der
+   Scroll-Momente aufs Papier: weggeclippte Überschriften, leere Ablauf-Ziffern, fehlende
+   Linien. !important schlägt die Inline-Stile, die das Skript für den Start setzt.
+   (Meldungen und Bergbild regeln ihren Druck selbst.) */
+@media print {
+  main h2 {
+    clip-path: none !important;
+  }
+
+  .leistungen > div::before,
+  .ablauf__strich {
+    transform: none !important;
+  }
+
+  .ablauf.ist-vorbereitet li::before {
+    color: var(--tinte) !important;
+  }
+
+  /* Desktop im Problem-Band: Auf Papier stehen die offenen Meldungen untereinander im Fluss
+     (die Lage per left/top gilt nur am Bildschirm), Taskleiste und Geisterfenster entfallen. */
+  .taskleiste,
+  .schreibtisch--desktop .geist,
+  .schreibtisch--desktop .bliss {
+    display: none !important;
+  }
+
+  .schreibtisch.schreibtisch--desktop {
+    height: auto;
+    overflow: visible;
+  }
+
+  .schreibtisch.schreibtisch--desktop .meldung {
+    position: static;
+    margin-bottom: 16px;
+    opacity: 1 !important;
+    transform: none !important;
+    break-inside: avoid;
+  }
 }

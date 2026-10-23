@@ -10,27 +10,27 @@ const { name } = Astro.props;
   {
     name === "info" && (
       <>
-        <circle cx="8" cy="8" r="7.5" fill="var(--tinte)" />
-        <rect x="7" y="3" width="2" height="2" fill="var(--bogen)" />
-        <rect x="7" y="6" width="2" height="7" fill="var(--bogen)" />
+        <circle cx="8" cy="8" r="7.5" fill="var(--rahmen)" />
+        <rect x="7" y="3" width="2" height="2" fill="var(--auf-rahmen)" />
+        <rect x="7" y="6" width="2" height="7" fill="var(--auf-rahmen)" />
       </>
     )
   }
   {
     name === "warnung" && (
       <>
-        <polygon points="8,0.5 15.5,15 0.5,15" fill="var(--kopie-gelb)" stroke="var(--tinte)" stroke-width="1" />
-        <rect x="7" y="5" width="2" height="5" fill="var(--tinte)" />
-        <rect x="7" y="11" width="2" height="2" fill="var(--tinte)" />
+        <polygon points="8,0.5 15.5,15 0.5,15" fill="var(--kopie-gelb)" stroke="var(--auf-gelb)" stroke-width="1" />
+        <rect x="7" y="5" width="2" height="5" fill="var(--auf-gelb)" />
+        <rect x="7" y="11" width="2" height="2" fill="var(--auf-gelb)" />
       </>
     )
   }
   {
     name === "fehler" && (
       <>
-        <circle cx="8" cy="8" r="7.5" fill="var(--stempel)" />
-        <rect x="4" y="7" width="8" height="2" fill="var(--bogen)" transform="rotate(45 8 8)" />
-        <rect x="4" y="7" width="8" height="2" fill="var(--bogen)" transform="rotate(-45 8 8)" />
+        <circle cx="8" cy="8" r="7.5" fill="var(--stempel-flaeche)" />
+        <rect x="4" y="7" width="8" height="2" fill="var(--auf-rahmen)" transform="rotate(45 8 8)" />
+        <rect x="4" y="7" width="8" height="2" fill="var(--auf-rahmen)" transform="rotate(-45 8 8)" />
       </>
     )
   }

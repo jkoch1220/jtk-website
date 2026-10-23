@@ -206,7 +206,7 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 22px;
-    border: 2px solid var(--tinte);
+    border: 2px solid var(--rahmen);
   }
 
   .termin__reiter {
@@ -224,7 +224,7 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
   }
 
   .termin__reiter + .termin__reiter {
-    border-left: 2px solid var(--tinte);
+    border-left: 2px solid var(--rahmen);
   }
 
   .termin__reiter:hover {
@@ -232,8 +232,8 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
   }
 
   .termin__reiter[aria-pressed="true"] {
-    background: var(--tinte);
-    color: var(--bogen);
+    background: var(--rahmen);
+    color: var(--auf-rahmen);
   }
 
   .termin__reiter:focus-visible {
@@ -270,10 +270,10 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
     min-width: 76px;
     min-height: 44px;
     padding: 6px 10px;
-    border: 2px solid var(--tinte);
+    border: 2px solid var(--rahmen);
     border-radius: 0;
     background: var(--bogen);
-    box-shadow: 3px 3px 0 var(--tinte);
+    box-shadow: 3px 3px 0 var(--versatz);
     color: var(--tinte);
     font-family: var(--pixel);
     font-size: 20px;
@@ -300,10 +300,10 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
 
   .termin__tage :global(.termin__knopf[aria-pressed="true"]),
   .termin__zeiten :global(.termin__knopf[aria-pressed="true"]) {
-    background: var(--tinte);
-    color: var(--bogen);
+    background: var(--rahmen);
+    color: var(--auf-rahmen);
     transform: translate(3px, 3px);
-    box-shadow: 0 0 0 var(--tinte);
+    box-shadow: 0 0 0 var(--versatz);
   }
 
   .termin__tage :global(.termin__knopf:focus-visible),
@@ -339,6 +339,13 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
     cursor: pointer;
   }
 
+  /* Tippziele auf Touch-Geräten und schmalen Bildschirmen mindestens 44 px */
+  @media (max-width: 767px), (pointer: coarse) {
+    .termin__ort {
+      min-height: 44px;
+    }
+  }
+
   /* Steht in fieldset.feld: die Textfeld-Regel .feld input aus global.css hier zurücknehmen */
   .termin__ort input {
     flex: none;
@@ -350,7 +357,7 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
     border: 0;
     background: none;
     box-shadow: none;
-    accent-color: var(--tinte);
+    accent-color: var(--rahmen);
   }
 
   .termin__ausweg {
@@ -359,7 +366,7 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
     justify-items: start;
     margin-top: 18px;
     padding: 12px 14px;
-    border: 2px dashed var(--tinte);
+    border: 2px dashed var(--rahmen);
     background: var(--papier);
   }
 

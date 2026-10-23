@@ -7,10 +7,17 @@
    form[data-check].dataset.ergebnis. Die Daten kommen aus Zeitfresser.astro. */
 
 import { belegPdfErstellen, dateiAnbieten, type BelegDaten } from "./beleg-pdf";
+import {
+  FLUGZEIT_MS,
+  ploppen,
+  stapelSpielEinrichten,
+  type Sortierung,
+  type Wechsel,
+  type Wurf,
+} from "./zeitfresser-stapel";
 
 type Einheit = "Tag" | "Woche" | "Monat";
 type Art = "vorgaenge" | "minuten" | "stunden";
-type Sortierung = "hand" | "digital";
 
 type Aufgabe = {
   id: string;
@@ -57,7 +64,6 @@ const STUNDEN_VOLLZEIT = ARBEITSTAGE * STUNDEN_PRO_TAG;
 const PRO_JAHR: Record<Einheit, number> = { Tag: ARBEITSTAGE, Woche: ARBEITSWOCHEN, Monat: 12 };
 const ZEITRAUM: Record<Einheit, string> = { Tag: "Arbeitstage", Woche: "Wochen", Monat: "Monate" };
 const PRO: Record<Einheit, string> = { Tag: "pro Tag", Woche: "pro Woche", Monat: "pro Monat" };
-const WISCH_SCHWELLE = 80;
 const HEBEL_MAX = 3;
 const PUNKTE_MAX = 20;
 const ZAEHLDAUER_MS = 400;
@@ -133,6 +139,8 @@ export function zeitfresserEinrichten(): void {
   const unter = alle("[data-stapel-unter]");
   const fortschritt = finde("[data-stapel-fortschritt]");
   const segmente = new Map(alle("[data-segment]").map((s) => [s.dataset.segment ?? "", s]));
+  const zaehler = new Map(alle("[data-stapel-zahl]").map((z) => [z.dataset.stapelZahl ?? "", z]));
+  const sortierKnoepfe = alle<HTMLButtonElement>("[data-sortieren]");
   const [zurueckKnopf, zurueckFertig] = alle<HTMLButtonElement>("[data-stapel-zurueck]");
   const restKnopf = finde<HTMLButtonElement>("[data-stapel-rest]");
   const fertigBox = finde("[data-stapel-fertig]");
@@ -537,36 +545,47 @@ export function zeitfresserEinrichten(): void {
     if (fertigBox) fertigBox.hidden = sortierModus;
   };
 
-  const stapelZeigen = (neu = false) => {
-    karten.forEach((k, i) => (k.hidden = i !== index));
+  // Was gerade noch durch die Luft fliegt, zählt erst, wenn es im Knopf gelandet ist
+  const fliegend = new Map<string, Sortierung | undefined>();
+  const sichtbarerStand = (id: string) => (fliegend.has(id) ? fliegend.get(id) : sortiert.get(id));
+
+  // Balken und Zähler in den Knöpfen, immer aus sortiert abgeleitet
+  const standZeigen = () => {
+    const summe: Record<Sortierung, number> = { hand: 0, digital: 0 };
+    karten.forEach((k, i) => {
+      const id = kartenId(k);
+      const s = sichtbarerStand(id);
+      if (s) summe[s] += 1;
+      const segment = segmente.get(id);
+      if (!segment) return;
+      segment.dataset.stand = s ?? "";
+      segment.classList.toggle("ist-jetzt", sortierModus && i === index);
+    });
+    zaehler.forEach((z, art) => (z.textContent = String(summe[art as Sortierung] ?? 0)));
+  };
+
+  const bisherZeigen = (karte: HTMLElement | undefined) => {
+    const marke = karte?.querySelector<HTMLElement>("[data-karte-bisher]");
+    if (!karte || !marke) return;
+    const bisher = sortiert.get(kartenId(karte));
+    marke.hidden = !bisher;
+    marke.textContent = bisher ? `Bisher: ${bisher === "hand" ? "von Hand" : "digital"}` : "";
+  };
+
+  const stapelZeigen = (wechsel: Wechsel = "ruhe", art?: Sortierung) => {
     const karte = karten[index];
+    const darunter = karten[index + 1];
     // Wer den Stapel fokussiert, hört gleich, welche Karte oben liegt
     if (karte) stapel?.setAttribute("aria-describedby", `${karte.id} zf-stapel-hilfe`);
-    if (karte) {
-      karte.style.transform = "";
-      karte.style.removeProperty("--hand");
-      karte.style.removeProperty("--digital");
-      const bisher = sortiert.get(kartenId(karte));
-      const marke = karte.querySelector<HTMLElement>("[data-karte-bisher]");
-      if (marke) {
-        marke.hidden = !bisher;
-        marke.textContent = bisher ? `Bisher: ${bisher === "hand" ? "von Hand" : "digital"}` : "";
-      }
-      if (neu && !ruhig()) {
-        karte.classList.remove("karte--neu");
-        void karte.offsetWidth;
-        karte.classList.add("karte--neu");
-      }
-    }
+    // Plaketten nur für Karten, die in dieser Runde noch kommen. Alle liegen im selben Feld,
+    // so bleibt die Stapelhöhe während der Runde gleich.
+    karten.slice(index).forEach(bisherZeigen);
+    spiel?.zeigen(karte, darunter, wechsel, art);
+    // Die nächste Karte liegt sichtbar darunter, der Rand darunter deutet den Rest an
     const rest = anzahl - index - 1;
     unter.forEach((u) => (u.hidden = rest < Number(u.dataset.stapelUnter)));
     if (fortschritt) fortschritt.textContent = `${Math.min(index + 1, anzahl)} von ${anzahl}`;
-    karten.forEach((k, i) => {
-      const segment = segmente.get(kartenId(k));
-      if (!segment) return;
-      segment.dataset.stand = sortiert.get(kartenId(k)) ?? "";
-      segment.classList.toggle("ist-jetzt", sortierModus && i === index);
-    });
+    standZeigen();
     if (zurueckKnopf) {
       const warFokus = document.activeElement === zurueckKnopf;
       zurueckKnopf.disabled = verlauf.length === 0;
@@ -854,54 +873,52 @@ export function zeitfresserEinrichten(): void {
 
   /* Sortieren ----------------------------------------------------------------- */
 
-  const lageFuer = (dx: number) => (ruhig() ? `translateX(${dx}px)` : `translateX(${dx}px) rotate(${dx / 16}deg)`);
+  let ansichtWarten = 0;
 
-  // Eine Kopie der Karte fliegt raus, die nächste liegt sofort bereit. So gehen auch schnelle Klicks.
-  const wegfliegen = (karte: HTMLElement, art: Sortierung, lage = "") => {
-    if (ruhig() || !stapel) return;
-    const geist = karte.cloneNode(true) as HTMLElement;
-    geist.removeAttribute("data-karte");
-    geist.classList.remove("karte--neu", "wird-gezogen");
-    geist.classList.add("karte--geist");
-    geist.setAttribute("aria-hidden", "true");
-    geist.style.transform = lage;
-    geist.style.setProperty(art === "hand" ? "--hand" : "--digital", "1");
-    stapel.append(geist);
-    void geist.offsetWidth;
-    geist.style.transform = "";
-    geist.classList.add(`karte--raus-${art}`);
-    window.setTimeout(() => geist.remove(), 450);
-  };
-
-  const sortierenBeenden = () => {
+  const sortierenBeenden = (verzoegerung = 0) => {
     sortierModus = false;
     begonnen = true;
     bilanzSetzen();
-    const fokusHier =
-      !document.activeElement ||
-      document.activeElement === document.body ||
-      (stapelBereich?.contains(document.activeElement) ?? false);
-    stapelAnsicht();
     stapelZeigen();
-    if (fokusHier) fertigBox?.focus({ preventScroll: true });
+    window.clearTimeout(ansichtWarten);
+    const umschalten = () => {
+      if (sortierModus) return;
+      const fokusHier =
+        !document.activeElement ||
+        document.activeElement === document.body ||
+        (stapelBereich?.contains(document.activeElement) ?? false);
+      stapelAnsicht();
+      if (fokusHier) fertigBox?.focus({ preventScroll: true });
+    };
+    // Die letzte Karte darf erst noch landen, dann kommt die Bilanz
+    if (verzoegerung > 0) ansichtWarten = window.setTimeout(umschalten, verzoegerung);
+    else umschalten();
   };
 
-  const entscheiden = (art: Sortierung, lage?: string) => {
+  // Laufende Würfe abbrechen, Zähler und Balken zeigen wieder genau sortiert
+  const wuerfeAbbrechen = () => {
+    window.clearTimeout(ansichtWarten);
+    spiel?.aufraeumen();
+    fliegend.clear();
+  };
+
+  const entscheiden = (art: Sortierung, wurf?: Wurf) => {
     if (!sortierModus) return;
     const karte = karten[index];
     if (!karte) return;
     const id = kartenId(karte);
-    verlauf.push({ aenderungen: [[id, sortiert.get(id)]], index, modus: true });
+    const vorher = sortiert.get(id);
+    verlauf.push({ aenderungen: [[id, vorher]], index, modus: true });
     sortiert.set(id, art);
     if (art === "hand") begonnen = true;
-    wegfliegen(karte, art, lage);
+    if (spiel?.werfen(karte, art, wurf)) fliegend.set(id, vorher);
     index += 1;
     const name = aufgabeNach.get(id)?.name ?? "";
     const urteil = art === "hand" ? "von Hand" : "digital";
     if (index >= anzahl) {
-      sortierenBeenden();
+      sortierenBeenden(fliegend.has(id) ? FLUGZEIT_MS : 0);
     } else {
-      stapelZeigen(true);
+      stapelZeigen("weiter");
       const naechste = aufgabeNach.get(kartenId(karten[index]))?.name ?? "";
       ansagen(stapelAnsage, `${name}: ${urteil}. Karte ${index + 1} von ${anzahl}: ${naechste}.`);
     }
@@ -909,7 +926,35 @@ export function zeitfresserEinrichten(): void {
     geaendertStill();
   };
 
+  const spiel = stapel
+    ? stapelSpielEinrichten({
+        stapel,
+        karten,
+        knoepfe: {
+          hand: sortierKnoepfe.find((k) => k.dataset.sortieren === "hand"),
+          digital: sortierKnoepfe.find((k) => k.dataset.sortieren === "digital"),
+        },
+        ruhig,
+        bereit: () => sortierModus && index < anzahl,
+        entscheiden,
+        // Zählt die Zielseite jetzt wirklich eine mehr? Sonst kein „+1“ am Knopf
+        gelandet: (id, art) => {
+          if (!fliegend.has(id)) return null;
+          const vorher = fliegend.get(id);
+          fliegend.delete(id);
+          standZeigen();
+          ploppen(segmente.get(id), 1.7);
+          // Inzwischen anders entschieden (Werkbank): keine Rückmeldung am Knopf
+          if (sortiert.get(id) !== art) return null;
+          return vorher === art ? "gleich" : "mehr";
+        },
+      })
+    : null;
+
   const restUebernehmen = () => {
+    // Nach der letzten Karte (Bilanz kommt gleich) gibt es keinen Rest mehr
+    if (!sortierModus || index >= anzahl) return;
+    wuerfeAbbrechen();
     const aenderungen: [string, Sortierung | undefined][] = [];
     for (let i = index; i < anzahl; i++) {
       const id = kartenId(karten[i]);
@@ -928,6 +973,10 @@ export function zeitfresserEinrichten(): void {
   const rueckgaengig = () => {
     const schritt = verlauf.pop();
     if (!schritt) return;
+    wuerfeAbbrechen();
+    const ersteId = schritt.aenderungen[0]?.[0];
+    // Wohin die Karte geworfen wurde, von dort kommt sie zurück
+    const warArt = ersteId ? sortiert.get(ersteId) : undefined;
     for (const [id, vorher] of schritt.aenderungen) {
       if (vorher) sortiert.set(id, vorher);
       else sortiert.delete(id);
@@ -935,15 +984,19 @@ export function zeitfresserEinrichten(): void {
     index = schritt.index;
     sortierModus = schritt.modus;
     stapelAnsicht();
-    stapelZeigen(sortierModus);
-    const ersteId = schritt.aenderungen[0]?.[0];
-    if (sortierModus && ersteId === kartenId(karten[index])) {
+    const eineKarte = sortierModus && ersteId === kartenId(karten[index]);
+    stapelZeigen(eineKarte && schritt.aenderungen.length === 1 ? "zurueck" : sortierModus ? "weiter" : "ruhe", warArt);
+    if (eineKarte) {
       const name = aufgabeNach.get(kartenId(karten[index]))?.name ?? "";
       ansagen(stapelAnsage, `Rückgängig. Karte ${index + 1} von ${anzahl}: ${name}.`);
       // Der Knopf in der Fertig-Box ist jetzt weg, also weiter am Stapel
       if (fertigBox?.contains(document.activeElement) || document.activeElement === document.body) {
         stapel?.focus({ preventScroll: true });
       }
+    } else if (schritt.aenderungen.length === 0) {
+      // „Übrige so lassen“ zurückgenommen: Es geht am Stapel weiter
+      const name = aufgabeNach.get(kartenId(karten[index]))?.name ?? "";
+      ansagen(stapelAnsage, `Rückgängig. Karte ${index + 1} von ${anzahl}: ${name}.`);
     } else {
       const namen = schritt.aenderungen.map(([id]) => aufgabeNach.get(id)?.name ?? "").join(", ");
       ansagen(stapelAnsage, `Rückgängig. ${namen}: läuft wieder von Hand.`);
@@ -952,7 +1005,7 @@ export function zeitfresserEinrichten(): void {
     geaendertStill();
   };
 
-  formular.querySelectorAll<HTMLButtonElement>("[data-sortieren]").forEach((knopf) => {
+  sortierKnoepfe.forEach((knopf) => {
     knopf.addEventListener("click", () => entscheiden(knopf.dataset.sortieren === "digital" ? "digital" : "hand"));
   });
   zurueckKnopf?.addEventListener("click", rueckgaengig);
@@ -960,84 +1013,25 @@ export function zeitfresserEinrichten(): void {
   restKnopf?.addEventListener("click", restUebernehmen);
   neuKnopf?.addEventListener("click", () => {
     // Neue Runde, neuer Verlauf: Rückgängig springt sonst in die alte Runde
+    wuerfeAbbrechen();
     verlauf.length = 0;
     index = 0;
     sortierModus = true;
     stapelAnsicht();
-    stapelZeigen(true);
+    stapelZeigen("weiter");
     ansichtAktualisieren();
     stapel?.focus({ preventScroll: true });
     ansagen(stapelAnsage, `Karte 1 von ${anzahl}: ${aufgabeNach.get(kartenId(karten[0]))?.name ?? ""}.`);
   });
 
+  // Wischen steckt in zeitfresser-stapel.ts, die Pfeiltasten werfen genauso
   stapel?.addEventListener("keydown", (event) => {
     if (event.target !== stapel || event.altKey || event.ctrlKey || event.metaKey) return;
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      entscheiden("hand");
-    } else if (event.key === "ArrowRight") {
-      event.preventDefault();
-      entscheiden("digital");
-    }
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    // Gedrückt halten sortiert nicht aus Versehen den ganzen Stapel
+    if (!event.repeat) entscheiden(event.key === "ArrowLeft" ? "hand" : "digital");
   });
-
-  // Wischen mit Finger oder Maus. touch-action: pan-y lässt senkrechtes Scrollen frei.
-  let zug: { id: number; x: number; y: number; dx: number; aktiv: boolean; karte: HTMLElement } | null = null;
-
-  const zugZuruecksetzen = (karte: HTMLElement) => {
-    karte.classList.remove("wird-gezogen");
-    karte.style.transform = "";
-    karte.style.removeProperty("--hand");
-    karte.style.removeProperty("--digital");
-  };
-
-  stapel?.addEventListener("pointerdown", (event) => {
-    if (!sortierModus || event.button !== 0 || !event.isPrimary) return;
-    const karte = (event.target as Element).closest<HTMLElement>(".karte[data-karte]");
-    if (!karte || karte.hidden) return;
-    zug = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, aktiv: false, karte };
-  });
-  stapel?.addEventListener("pointermove", (event) => {
-    if (!zug || event.pointerId !== zug.id) return;
-    // Maus woanders losgelassen: Zug verwerfen, sonst klebt die Karte am Zeiger
-    if (event.pointerType === "mouse" && event.buttons === 0) {
-      const { karte } = zug;
-      zug = null;
-      zugZuruecksetzen(karte);
-      return;
-    }
-    const dx = event.clientX - zug.x;
-    const dy = event.clientY - zug.y;
-    if (!zug.aktiv) {
-      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy)) return;
-      zug.aktiv = true;
-      zug.karte.classList.add("wird-gezogen");
-      try {
-        zug.karte.setPointerCapture(event.pointerId);
-      } catch {
-        // geht auch ohne
-      }
-    }
-    zug.dx = dx;
-    zug.karte.style.transform = lageFuer(dx);
-    zug.karte.style.setProperty("--hand", String(Math.min(1, Math.max(0, -dx / WISCH_SCHWELLE))));
-    zug.karte.style.setProperty("--digital", String(Math.min(1, Math.max(0, dx / WISCH_SCHWELLE))));
-  });
-  const zugEnde = (event: PointerEvent, abbrechen: boolean) => {
-    if (!zug || event.pointerId !== zug.id) return;
-    const { karte, dx, aktiv } = zug;
-    zug = null;
-    if (!abbrechen && aktiv && Math.abs(dx) >= WISCH_SCHWELLE) {
-      const lage = lageFuer(dx);
-      zugZuruecksetzen(karte);
-      entscheiden(dx < 0 ? "hand" : "digital", lage);
-    } else {
-      zugZuruecksetzen(karte);
-    }
-  };
-  // Am Fenster lauschen, damit auch ein Loslassen neben dem Stapel den Zug beendet
-  window.addEventListener("pointerup", (event) => zugEnde(event, false));
-  window.addEventListener("pointercancel", (event) => zugEnde(event, true));
 
   /* Werkbank ------------------------------------------------------------------ */
 

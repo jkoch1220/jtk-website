@@ -1,6 +1,8 @@
 ---
 // StoryBrand: Problem (außen, innen, grundsätzlich) und was auf dem Spiel steht.
-// Die Meldungen zeigen die Welt der Altsysteme und lassen sich wegklicken.
+// Die Meldungen zeigen die Welt der Altsysteme und lassen sich wegklicken. Mit Script
+// wird der Schreibtisch zum Desktop eines alten Büro-PCs (src/scripts/meldungen.ts):
+// Jedes weggeklickte Fenster zieht neue nach sich.
 import Fenster from "./Fenster.astro";
 import PixelIcon from "./PixelIcon.astro";
 import Rand from "./Rand.astro";
@@ -22,10 +24,14 @@ const meldungen = [
   {
     titel: "E-Rechnung",
     icon: "info" as const,
-    text: "Ab 2027 müssen Sie Rechnungen an Firmenkunden elektronisch verschicken, wenn Ihr Vorjahresumsatz über 800.000 € lag. Ab 2028 gilt das für fast alle Betriebe. Ihr System kann das noch nicht.",
+    text: "Ab 2027 müssen Sie Rechnungen an Firmenkunden elektronisch verschicken, wenn Ihr Vorjahresumsatz über 800.000\u00a0€ lag. Ab 2028 gilt das für fast alle Betriebe. Ihr System kann das noch nicht.",
     knopf: "Später erinnern",
   },
 ];
+
+// Vorlagen für die Folgemeldungen: je Symbol ein Fenster, dazu ein Fortschrittsbalken aus Kästchen
+const symbole = ["info", "warnung", "fehler"] as const;
+const kaesten = Array.from({ length: 20 });
 ---
 
 <section class="problem" id="problem" aria-labelledby="problem-titel">
@@ -34,46 +40,167 @@ const meldungen = [
     <div class="satz">
       <p class="kicker" aria-hidden="true">02 · Kommt Ihnen das bekannt vor?</p>
       <h2 class="problem__titel" id="problem-titel">Kommt Ihnen das bekannt vor?</h2>
+    </div>
 
-      <div class="schreibtisch" data-meldungen>
-        <div class="geist geist--a" aria-hidden="true"><span></span></div>
-        <div class="geist geist--b" aria-hidden="true"><span></span></div>
-        {
-          meldungen.map((m, i) => (
-            <Fenster
-              titel={m.titel}
-              class={`meldung meldung--${i + 1}`}
-              schliessen="Meldung schließen"
-              data-meldung
-              role="group"
-              aria-label={`Beispielmeldung: ${m.titel}`}
-            >
+    <div class="schreibtisch" data-meldungen>
+      {/* Hügel, Himmel, Wolken: selbst gezeichnete Erinnerung an einen alten Desktop-Hintergrund.
+          Licht von oben links, Lichtkante auf der Kuppe, Dunst zum Horizont, Wiese per feTurbulence. */}
+      <svg class="bliss" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="bliss-himmel" x1="0" y1="0" x2=".12" y2="1">
+            <stop offset="0" stop-color="#0a3aa8"/><stop offset=".28" stop-color="#1f60d2"/><stop offset=".46" stop-color="#4f90e4"/><stop offset=".56" stop-color="#8dbcef"/><stop offset=".62" stop-color="#d4e7f6"/>
+          </linearGradient>
+          <radialGradient id="bliss-sonne" cx=".1" cy="0" r=".6"><stop offset="0" stop-color="#fffbe6" stop-opacity=".5"/><stop offset="1" stop-color="#eaf4ff" stop-opacity="0"/></radialGradient>
+          <linearGradient id="bliss-fern" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a7c9d6"/><stop offset=".4" stop-color="#bcd8dc"/></linearGradient>
+          <linearGradient id="bliss-mitte" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#97c67a"/><stop offset=".3" stop-color="#5e9a4a"/></linearGradient>
+          <radialGradient id="bliss-huegel" gradientUnits="userSpaceOnUse" cx="640" cy="500" r="1100" fx="560" fy="510">
+            <stop offset="0" stop-color="#c6ee5e"/><stop offset=".1" stop-color="#8fd23e"/><stop offset=".3" stop-color="#4fa82a"/><stop offset=".55" stop-color="#2d7d1c"/><stop offset=".85" stop-color="#1b5a14"/>
+          </radialGradient>
+          <radialGradient id="bliss-kappe" gradientUnits="userSpaceOnUse" cx="620" cy="540" r="420" gradientTransform="matrix(1.4 0 0 .5 -248 270)"><stop offset="0" stop-color="#e6f78a" stop-opacity=".7"/><stop offset=".45" stop-color="#b4e04c" stop-opacity=".25"/><stop offset="1" stop-color="#b4e04c" stop-opacity="0"/></radialGradient>
+          <linearGradient id="bliss-flanke" gradientUnits="userSpaceOnUse" x1="780" y1="520" x2="1320" y2="880"><stop offset="0" stop-color="#062a08" stop-opacity="0"/><stop offset="1" stop-color="#062a08" stop-opacity=".5"/></linearGradient>
+          <linearGradient id="bliss-senke" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#062a08" stop-opacity="0"/><stop offset="1" stop-color="#062a08" stop-opacity=".55"/></linearGradient>
+          <linearGradient id="bliss-vorn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46a428"/><stop offset=".35" stop-color="#226d17"/><stop offset="1" stop-color="#0c360a"/></linearGradient>
+          <linearGradient id="bliss-dunst" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef6fa" stop-opacity="0"/><stop offset=".55" stop-color="#eef6fa" stop-opacity=".75"/><stop offset="1" stop-color="#eef6fa" stop-opacity="0"/></linearGradient>
+          <clipPath id="bliss-clip"><path id="bliss-kamm" d="M-40 700C120 612 340 530 580 510C700 500 780 512 880 548C1020 598 1160 664 1320 704C1440 732 1540 742 1640 746V1000H-40Z"/></clipPath>
+          <g id="bliss-w">
+            <ellipse cx="300" cy="205" rx="70" ry="52"/><ellipse cx="380" cy="168" rx="85" ry="68"/><ellipse cx="470" cy="160" rx="66" ry="56"/><ellipse cx="545" cy="196" rx="60" ry="40"/><ellipse cx="225" cy="228" rx="52" ry="30"/><ellipse cx="400" cy="228" rx="230" ry="36"/><ellipse cx="610" cy="232" rx="70" ry="18"/>
+            <ellipse cx="1040" cy="132" rx="64" ry="46"/><ellipse cx="1125" cy="96" rx="88" ry="70"/><ellipse cx="1225" cy="92" rx="72" ry="58"/><ellipse cx="1305" cy="124" rx="64" ry="42"/><ellipse cx="970" cy="156" rx="50" ry="24"/><ellipse cx="1150" cy="156" rx="240" ry="34"/><ellipse cx="1390" cy="160" rx="70" ry="16"/>
+            <ellipse cx="1385" cy="362" rx="44" ry="30"/><ellipse cx="1445" cy="344" rx="52" ry="40"/><ellipse cx="1505" cy="366" rx="40" ry="24"/><ellipse cx="1445" cy="380" rx="130" ry="18"/>
+            <ellipse cx="770" cy="338" rx="40" ry="26"/><ellipse cx="820" cy="322" rx="46" ry="34"/><ellipse cx="872" cy="342" rx="34" ry="20"/><ellipse cx="820" cy="354" rx="115" ry="15"/>
+            <ellipse cx="135" cy="412" rx="34" ry="20"/><ellipse cx="175" cy="400" rx="36" ry="26"/><ellipse cx="170" cy="422" rx="95" ry="12"/>
+          </g>
+          <filter id="bliss-flausch" x="-20%" y="-40%" width="140%" height="180%">
+            <feTurbulence type="fractalNoise" baseFrequency=".022" numOctaves="3" seed="9"/>
+            <feDisplacementMap in="SourceGraphic" scale="48" xChannelSelector="R" yChannelSelector="G"/>
+            <feGaussianBlur stdDeviation="5"/>
+          </filter>
+          <filter id="bliss-schleier" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="10"/></filter>
+          <filter id="bliss-weich" x="-30%" y="-300%" width="160%" height="700%"><feGaussianBlur stdDeviation="16"/></filter>
+          <filter id="bliss-wk" x="-10%" y="-100%" width="120%" height="300%"><feGaussianBlur stdDeviation="2.5"/></filter>
+          <filter id="bliss-gras" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency=".9 .07" numOctaves="2" seed="3"/>
+            <feColorMatrix values="0 0 0 0 .08  0 0 0 0 .22  0 0 0 0 .04  0 0 0 -1.7 1.1"/>
+            <feComposite in2="SourceGraphic" operator="in"/>
+          </filter>
+          <radialGradient id="bliss-fs"><stop offset="0" stop-color="#0e3d06" stop-opacity=".34"/><stop offset=".5" stop-color="#0e3d06" stop-opacity=".2"/><stop offset="1" stop-color="#0e3d06" stop-opacity="0"/></radialGradient>
+          <linearGradient id="bliss-fl" gradientUnits="userSpaceOnUse" x1="300" y1="0" x2="960" y2="0"><stop offset="0" stop-color="#dcf68a" stop-opacity="0"/><stop offset=".25" stop-color="#dcf68a"/><stop offset=".6" stop-color="#dcf68a"/><stop offset="1" stop-color="#dcf68a" stop-opacity="0"/></linearGradient>
+          <linearGradient id="bliss-fk" gradientUnits="userSpaceOnUse" x1="-40" y1="0" x2="1000" y2="0"><stop offset=".7" stop-color="#eaffa8"/><stop offset="1" stop-color="#eaffa8" stop-opacity="0"/></linearGradient>
+          <linearGradient id="bliss-mg" x1="0" y1="0" x2="0" y2="1"><stop offset=".3" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+          <mask id="bliss-m"><rect y="490" width="1600" height="360" fill="url(#bliss-mg)"/></mask>
+          <filter id="bliss-wind" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency=".004 .03" numOctaves="2" seed="7"/>
+            <feColorMatrix values="0 0 0 0 .86  0 0 0 0 1  0 0 0 0 .5  2.4 0 0 0 -1.15"/>
+            <feComposite in2="SourceGraphic" operator="in"/>
+          </filter>
+        </defs>
+        <rect width="1600" height="1000" fill="url(#bliss-himmel)"/>
+        <rect width="1600" height="1000" fill="url(#bliss-sonne)"/>
+        <use href="#bliss-w" fill="#7f9cc8" opacity=".7" transform="translate(4 18)" filter="url(#bliss-schleier)"/>
+        <g filter="url(#bliss-flausch)">
+          <use href="#bliss-w" fill="#a9bcd8" transform="translate(2 14)"/>
+          <use href="#bliss-w" fill="#f4f7fc" transform="translate(0 -3)"/>
+        </g>
+        <use href="#bliss-w" fill="#fff" opacity=".85" transform="translate(-10 -16)" filter="url(#bliss-schleier)"/>
+        <g fill="#fff" opacity=".45" filter="url(#bliss-weich)"><ellipse cx="300" cy="500" rx="260" ry="12"/><ellipse cx="1250" cy="490" rx="300" ry="10"/><ellipse cx="860" cy="70" rx="200" ry="12"/></g>
+        <path d="M0 586C160 552 320 544 500 556S840 588 1030 566S1380 540 1600 556V820H0Z" fill="url(#bliss-fern)"/>
+        <path d="M0 612C240 592 430 606 610 624S980 640 1210 606S1500 592 1600 600V820H0Z" fill="url(#bliss-mitte)"/>
+        <path d="M1000 612C1120 600 1300 596 1600 606" fill="none" stroke="#d6efb8" stroke-width="4" opacity=".5" filter="url(#bliss-wk)"/>
+        <rect y="536" width="1600" height="120" fill="url(#bliss-dunst)"/>
+        <g clip-path="url(#bliss-clip)">
+          <rect width="1600" height="1000" fill="url(#bliss-huegel)"/>
+          <rect y="440" width="1600" height="400" fill="url(#bliss-kappe)"/>
+          <rect width="1600" height="1000" fill="url(#bliss-flanke)"/>
+          <rect y="500" width="1600" height="400" fill="url(#bliss-senke)"/>
+          <rect y="490" width="1600" height="360" filter="url(#bliss-wind)" mask="url(#bliss-m)" opacity=".24"/>
+          <rect width="1600" height="1000" filter="url(#bliss-gras)" opacity=".5"/>
+          <ellipse cx="1420" cy="800" rx="560" ry="200" transform="rotate(14 1420 800)" fill="url(#bliss-fs)"/>
+          <path d="M300 600C420 556 540 528 660 526C760 526 850 544 960 590" fill="none" stroke="url(#bliss-fl)" stroke-width="22" stroke-linecap="round" opacity=".35" filter="url(#bliss-weich)"/>
+          <path d="M-40 700C120 612 340 530 580 510C700 500 780 512 880 548C920 562 960 578 1000 594" fill="none" stroke="url(#bliss-fk)" stroke-width="6" stroke-linecap="round" opacity=".65" filter="url(#bliss-wk)"/>
+        </g>
+        <path d="M-40 862C260 812 640 818 980 858S1440 924 1640 892V1000H-40Z" fill="#062a08" opacity=".35" filter="url(#bliss-weich)"/>
+        <path id="bliss-vg" d="M-40 880C280 826 660 832 990 872S1450 936 1640 904V1000H-40Z" fill="url(#bliss-vorn)"/>
+        <use href="#bliss-vg" filter="url(#bliss-gras)" opacity=".6"/>
+        <path d="M-40 879C280 825 660 831 990 871S1450 935 1640 903" fill="none" stroke="#86cc3e" stroke-width="5" opacity=".45" filter="url(#bliss-wk)"/>
+      </svg>
+      <div class="geist geist--a" aria-hidden="true"><span></span></div>
+      <div class="geist geist--b" aria-hidden="true"><span></span></div>
+      {
+        meldungen.map((m, i) => (
+          <Fenster
+            titel={m.titel}
+            class={`meldung meldung--${i + 1}`}
+            schliessen="Meldung schließen"
+            data-meldung
+            role="group"
+            aria-label={`Beispielmeldung: ${m.titel}`}
+          >
+            <div class="meldung__text">
+              <PixelIcon name={m.icon} />
+              <p>{m.text}</p>
+            </div>
+            <div class="meldung__knoepfe">
+              <button type="button" class="retro-knopf" data-meldung-zu>
+                {m.knopf}
+              </button>
+            </div>
+          </Fenster>
+        ))
+      }
+      <Fenster titel="Hinweis" class="meldung meldung--leer" data-meldungen-leer hidden>
+        <div class="meldung__text">
+          <PixelIcon name="info" />
+          <p data-meldungen-bilanz>
+            Alle Meldungen weggeklickt. In Ihrem Büro kommen die jeden Tag. Nur ohne Knopf zum Wegklicken.
+          </p>
+        </div>
+        <div class="meldung__knoepfe">
+          <a class="retro-knopf retro-knopf--voll" href="#check">Zeitfresser-Check machen</a>
+          <button type="button" class="retro-knopf" data-meldungen-zurueck>Nochmal von vorn</button>
+        </div>
+      </Fenster>
+
+      {/* Ab hier nur für den Desktop mit Script: Vorlagen für neue Fenster, Taskleiste, Ansagen */}
+      {
+        symbole.map((name) => (
+          <template data-meldung-vorlage={name}>
+            <Fenster titel="" class="meldung" schliessen="Meldung schließen" data-meldung role="group">
               <div class="meldung__text">
-                <PixelIcon name={m.icon} />
-                <p>{m.text}</p>
+                <PixelIcon name={name} />
+                <p />
               </div>
-              <div class="meldung__knoepfe">
-                <button type="button" class="retro-knopf" data-meldung-zu>
-                  {m.knopf}
-                </button>
-              </div>
+              <div class="meldung__knoepfe" />
             </Fenster>
-          ))
-        }
-        <Fenster titel="Hinweis" class="meldung meldung--leer" data-meldungen-leer hidden>
+          </template>
+        ))
+      }
+      <template data-meldung-vorlage="fortschritt">
+        <Fenster titel="" class="meldung meldung--fortschritt" data-meldung role="group">
           <div class="meldung__text">
             <PixelIcon name="info" />
-            <p>Alle Meldungen weggeklickt. Im echten Betrieb dauert das etwas länger, aber es geht.</p>
+            <p />
           </div>
-          <div class="meldung__knoepfe">
-            <a class="retro-knopf retro-knopf--voll" href="#check">Zeitfresser-Check machen</a>
-            <button type="button" class="retro-knopf" data-meldungen-zurueck>Meldungen zurückholen</button>
+          <div class="fortschritt" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            {kaesten.map(() => <span />)}
           </div>
+          <p class="fortschritt__zahl" aria-hidden="true">0 %</p>
         </Fenster>
+      </template>
+      <div class="taskleiste" data-taskleiste hidden>
+        <button type="button" class="taskleiste__feierabend" data-feierabend>Feierabend</button>
+        <div class="taskleiste__fenster" data-taskleiste-fenster role="group" aria-label="Offene Fenster"></div>
+        <div class="taskleiste__info">
+          <span data-taskleiste-zaehler>Offen: 3</span>
+          <time class="taskleiste__uhr" data-taskleiste-uhr>--:--</time>
+        </div>
       </div>
+      {/* hidden: nur als Beschreibung der Titelleisten (aria-describedby), nicht im Lesefluss */}
+      <p class="sr-only" id="meldungen-zieh-hinweis" hidden>
+        Mit den Pfeiltasten verschieben, mit Umschalt in großen Schritten. Escape schließt das Fenster.
+      </p>
+      <p class="sr-only" aria-live="polite" data-meldungen-ansage></p>
     </div>
   </div>
-  <Rasterkante von="#15144a" nach="#f1f1f3" />
+  <Rasterkante von="nacht" nach="papier" />
   <div class="bogen band--papier problem__band">
     <div class="satz problem__folgen">
       <p class="problem__satz">Sie und Ihre Leute sind zu gut, um Ihre Zeit mit Abtippen zu verbringen.</p>

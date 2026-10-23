@@ -5,6 +5,7 @@ import "lenis/dist/lenis.css";
 import "../styles/global.css";
 import Kopf from "../components/Kopf.astro";
 import Fuss from "../components/Fuss.astro";
+import nachtRoh from "../styles/nacht.css?raw";
 
 interface Props {
   title: string;
@@ -14,6 +15,14 @@ interface Props {
 
 const { title, description, startseite = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+
+// Die dunklen Werte stehen genau einmal in nacht.css. Hier werden sie zweimal eingehängt: für die
+// Systemeinstellung, solange kein Skript gewählt hat (auch ohne JavaScript), und für data-theme.
+// Nur auf dem Bildschirm, gedruckt wird immer hell.
+const nachtBlock = nachtRoh.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[^{]*/, "").trim();
+const nachtCss =
+  `@media screen and (prefers-color-scheme: dark){:root:not([data-theme])${nachtBlock}}` +
+  `@media screen{:root[data-theme="dark"]${nachtBlock}}`;
 ---
 
 <!doctype html>
@@ -21,11 +30,84 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f1f1f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1d1b2e" media="(prefers-color-scheme: dark)" />
+    <script is:inline>
+      // Darstellung hell/dunkel. Folgt der Systemeinstellung; der Schalter im Kopf gilt nur für diese
+      // Seite und speichert nichts (kein localStorage, kein sessionStorage, kein Cookie). Läuft vor
+      // dem ersten Bild, damit data-theme schon beim ersten Malen stimmt.
+      (() => {
+        const wurzel = document.documentElement;
+        const system = matchMedia("(prefers-color-scheme: dark)");
+        const ruhig = matchMedia("(prefers-reduced-motion: reduce)");
+        const FARBE = { light: "#f1f1f3", dark: "#1d1b2e" };
+        let lauf = 0;
+        let systemZuletzt = system.matches;
+
+        const anwenden = (thema) => {
+          wurzel.dataset.theme = thema;
+          for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = FARBE[thema];
+          document.querySelector("[data-modus-schalter]")?.setAttribute("aria-pressed", String(thema === "dark"));
+        };
+        const wechseln = (thema) => {
+          if (thema === wurzel.dataset.theme) return;
+          const meins = ++lauf;
+          const fertig = () => meins === lauf && wurzel.classList.remove("modus-wechsel");
+          const setzen = () => {
+            anwenden(thema);
+            document.dispatchEvent(new CustomEvent("theme", { detail: thema }));
+          };
+          wurzel.classList.add("modus-wechsel");
+          if (ruhig.matches || !document.startViewTransition || document.visibilityState !== "visible") {
+            setzen();
+            void getComputedStyle(wurzel).color; // jetzt anwenden, solange Übergänge aus sind
+            requestAnimationFrame(() => requestAnimationFrame(fertig));
+            return;
+          }
+          // Überspringt der Browser den Übergang (etwa solange ein Seitenwechsel überblendet), lehnt
+          // ready ab. Umgeschaltet wird trotzdem, finished räumt auf.
+          const uebergang = document.startViewTransition(setzen);
+          uebergang.ready.catch(() => {});
+          uebergang.finished.then(fertig, fertig);
+        };
+
+        anwenden(system.matches ? "dark" : "light");
+        system.addEventListener("change", () => {
+          systemZuletzt = system.matches;
+          wechseln(system.matches ? "dark" : "light");
+        });
+        addEventListener("pageshow", (e) => {
+          // Aus dem Zurück-Speicher des Browsers: Die Seite behält ihre Darstellung. Hat sich das
+          // System inzwischen geändert, gilt wieder das System.
+          if (!e.persisted) return;
+          wurzel.classList.remove("modus-wechsel");
+          if (system.matches !== systemZuletzt) {
+            systemZuletzt = system.matches;
+            wechseln(system.matches ? "dark" : "light");
+          }
+        });
+        // Während des Umrasterns liegt das Bild des Übergangs über der Seite, ein Klick trifft dann
+        // <html>. Liegt er auf dem Schalter (Trefferfläche 3 px über den Rand), zählt er trotzdem.
+        const aufSchalter = (e) => {
+          if (e.target instanceof Element && e.target.closest("[data-modus-schalter]")) return true;
+          if (e.target !== wurzel || !wurzel.classList.contains("modus-wechsel")) return false;
+          const r = document.querySelector("[data-modus-schalter]")?.getBoundingClientRect();
+          if (!r?.width) return false;
+          const { clientX: x, clientY: y } = e;
+          return x >= r.left - 3 && x <= r.right + 3 && y >= r.top - 3 && y <= r.bottom + 3;
+        };
+        document.addEventListener("click", (e) => {
+          if (aufSchalter(e)) wechseln(wurzel.dataset.theme === "dark" ? "light" : "dark");
+        });
+        document.addEventListener("DOMContentLoaded", () => anwenden(wurzel.dataset.theme));
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#f1f1f3" />
+    <Fragment set:html={`<style>${nachtCss}</style>`} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="de_DE" />
     <meta property="og:title" content={title} />

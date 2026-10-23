@@ -1,0 +1,91 @@
+/*
+  Kohlepapier: die dunklen Werte des Druckbogens. Nachts liegt das Kohlepapier oben, die Schrift
+  erscheint hell wie ein Durchdruck in Kreide. Kreide schreibt (Text, Linien), Leuchttinte druckt
+  (Rahmen, Titelleisten, volle Knöpfe). Papier, das als echtes Dokument auf dem Bogen liegt
+  (Rechnung, Beleg, Foto), bleibt Papier unter der Lampe (--insel-*).
+
+  Regeln für diese Datei: genau eine Regel :root, darin nur Deklarationen. Keine weiteren Regeln
+  und keine geschweiften Klammern in Kommentaren. Base.astro liest sie als Text und hängt den Block
+  zweimal ein: für die Systemeinstellung (auch ohne JavaScript) und für die Wahl im Kopf.
+  Jede Variable hier hat in global.css (:root) ihren hellen Wert.
+*/
+:root {
+  color-scheme: dark;
+
+  /* Flächen, von tief nach hoch: Mitternacht < Papier-tief < Papier < Bogen */
+  --tinte-nacht: #0e091c;
+  --nacht-oben: #140f30;
+  --nacht-raster: #141127;
+  --nacht-schein: rgb(64 60 150 / 0.3);
+  --papier-tief: #161425;
+  --papier: #1d1b2e;
+  --bogen: #252339;
+  --feld: #1d1b2e;
+
+  /* Kreide schreibt */
+  --tinte: #e6e4f2;
+  --tinte-matt: #b4add4;
+  --linie: rgb(230 228 242 / 0.16);
+  --linie-stark: rgb(230 228 242 / 0.42);
+  --hauch: rgb(230 228 242 / 0.06);
+
+  /* Leuchttinte druckt; der harte Versatz liegt in der Tagestinte */
+  --rahmen: #6662cf;
+  --rahmen-matt: #48457e;
+  --auf-rahmen: #ffffff;
+  --auf-knopf: #ffffff;
+  --versatz: #2b2a7e;
+  --tinte-tief: #2b2a7e;
+  --fenster-auf-nacht: #6662cf;
+  --geist-rand: rgb(102 98 207 / 0.18);
+  --geist-leiste: rgb(102 98 207 / 0.1);
+
+  /* Durchschläge und Stempel: gleicher Farbton, nachts gedämpft bzw. leuchtend */
+  --kopie-gelb: #dac677;
+  --kopie-rosa: #d99aaa;
+  --auf-gelb: #1b1a40;
+  --stempel: #fd555b;
+  --stempel-flaeche: #d72f3f;
+  --klebeband-deckkraft: 0.9;
+
+  /* Zier */
+  --tinte-dunst: #6f6a93;
+  --tinte-ferne: #9f9ac4;
+  --linierung: rgb(230 228 242 / 0.035);
+  --knuell-licht: rgb(255 255 255 / 0.1);
+  --knitter-glanz: rgb(255 255 255 / 0.03);
+  --knitter-kante: 0.18;
+  --loch-farbe: #100e1e;
+  --loch-schatten: rgb(0 0 0 / 0.45);
+  --loch-licht: rgb(255 255 255 / 0.06);
+
+  /* Tiefe: Licht oben links bleibt. Höher ist heller und trägt oben eine Lichtkante,
+     weiche Schatten sind schwarz und deckender, die Geometrie bleibt. */
+  --sch: 0 0 0;
+  --e1: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 1px rgb(0 0 0 / 0.35), 1px 2px 6px -2px rgb(0 0 0 / 0.45);
+  --e2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 1px rgb(0 0 0 / 0.4), 2px 6px 12px -6px rgb(0 0 0 / 0.5),
+    6px 18px 36px -18px rgb(0 0 0 / 0.6);
+  --e3: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 1px 1px rgb(0 0 0 / 0.45), 2px 8px 16px -8px rgb(0 0 0 / 0.55),
+    8px 28px 56px -24px rgb(0 0 0 / 0.65), 18px 64px 120px -48px rgb(0 0 0 / 0.7);
+  --e-retro-tief: 6px 6px 0 var(--versatz), 14px 30px 60px -24px rgb(0 0 0 / 0.7);
+  --e-retro-nacht: 6px 6px 0 var(--versatz), 10px 40px 80px -30px rgb(0 0 0 / 0.8);
+  --e-nacht: inset 0 1px 0 rgb(255 255 255 / 0.06), 18px 48px 96px -40px rgb(0 0 0 / 0.8);
+  --e-band: 0 -1px 0 rgb(255 255 255 / 0.07), inset 0 22px 26px -26px rgb(0 0 0 / 0.5);
+  --e-brief: var(--e3), 10px 36px 72px -36px rgb(0 0 0 / 0.7);
+  --e-zettel: 0 1px 1px rgb(0 0 0 / 0.4), 0 22px 44px -22px rgb(0 0 0 / 0.8);
+  --feld-schatten: inset 2px 2px 0 rgb(0 0 0 / 0.3);
+  --kontaktschatten: rgb(0 0 0 / 0.6);
+
+  /* Papier unter der Lampe: gedämpft gegen Blendung, Licht fällt von oben links ab */
+  --insel-bogen: #e9e8f1;
+  --insel-tinte: #2b2a7e;
+  --insel-matt: #55538f;
+  --insel-linie: rgb(43 42 126 / 0.2);
+  --insel-linie-stark: rgb(43 42 126 / 0.55);
+  --insel-hauch: rgb(43 42 126 / 0.06);
+  --insel-gelb: #d9cc8a;
+  --insel-rosa: #d8b9c1;
+  --insel-kohle: #0f0e30;
+  --insel-stempel: #c9283a;
+  --insel-licht: linear-gradient(150deg, rgb(255 255 255 / 0.35) 0%, rgb(255 255 255 / 0) 38%, rgb(21 20 74 / 0.08) 100%);
+}

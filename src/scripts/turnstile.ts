@@ -60,6 +60,8 @@ async function anzeigen(formular: HTMLFormElement, w: Widget): Promise<void> {
       sitekey: w.ort.dataset.sitekey,
       action: formular.dataset.turnstileAktion,
       language: "de",
+      // Folgt der Darstellung dieser Seite (auch einer Wahl im Kopf), nicht nur dem System
+      theme: document.documentElement.dataset.theme === "dark" ? "dark" : "light",
       // Nur sichtbar, wenn Cloudflare wirklich nachfragen muss
       appearance: "interaction-only",
       callback: (token: string) => tokenSetzen(w, token),

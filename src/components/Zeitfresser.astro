@@ -360,8 +360,8 @@ const tage = Array.from({ length: 220 });
                     aria-describedby={`zf-karte-${aufgaben[0].id} zf-stapel-hilfe`}
                     aria-keyshortcuts="ArrowLeft ArrowRight"
                   >
-                    <div class="stapel__unter stapel__unter--2" data-stapel-unter="2" aria-hidden="true"></div>
-                    <div class="stapel__unter stapel__unter--1" data-stapel-unter="1" aria-hidden="true"></div>
+                    <!-- Unter der obersten Karte liegt die nächste sichtbar, der Rand deutet den Rest an -->
+                    <div class="stapel__unter" data-stapel-unter="2" aria-hidden="true"></div>
                     {
                       aufgaben.map((a, i) => (
                         <div class="karte" id={`zf-karte-${a.id}`} data-karte={a.id} hidden={i !== 0}>
@@ -373,11 +373,19 @@ const tage = Array.from({ length: 220 });
                           </p>
                           <p class="karte__titel">{a.name}</p>
                           <p class="karte__satz">{a.satz}</p>
+                          <span class="karte__knitter" aria-hidden="true"></span>
+                          <span class="karte__raster" aria-hidden="true"></span>
                           <span class="karte__marke karte__marke--hand" aria-hidden="true">
+                            <svg class="pfeil" viewBox="0 0 7 7" focusable="false">
+                              <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
+                            </svg>
                             Von Hand
                           </span>
                           <span class="karte__marke karte__marke--digital" aria-hidden="true">
                             Digital
+                            <svg class="pfeil pfeil--rechts" viewBox="0 0 7 7" focusable="false">
+                              <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
+                            </svg>
                           </span>
                         </div>
                       ))
@@ -390,12 +398,24 @@ const tage = Array.from({ length: 220 });
                         <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
                       </svg>
                       Läuft bei uns von Hand
+                      <span class="stapel__zahl" aria-hidden="true">
+                        <svg viewBox="0 0 9 9" focusable="false">
+                          <path d="M1 0h7v1H1zM0 1h9v1H0zM1 2h1v7H1zM7 2h1v7H7zM2 8h5v1H2zM3 3h1v4H3zM5 3h1v4H5z" />
+                        </svg>
+                        <span data-stapel-zahl="hand">0</span>
+                      </span>
                     </button>
                     <button type="button" class="retro-knopf stapel__knopf" data-sortieren="digital">
                       Läuft schon digital
                       <svg class="pfeil pfeil--rechts" viewBox="0 0 7 7" aria-hidden="true" focusable="false">
                         <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
                       </svg>
+                      <span class="stapel__zahl" aria-hidden="true">
+                        <svg viewBox="0 0 9 9" focusable="false">
+                          <path d="M2 0h5v1H2zM1 1h1v1H1zM7 1h1v1H7zM0 2h1v6H0zM8 2h1v6H8zM2 2h5v1H2zM1 4h1v1H1zM7 4h1v1H7zM2 5h5v1H2zM1 8h7v1H1z" />
+                        </svg>
+                        <span data-stapel-zahl="digital">0</span>
+                      </span>
                     </button>
                   </div>
 

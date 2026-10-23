@@ -189,11 +189,25 @@ function klickZiel(element: Element): string | null {
   if (href.startsWith("tel:")) return "telefon";
   if (href.startsWith("mailto:")) return "email";
   // Schaltflächen vor Ankern: "Erstgespräch vereinbaren" sagt mehr als "#kontakt"
-  if (element.classList.contains("knopf") || element.classList.contains("retro-knopf")) {
+  if (
+    element.classList.contains("knopf") ||
+    element.classList.contains("retro-knopf") ||
+    element.classList.contains("kopf__kontakt")
+  ) {
     const slug = kuerzel(element.textContent ?? "");
     return slug ? `cta:${slug}` : null;
   }
-  if (href.startsWith("#") && href.length > 1) return `nav:${href}`;
+  // Anker auf dieser Seite, auch in der Form "/#check" (Kopfzeile)
+  if (href.includes("#")) {
+    try {
+      const ziel = new URL(href, location.href);
+      if (ziel.origin === location.origin && ziel.pathname === location.pathname && ziel.hash.length > 1) {
+        return `nav:${ziel.hash}`;
+      }
+    } catch {
+      return null;
+    }
+  }
   return null;
 }
 
