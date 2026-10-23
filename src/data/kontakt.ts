@@ -2,6 +2,8 @@
 export const kontakt = {
   firma: "JTK Consulting",
   name: "Julian Koch",
+  // Voller Name: dafür steht „JTK“. Sichtbar im Über-mich-Absatz, dazu alternateName in src/data/strukturdaten.ts.
+  nameVoll: "Julian Tim Koch",
   email: "julian@koch.consulting",
   telefonAnzeige: "+49 160 6102912",
   telefonLink: "tel:+491606102912",
@@ -10,6 +12,9 @@ export const kontakt = {
   ort: "Düsseldorf",
   // Umsatzsteuer-ID, sobald vom Finanzamt erteilt (z. B. "DE123456789"). Leer = Abschnitt im Impressum ausgeblendet.
   ustId: "",
+  // Öffentliche Profile derselben Firma bzw. Person (LinkedIn, Google-Unternehmensprofil, XING, Verzeichnisse).
+  // Landen als sameAs in den strukturierten Daten; nur eintragen, was es wirklich gibt.
+  profile: [] as string[],
 };
 
 export const mailBetreff = "Anfrage über jtkconsulting.de";

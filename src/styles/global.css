@@ -1002,6 +1002,32 @@ a:hover {
   letter-spacing: -0.045em;
 }
 
+/* Dachzeile in der h1: Leistung und Ort für Leser und Suchmaschinen, im Ton der Kicker. Die h1 bleibt der
+   Satz darunter; die Zeile steht trotzdem in ihr, weil Google die h1 stärker gewichtet als einen Absatz. */
+.hero__dach {
+  display: block;
+  margin-bottom: 1.25rem;
+  color: var(--tinte-matt);
+  font-family: var(--pixel);
+  font-size: 20px;
+  font-weight: 400;
+  font-stretch: normal;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+}
+
+/* Auf dem Handy holt der Hero die Höhe der Dachzeile oben wieder herein, damit beide Knöpfe im ersten
+   Bildschirm bleiben wie vorher */
+@media (max-width: 600px) {
+  .hero > .bogen {
+    padding-top: 0.75rem;
+  }
+
+  .hero__dach {
+    margin-bottom: 0.5rem;
+  }
+}
+
 .hero__lead {
   max-width: 36ch;
   margin-top: clamp(1.75rem, 1rem + 1.4vw, 2.75rem);

@@ -11,6 +11,8 @@
 #    von der Website gehen nur /api/anfrage, /api/e, /api/gesundheit und /api/termine(/*) dorthin
 #  - ergänzt in einer bestehenden Konfiguration ohne Terminbuchung den Matcher um /api/termine
 #    (gesichert, danach caddy validate, sonst zurück zum alten Stand)
+#  - stellt eine bestehende Konfiguration, in der koch.consulting dieselbe Website zeigte, auf eine
+#    301-Weiterleitung nach jtkconsulting.de um und lässt die 404-Seite komprimiert ausliefern (ebenso gesichert)
 #  - begrenzt die Aufbewahrung des System-Journals auf 7 Tage (dort landen Caddys Fehlermeldungen
 #    mit IP-Adressen, siehe Datenschutzerklärung „Server-Protokolle“)
 #  - gibt Port 80/443 in der Firewall ufw frei, falls ufw aktiv ist
@@ -29,12 +31,13 @@ KONFIG='www.jtkconsulting.de {
 	redir https://jtkconsulting.de{uri} permanent
 }
 
-# koch.consulting zeigt dieselbe Website (canonical bleibt jtkconsulting.de)
-www.koch.consulting {
-	redir https://koch.consulting{uri} permanent
+# koch.consulting leitet auf jtkconsulting.de um (301 samt Pfad): Google soll nur eine Adresse der Website
+# kennen. Mail und app.koch.consulting betrifft das nicht.
+koch.consulting, www.koch.consulting {
+	redir https://jtkconsulting.de{uri} permanent
 }
 
-jtkconsulting.de, koch.consulting {
+jtkconsulting.de {
 	root * /var/www/jtkconsulting
 	encode zstd gzip
 
@@ -58,6 +61,8 @@ jtkconsulting.de, koch.consulting {
 	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
 
 	handle_errors {
+		# Fehlerseiten gehen nicht durch das encode oben; ohne diese Zeile käme die 404-Seite unkomprimiert
+		encode zstd gzip
 		@nichtGefunden expression `{err.status_code} == 404`
 		handle @nichtGefunden {
 			rewrite * /404.html
@@ -155,16 +160,33 @@ eintragen() {
   fi
 }
 
-if grep -q "^$DOMAIN {\$" "$DATEI" 2>/dev/null; then
-  # Ältere Fassung ohne koch.consulting: dieselbe Website zusätzlich unter der zweiten Domain ausliefern
+if grep -q "^$DOMAIN, $ZWEIT_DOMAIN {\$" "$DATEI" 2>/dev/null; then
+  # Fassung vom 22.10.2026, in der koch.consulting dieselbe Website zeigte: Ab jetzt leiten koch.consulting und
+  # www.koch.consulting per 301 auf $DOMAIN um, damit Google nur eine Adresse der Website kennt
   sichern
-  sed -i "s/^$DOMAIN {\$/$DOMAIN, $ZWEIT_DOMAIN {/" "$DATEI"
-  printf '\nwww.%s {\n\tredir https://%s{uri} permanent\n}\n' "$ZWEIT_DOMAIN" "$ZWEIT_DOMAIN" >> "$DATEI"
-  echo "$ZWEIT_DOMAIN zeigt jetzt dieselbe Website wie $DOMAIN."
+  sed -i "s/^$DOMAIN, $ZWEIT_DOMAIN {\$/$DOMAIN {/" "$DATEI"
+  sed -i "s|^www\.$ZWEIT_DOMAIN {\$|$ZWEIT_DOMAIN, www.$ZWEIT_DOMAIN {|" "$DATEI"
+  sed -i "s|redir https://$ZWEIT_DOMAIN{uri} permanent|redir https://$DOMAIN{uri} permanent|" "$DATEI"
+  sed -i "s|^# $ZWEIT_DOMAIN zeigt dieselbe Website.*|# $ZWEIT_DOMAIN leitet auf $DOMAIN um (301 samt Pfad)|" "$DATEI"
+  echo "$ZWEIT_DOMAIN leitet jetzt per 301 auf $DOMAIN um."
 elif grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
-  echo "$DOMAIN steht schon in $DATEI, dieser Block bleibt bis auf die Weiterleitung unverändert."
+  echo "$DOMAIN steht schon in $DATEI, dieser Block wird nur bei Bedarf ergänzt (Weiterleitung, komprimierte 404, Terminbuchung)."
 else
   eintragen "$NEU"
+fi
+
+# Fassung ganz ohne koch.consulting: die Weiterleitung anhängen
+if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -q "^\(www\.\)\?$ZWEIT_DOMAIN[ ,]" "$DATEI"; then
+  sichern
+  printf '\n%s, www.%s {\n\tredir https://%s{uri} permanent\n}\n' "$ZWEIT_DOMAIN" "$ZWEIT_DOMAIN" "$DOMAIN" >> "$DATEI"
+  echo "$ZWEIT_DOMAIN leitet jetzt per 301 auf $DOMAIN um."
+fi
+
+# Ältere Fassung ohne komprimierte Fehlerseiten: encode vor den 404-Matcher setzen (validiert wird unten)
+if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -B1 "@nichtGefunden expression" "$DATEI" | grep -q "encode"; then
+  sichern
+  sed -i "s|^\([[:space:]]*\)@nichtGefunden expression|\1encode zstd gzip\n\1@nichtGefunden expression|" "$DATEI"
+  echo "Die 404-Seite von $DOMAIN geht jetzt komprimiert raus."
 fi
 
 # Ältere Fassung ohne Terminbuchung: /api/termine zusätzlich an den Website-Dienst (nur genau die alte

@@ -1,0 +1,5 @@
+# Alle Suchmaschinen und KI-Crawler dürfen alles lesen, auch zum Training (Entscheidung vom 23.10.2026).
+User-agent: *
+Allow: /
+
+Sitemap: https://jtkconsulting.de/sitemap.xml

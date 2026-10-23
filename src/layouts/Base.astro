@@ -6,14 +6,19 @@ import "../styles/global.css";
 import Kopf from "../components/Kopf.astro";
 import Fuss from "../components/Fuss.astro";
 import nachtRoh from "../styles/nacht.css?raw";
+import { kontakt } from "../data/kontakt";
+import { startseitenDaten } from "../data/strukturdaten";
 
 interface Props {
   title: string;
   description: string;
   startseite?: boolean;
+  // false nur für Seiten ohne eigene Adresse (404): ein canonical auf /404/ zeigte auf eine Seite, die es nicht
+  // gibt. Stattdessen noindex, denn /404.html selbst liefert der Server mit Status 200 aus.
+  kanonisch?: boolean;
 }
 
-const { title, description, startseite = false } = Astro.props;
+const { title, description, startseite = false, kanonisch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 
 // Die dunklen Werte stehen genau einmal in nacht.css. Hier werden sie zweimal eingehängt: für die
@@ -105,14 +110,16 @@ const nachtCss =
     </script>
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {kanonisch ? <link rel="canonical" href={canonical} /> : <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <Fragment set:html={`<style>${nachtCss}</style>`} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="de_DE" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {kanonisch && <meta property="og:url" content={canonical} />}
+    <meta property="og:site_name" content={kontakt.firma} />
+    {startseite && <script type="application/ld+json" set:html={JSON.stringify(startseitenDaten(Astro.site!)).replace(/</g, "\\u003c")} />}
     {
       startseite && (
         <script is:inline>

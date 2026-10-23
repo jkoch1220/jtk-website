@@ -31,7 +31,10 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
    Steht `jtkconsulting.de` dort schon ohne Weiterleitung von `/api/anfrage` und `/api/e`, bricht es ab: den Block in
    `/etc/caddy/Caddyfile` durch den aus `deploy/Caddyfile` ersetzen und erneut ausführen. Fehlt in einem
    bestehenden Block nur `/api/termine` (Fassung vor der Terminbuchung), ergänzt es die `@plattform`-Zeile
-   selbst (vorher gesichert, danach `caddy validate`, sonst zurück zum alten Stand). Außerdem
+   selbst (vorher gesichert, danach `caddy validate`, sonst zurück zum alten Stand). Leitet `koch.consulting`
+   dort noch nicht per 301 auf `jtkconsulting.de` um (auch die Fassung vom 22.10.2026, in der es dieselbe Website
+   zeigte), stellt es das um. Fehlt im `handle_errors` das `encode`, ergänzt es die Zeile, damit die 404-Seite
+   komprimiert rausgeht. Außerdem
    begrenzt es das System-Journal (Caddys Fehlermeldungen mit IP-Adressen) auf 7 Tage.
 3. Bei jeder Änderung danach: `npm run deploy`. Vor dem Hochladen prüft das Skript, ob der Server `/api/anfrage`
    und `/api/e` weiterleitet und der Website-Dienst antwortet; sonst bricht es ab, weil das Formular ins Leere ginge.
@@ -82,11 +85,31 @@ Auf dem Server leitet `deploy/Caddyfile` (bzw. `npm run einrichten`) nur `/api/a
 `/api/gesundheit` und `/api/termine` (samt `/api/termine/*`) an `127.0.0.1:3100` weiter; alle anderen `/api/*` beantwortet Caddy mit 404. Die
 Portal-API des Dienstes ist nur über `app.koch.consulting` erreichbar.
 
+## Suchmaschinen
+
+Die Seite gibt es nur unter `https://jtkconsulting.de`. `koch.consulting` und alle `www.`-Adressen leiten per 301
+dorthin (`deploy/Caddyfile`), Mail und `app.koch.consulting` betrifft das nicht.
+
+- `public/robots.txt`: Alle Suchmaschinen und KI-Crawler dürfen alles lesen, auch zum Training (Entscheidung vom
+  23.10.2026). Darin der Verweis auf die Sitemap.
+- `dist/sitemap.xml` schreibt die kleine Integration in `astro.config.mjs` beim Bauen, mit allen Seiten außer der 404.
+  Neue Seiten kommen von selbst dazu.
+- Strukturierte Daten (JSON-LD) stehen nur auf der Startseite und kommen aus `src/data/strukturdaten.ts`:
+  Website, Firma (`Organization`) und Person. Alles dort muss auch sichtbar auf der Seite stehen, deshalb ohne
+  Straße und Postleitzahl (die private Adresse steht nur im Impressum).
+  Neue Profile (LinkedIn, Google-Unternehmensprofil, Verzeichnisse) in `kontakt.profile` eintragen, sie werden
+  zu `sameAs`. Nach Änderungen auf https://validator.schema.org prüfen.
+- Title, Description und die Dachzeile in der h1 der Startseite nennen Leistung und Ort („IT-Beratung … in
+  Düsseldorf“). Die Marke heißt überall „JTK Consulting“, nie nur „JTK“ und ohne „Koch Consulting“.
+- Search Console und Bing Webmaster Tools brauchen kein Skript auf der Seite (Bestätigung per DNS-TXT).
+
 ## Wo was steht
 
 | Was | Datei |
 | --- | --- |
-| E-Mail, Telefon, Ort | `src/data/kontakt.ts` |
+| E-Mail, Telefon, Ort, Profile für Suchmaschinen | `src/data/kontakt.ts` |
+| Strukturierte Daten (JSON-LD) | `src/data/strukturdaten.ts` |
+| Sitemap, robots.txt | `astro.config.mjs`, `public/robots.txt` |
 | Texte der Startseite (Erfolg, Begleiter, Projekte, Plan) | `src/pages/index.astro` |
 | Problem-Meldungen | `src/components/Problem.astro` |
 | Zeitfresser-Check | `src/components/Zeitfresser.astro` |
