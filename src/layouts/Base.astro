@@ -6,6 +6,7 @@ import "../styles/global.css";
 import Kopf from "../components/Kopf.astro";
 import Fuss from "../components/Fuss.astro";
 import nachtRoh from "../styles/nacht.css?raw";
+import vorschau from "../assets/vorschau.png";
 import { kontakt } from "../data/kontakt";
 import { startseitenDaten } from "../data/strukturdaten";
 
@@ -20,6 +21,10 @@ interface Props {
 
 const { title, description, startseite = false, kanonisch = true } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
+// Link-Vorschau in WhatsApp, iMessage, Telegram, LinkedIn: ein Bild für alle Seiten. Über den Import bekommt
+// es einen Hash im Namen: Ein neues Bild hat eine neue Adresse, kein Cache liefert dort ein altes aus. Telegram
+// und LinkedIn merken sich die Vorschau aber je Seite und zeigen ein neues Bild erst nach einem neuen Abruf.
+const vorschauUrl = new URL(vorschau.src, Astro.site);
 
 // Die dunklen Werte stehen genau einmal in nacht.css. Hier werden sie zweimal eingehängt: für die
 // Systemeinstellung, solange kein Skript gewählt hat (auch ohne JavaScript), und für data-theme.
@@ -119,6 +124,11 @@ const nachtCss =
     <meta property="og:description" content={description} />
     {kanonisch && <meta property="og:url" content={canonical} />}
     <meta property="og:site_name" content={kontakt.firma} />
+    <meta property="og:image" content={vorschauUrl} />
+    <meta property="og:image:width" content={String(vorschau.width)} />
+    <meta property="og:image:height" content={String(vorschau.height)} />
+    <meta property="og:image:alt" content={`${kontakt.firma}: Wachsen Sie, ohne dass Ihr Büro mitwachsen muss.`} />
+    <meta name="twitter:card" content="summary_large_image" />
     {startseite && <script type="application/ld+json" set:html={JSON.stringify(startseitenDaten(Astro.site!)).replace(/</g, "\\u003c")} />}
     {
       startseite && (
