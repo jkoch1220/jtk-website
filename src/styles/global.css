@@ -172,6 +172,12 @@
   --insel-stempel: var(--stempel);
   --insel-licht: none;
 
+  /* Akten im Abschnitt 06: Stempel drücken sich ins Papier (nachts liegen sie obenauf), Abzüge
+     unter der Lampe, Grund hinter dem Lesetisch */
+  --praxis-mischung: multiply;
+  --abzug-filter: none;
+  --lesetisch-grund: rgb(21 20 74 / 0.55);
+
   /* Satzspiegel in %, für Bänder (.bogen) und den Schalter im Kopf */
   --satz-b: min(100% - 2 * var(--rand), clamp(1328px, 1328px + (100% - 1920px) * 0.42, 1600px));
   --marg-b: clamp(0px, (100% - 1440px) / 2, clamp(240px, 240px + (100% - 1920px) / 16, 280px));
@@ -4767,75 +4773,8 @@ html.check-leiste-an {
   }
 }
 
-/* Projekte als Akten ----------------------------------------------------- */
+/* Zusage im Ablauf: Schattenebene beim Zeigen ------------------------------- */
 
-.projekte__kopf {
-  grid-column: 1 / span 6;
-}
-
-.projekte {
-  display: grid;
-  grid-template-columns: subgrid;
-  margin-top: clamp(4rem, 3rem + 3vw, 6.5rem);
-  isolation: isolate;
-}
-
-.projekt {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
-  gap: 1.5rem var(--spalt);
-}
-
-.akte {
-  position: relative;
-  grid-column: 1 / -1;
-  padding: clamp(28px, 3vw, 56px);
-  background: var(--bogen);
-  box-shadow: var(--e2);
-}
-
-/* Reiter oben links. Reiner Druckvermerk: leerer Alternativtext, damit er nicht vorgelesen
-   wird (die erste Zeile ist der Rückfall für Browser ohne diese Schreibweise). */
-.akte::before {
-  content: attr(data-akte);
-  content: attr(data-akte) / "";
-  position: absolute;
-  top: -28px;
-  left: 0;
-  width: 120px;
-  height: 28px;
-  padding: 5px 12px 0;
-  border: 1px solid var(--linie);
-  border-bottom: 0;
-  background: var(--papier-tief);
-  box-shadow: var(--e1);
-  color: var(--tinte-matt);
-  font-family: var(--pixel);
-  font-size: 18px;
-  line-height: 1;
-  letter-spacing: 0.04em;
-}
-
-/* Darunterliegende Blätter; beim Zeigen fächert die Akte etwas auf */
-.akte__blatt {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--papier-tief);
-  box-shadow: var(--e1);
-  transform: translate(10px, 10px) rotate(0.6deg);
-  transition: transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
-  pointer-events: none;
-}
-
-.akte__blatt + .akte__blatt {
-  z-index: -2;
-  background: var(--kopie-rosa);
-  opacity: 0.5;
-  transform: translate(20px, 18px) rotate(1.1deg);
-}
-
-.akte::after,
 .ablauf__zusage::after {
   content: "";
   position: absolute;
@@ -4846,89 +4785,8 @@ html.check-leiste-an {
   pointer-events: none;
 }
 
-.akte:hover::after,
 .ablauf__zusage:hover::after {
   opacity: 1;
-}
-
-.akte:hover .akte__blatt {
-  transform: translate(13px, 14px) rotate(0.9deg);
-}
-
-.akte:hover .akte__blatt + .akte__blatt {
-  transform: translate(26px, 25px) rotate(1.6deg);
-}
-
-@media (min-width: 1280px) {
-  .akte:first-child {
-    grid-column: 1 / span 9;
-    padding-bottom: calc(clamp(28px, 3vw, 56px) + 40px);
-  }
-
-  .akte + .akte {
-    grid-column: 5 / -1;
-    margin-top: -40px;
-  }
-}
-
-@media (max-width: 1279px) {
-  .akte + .akte {
-    margin-top: 3.5rem;
-  }
-
-  .akte__blatt {
-    transform: translate(6px, 6px) rotate(0.6deg);
-  }
-
-  .akte__blatt + .akte__blatt {
-    transform: translate(12px, 12px) rotate(1.1deg);
-  }
-}
-
-.projekt__kopf {
-  display: grid;
-  gap: 0.5rem;
-  align-content: start;
-}
-
-.projekt__kontext {
-  color: var(--tinte-matt);
-  font-size: var(--t-klein);
-}
-
-.projekt__text {
-  display: grid;
-  gap: 1rem;
-  max-width: 60ch;
-}
-
-.projekt__text ul {
-  display: grid;
-  gap: 0.6rem;
-  margin: 0.25rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.projekt__text li {
-  position: relative;
-  padding-left: 1.4rem;
-}
-
-.projekt__text li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.55em;
-  width: 8px;
-  height: 8px;
-  background: var(--tinte);
-}
-
-@media (max-width: 680px) {
-  .projekt {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* Ablauf ----------------------------------------------------------------- */
@@ -5391,8 +5249,7 @@ html.check-leiste-an {
 @media (max-width: 1099px) {
   .problem__titel,
   .ueber-band > .satz h2,
-  .ablauf-band > .satz h2,
-  .projekte__kopf {
+  .ablauf-band > .satz h2 {
     grid-column: 1 / span 10;
   }
 }
@@ -5400,8 +5257,7 @@ html.check-leiste-an {
 @media (max-width: 767px) {
   .problem__titel,
   .ueber-band > .satz h2,
-  .ablauf-band > .satz h2,
-  .projekte__kopf {
+  .ablauf-band > .satz h2 {
     grid-column: 1 / -1;
   }
 }
@@ -5666,19 +5522,9 @@ html.modus-wechsel::view-transition-new(root) {
   }
 
   .kopf__nav .kopf__kontakt:hover,
-  .akte:hover .akte__blatt,
-  .akte:hover .akte__blatt + .akte__blatt,
   .ablauf__zusage:hover .zusage__kopie--gelb,
   .ablauf__zusage:hover .zusage__kopie--rosa {
     transform: none;
-  }
-
-  .akte__blatt {
-    transform: translate(10px, 10px) rotate(0.6deg) !important;
-  }
-
-  .akte__blatt + .akte__blatt {
-    transform: translate(20px, 18px) rotate(1.1deg) !important;
   }
 
   .zusage__kopie--gelb {
@@ -5695,19 +5541,9 @@ html.modus-wechsel::view-transition-new(root) {
   line-height: 1.05;
 }
 
-/* Schmal: Die versetzten Blätter hinter Akten und Zusage bleiben innerhalb des Bildschirms
+/* Schmal: Die versetzten Blätter hinter der Zusage bleiben innerhalb des Bildschirms
    (auch beim Antippen und bei reduzierter Bewegung, daher !important wie oben) */
 @media (max-width: 767px) {
-  .akte__blatt,
-  .akte:hover .akte__blatt {
-    transform: translate(4px, 4px) rotate(0.3deg) !important;
-  }
-
-  .akte__blatt + .akte__blatt,
-  .akte:hover .akte__blatt + .akte__blatt {
-    transform: translate(8px, 8px) rotate(0.6deg) !important;
-  }
-
   .zusage__kopie--gelb,
   .ablauf__zusage:hover .zusage__kopie--gelb {
     transform: translate(4px, 5px) rotate(0.3deg) !important;

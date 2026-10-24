@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { defineConfig } from "astro/config";
 
 const site = "https://jtkconsulting.de";
@@ -24,6 +27,20 @@ function sitemap() {
   };
 }
 
+// Wörter, die in den Akten von Abschnitt 06 nie stehen dürfen, aber auch nicht im öffentlichen Repo:
+// Sie liegen außerhalb des Repos (JTK_SPERRLISTE, sonst ~/.config/jtk-website/sperrliste.json, ein
+// JSON-Feld „woerter“) und kommen als Konstante in die Prüfung (src/data/praxis/index.ts). Fehlt die
+// Datei, bricht der Bau dort ab; JTK_OHNE_SPERRLISTE=1 baut mit leerer Liste.
+function sperrlisteLesen() {
+  const pfad = process.env.JTK_SPERRLISTE || join(homedir(), ".config", "jtk-website", "sperrliste.json");
+  try {
+    const daten = JSON.parse(readFileSync(pfad, "utf8"));
+    const woerter = Array.isArray(daten) ? daten : daten?.woerter;
+    if (Array.isArray(woerter)) return woerter.map(String);
+  } catch {}
+  return process.env.JTK_OHNE_SPERRLISTE ? [] : null;
+}
+
 export default defineConfig({
   site,
   trailingSlash: "ignore",
@@ -33,6 +50,9 @@ export default defineConfig({
     inlineStylesheets: "always",
   },
   vite: {
+    define: {
+      __PRAXIS_SPERRLISTE__: JSON.stringify(sperrlisteLesen()),
+    },
     server: {
       // Im Dev laufen Anfrageformular und Statistik gegen die lokale Koch-Plattform.
       // Host bleibt localhost, damit die Plattform die Herkunft erkennt.

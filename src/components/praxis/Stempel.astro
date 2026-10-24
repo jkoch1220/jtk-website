@@ -1,0 +1,63 @@
+---
+// Stempel in den Akten. „eingang“: Eingangsstempel in Kopierstift-Blau mit Datum und Paraphe,
+// auf jedem Kapitel. „akte“: großer Aktenstempel (ÜBERNOMMEN, IN ARBEIT …), höchstens ein roter je
+// Akte. Die Tinte (Filter) und die Paraphe stehen einmal in Praxis.astro. Der Text steht zusätzlich
+// für Screenreader im Titel des Kapitels, die Grafik ist aria-hidden.
+interface Props {
+  art: "eingang" | "akte";
+  oben: string;
+  mitte?: string;
+  unten?: string;
+  farbe?: "tinte" | "rot";
+  /** Paraphe „JK“ im Eingangsstempel, nur bei erledigten Kapiteln */
+  paraphe?: boolean;
+}
+
+const { art, oben, mitte = "", unten = "", farbe = "tinte", paraphe = false } = Astro.props;
+---
+
+{
+  art === "eingang" ? (
+    <svg class="eingangsstempel" viewBox="0 0 176 76" aria-hidden="true" focusable="false">
+      <g filter="url(#praxis-stempel-tinte)">
+        <rect x="2.5" y="2.5" width="171" height="71" rx="4" fill="none" stroke="currentColor" stroke-width="3" />
+        <text x="12" y="22" fill="currentColor" font-size="13" letter-spacing="2.2">{oben}</text>
+        <text x="12" y="46" fill="currentColor" font-size="19" font-weight="700" letter-spacing="1">
+          {mitte}
+        </text>
+        <line x1="12" y1="54" x2="164" y2="54" stroke="currentColor" stroke-width="1.2" />
+        <text x="12" y="68" fill="currentColor" font-size="11" letter-spacing="1.6">
+          {unten}
+        </text>
+        {paraphe && <use href="#praxis-paraphe" x="104" y="50" width="62" height="28" />}
+      </g>
+    </svg>
+  ) : (
+    <svg class:list={["aktenstempel", `aktenstempel--${farbe}`]} viewBox="0 0 230 86" aria-hidden="true" focusable="false">
+      <g filter="url(#praxis-stempel-tinte)">
+        <rect x="4" y="4" width="222" height="78" rx="6" fill="none" stroke="currentColor" stroke-width="4.5" />
+        <rect x="11" y="11" width="208" height="64" rx="3" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <text
+          x="115"
+          y={unten ? 47 : 55}
+          text-anchor="middle"
+          fill="currentColor"
+          font-size="30"
+          font-weight="800"
+          letter-spacing="2.5"
+          textLength={oben.length > 8 ? 190 : undefined}
+          lengthAdjust={oben.length > 8 ? "spacingAndGlyphs" : undefined}
+        >
+          {oben}
+        </text>
+        {
+          unten && (
+            <text x="115" y="66" text-anchor="middle" fill="currentColor" font-size="11.5" font-weight="650" letter-spacing="2.2">
+              {unten}
+            </text>
+          )
+        }
+      </g>
+    </svg>
+  )
+}

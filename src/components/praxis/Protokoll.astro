@@ -1,0 +1,57 @@
+---
+// Arbeitsprotokoll einer Akte: ein Balken je Woche aus der Versionsgeschichte (protokoll.json),
+// ohne Zahlen, dazu Saisonbänder, Marken für die Kapitel und die Passermarke, die im Lesetisch
+// zum aufgeschlagenen Kapitel wandert. Die Balken sind eine einzige Pfadangabe. Kapitel, von denen
+// nur das Jahr bekannt ist, bekommen keine Marke.
+import type { Akte } from "../../data/praxis/typen";
+import { spur, kapitelLage, monatKurz } from "../../data/praxis";
+
+interface Props {
+  akte: Akte;
+}
+
+const { akte } = Astro.props;
+const s = spur(akte.id);
+const n = Math.max(s.wochen.length, 1);
+const hoehe = 40;
+const pfad = s.wochen
+  .map((w, i) => {
+    if (!w.anzahl) return "";
+    const h = Math.max(3, (w.anzahl / s.max) * (hoehe - 2));
+    return `M${(i + 0.18).toFixed(2)} ${hoehe}V${(hoehe - h).toFixed(2)}H${(i + 0.82).toFixed(2)}V${hoehe}Z`;
+  })
+  .join("");
+const erste = s.wochen[0]?.beginn ?? "";
+const letzte = s.wochen.at(-1)?.beginn ?? "";
+const saisonText = akte.saison?.map((b) => b.text).join(", ");
+---
+
+<figure class="protokoll" data-protokoll>
+  <div class="protokoll__spur">
+    <svg class="protokoll__grafik" viewBox={`0 0 ${n} ${hoehe}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {
+        akte.saison?.map((b) => (
+          <rect
+            class="protokoll__saison"
+            x={(s.lage(b.von) * n).toFixed(2)}
+            y="0"
+            width={((s.lage(b.bis) - s.lage(b.von)) * n).toFixed(2)}
+            height={hoehe}
+          />
+        ))
+      }
+      <path class="protokoll__balken" d={pfad} />
+    </svg>
+    <ol class="protokoll__marken" aria-hidden="true">
+      {akte.kapitel.map((k) => [k, kapitelLage(s, k)] as const).filter(([, lage]) => lage !== null).map(([k, lage]) => <li style={`--pos: ${lage!.toFixed(4)}`} data-marke={k.id} />)}
+    </ol>
+    <span class="protokoll__passer" aria-hidden="true" data-passer style="--pos: 0"></span>
+  </div>
+  <div class="protokoll__monate" aria-hidden="true">
+    {s.monate.map((m) => <span style={`--pos: ${m.pos.toFixed(4)}`} data-rang={m.rang}>{m.text}</span>)}
+  </div>
+  <figcaption class="protokoll__text">
+    Arbeitsprotokoll: ein Balken je Woche, so hoch wie die Zahl der Änderungen an der Software, {monatKurz(erste)} bis {monatKurz(letzte)}. Die Marken
+    zeigen die Kapitel{saisonText ? `, das helle Band die ${saisonText}` : ""}.
+  </figcaption>
+</figure>

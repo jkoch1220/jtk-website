@@ -1,0 +1,145 @@
+---
+// Abschnitt 06 „Akteneinsicht“: drei echte Akten auf dem Tisch, dazu die leere Akte 04 für den
+// Besucher. Ein Klick legt eine Akte auf den Lesetisch (Dialog, scripts/praxis-lesetisch.ts);
+// ohne Skript klappt man die Geschichte unter der Mappe auf. Inhalte: src/data/praxis/.
+import Rand from "../Rand.astro";
+import Akte from "./Akte.astro";
+import { akten, aktenPruefen, protokoll, monatKurz } from "../../data/praxis";
+import "../../styles/praxis.css";
+
+// Bricht den Bau ab, wenn eine Akte Regeln verletzt (Belege, Längen, Sperrliste)
+aktenPruefen();
+
+const stand = monatKurz(protokoll.stand);
+const angelegt = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+---
+
+<section class="praxis" id="projekte" aria-labelledby="projekte-titel">
+  <script is:inline>
+    // Vor dem ersten Bild: Mit Skript liest man die Akten im Lesetisch, die Klappen darunter
+    // verschwinden. Startet das Modul nicht, kommen sie nach 4 s zurück.
+    (function () {
+      var w = document.documentElement;
+      w.classList.add("praxis-js");
+      setTimeout(function () {
+        if (!window.__praxisGestartet) w.classList.remove("praxis-js");
+      }, 4000);
+    })();
+  </script>
+  <div class="bogen band--papier">
+    <Rand nr="06" titel="Akteneinsicht" />
+    <div class="satz">
+      <header class="praxis__kopf">
+        <p class="kicker" aria-hidden="true">06 · Akteneinsicht</p>
+        <h2 id="projekte-titel">So läuft das in der Praxis</h2>
+        <p class="praxis__lead">
+          Sie wollen wissen, ob das im Alltag trägt, mit alten Daten und mitten im laufenden Betrieb. Hier liegen drei
+          echte Akten: mein eigenes Unternehmen, die Firma meines Bruders und ein Ehrenamt. Mein eigener Betrieb ist der
+          erste Prüfstand, deshalb sehen Sie hier auch, was noch nicht fertig ist. Jede Akte zeigt, wie es vorher lief,
+          was Schritt für Schritt dazukam und was heute läuft.
+        </p>
+        <p class="praxis__vermerk">Echte Akten · Namen und Beträge geschwärzt · Stand {stand}</p>
+      </header>
+
+      <div class="praxis__tisch">
+        {akten.map((a, i) => <Akte akte={a} gross={i === 0} />)}
+        <article class="akte akte--leer" id="akte-ihr-betrieb" aria-labelledby="akte-ihr-betrieb-name">
+          <div class="akte__mappe" data-nr="AKTE 04">
+            <div class="akte__deckel">
+              <div class="akte__schild akte__schild--vordruck">
+                <h3 class="akte__name" id="akte-ihr-betrieb-name">Ihr Betrieb</h3>
+                <dl class="akte__felder">
+                  <div>
+                    <dt>Betrieb</dt>
+                    <dd><span class="vordruck__luecke">noch leer</span></dd>
+                  </div>
+                  <div>
+                    <dt>Angelegt</dt>
+                    <dd data-datum>{angelegt}</dd>
+                  </div>
+                </dl>
+              </div>
+              <p class="akte__leertext" data-akte-leertext>
+                Ihre Akte ist noch leer. Blatt&nbsp;1 ist ein Gespräch von 15&nbsp;Minuten, kostenlos und unverbindlich.
+              </p>
+              <a class="knopf knopf--voll" href="#kontakt" data-erstgespraech="04">Kostenloses Erstgespräch vereinbaren</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tinte der Stempel und die Paraphe, einmal für alle Akten. Nicht display: none, sonst fehlt der Filter in Firefox. -->
+  <svg class="praxis__defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="praxis-stempel-tinte" x="-6%" y="-12%" width="112%" height="124%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="5" result="fein"></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="fein" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="rau"></feDisplacementMap>
+        <feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="17" result="flecken"></feTurbulence>
+        <feColorMatrix in="flecken" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.35" result="maske"></feColorMatrix>
+        <feComposite in="rau" in2="maske" operator="in"></feComposite>
+      </filter>
+      <symbol id="praxis-paraphe" viewBox="0 0 62 28">
+        <path
+          d="M6 7c5-1 8 0 8 5 0 6-3 12-8 12-3 0-4-3-1-5M20 4c-1 7-2 14-3 20m1-8c4-3 9-8 12-10m-11 9c5 2 9 5 13 9M36 17c7-3 14-5 22-5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Den Namen („Akte 01: Tennismehl GmbH“) setzt das Skript beim Öffnen als aria-label. Kopf und Fuß
+       sind div statt header und footer, damit sie im Dialog keine Landmarken werden. -->
+  <dialog class="lesetisch" id="lesetisch" aria-describedby="lesetisch-hilfe" data-lenis-prevent data-praxis-dialog>
+    <div class="lesetisch__mappe">
+      <div class="lesetisch__kopf">
+        <h3 class="lesetisch__titel" id="lesetisch-titel" tabindex="-1">
+          <span class="lesetisch__nr" data-titel-nr>Akte</span>{" "}
+          <span data-titel-name></span>
+        </h3>
+        <p class="lesetisch__zaehler" aria-hidden="true" data-zaehler></p>
+        <button class="lesetisch__zu" type="button" data-zuklappen>Zuklappen <span aria-hidden="true">×</span></button>
+      </div>
+      <div class="lesetisch__blatt" data-blatt></div>
+      <nav class="lesetisch__register" aria-label="Kapitel">
+        <ol data-register></ol>
+      </nav>
+      <div class="lesetisch__fuss">
+        <button class="lesetisch__zurueck knopf" type="button" data-zurueck>
+          <span aria-hidden="true">‹</span>
+          <span class="lesetisch__beschriftung">Zurück<span class="lesetisch__wohin" data-zurueck-wohin></span></span>
+        </button>
+        <span class="lesetisch__stelle" aria-hidden="true" data-stelle></span>
+        <button class="lesetisch__weiter knopf knopf--voll" type="button" data-weiter>
+          <span class="lesetisch__beschriftung">Weiter<span class="lesetisch__wohin" data-weiter-wohin></span></span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
+    </div>
+    <p class="sr-only" id="lesetisch-hilfe" data-hilfe>Mit den Pfeiltasten blättern, Escape klappt die Akte zu.</p>
+    <p class="sr-only" aria-live="polite" data-ansage></p>
+  </dialog>
+
+  <dialog class="lupe" id="lupe" aria-labelledby="lupe-titel" data-lenis-prevent data-praxis-dialog>
+    <div class="lupe__leiste">
+      <p class="lupe__titel" id="lupe-titel" tabindex="-1" data-lupe-titel></p>
+      <button class="lupe__knopf" type="button" data-lupe-zurueck aria-label="Voriges Bild">‹</button>
+      <button class="lupe__knopf" type="button" data-lupe-weiter aria-label="Nächstes Bild">›</button>
+      <button class="lupe__knopf lupe__knopf--text" type="button" data-lupe-massstab aria-pressed="false" aria-label="Originalgröße 1:1">1:1</button>
+      <button class="lupe__knopf" type="button" data-lupe-zu aria-label="Lupe schließen">×</button>
+    </div>
+    <div class="lupe__flaeche" data-lupe-flaeche role="group" tabindex="-1" aria-label="Bild in Originalgröße, mit den Pfeiltasten verschieben">
+      <img class="lupe__bild" alt="" data-lupe-bild decoding="async" />
+    </div>
+    <p class="lupe__text" data-lupe-text></p>
+    <p class="sr-only" aria-live="polite" data-lupe-ansage></p>
+  </dialog>
+</section>
+
+<script>
+  import "../../scripts/praxis";
+</script>

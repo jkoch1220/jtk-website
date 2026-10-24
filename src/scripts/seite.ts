@@ -19,6 +19,11 @@ const bewegungReduziert = window.matchMedia("(prefers-reduced-motion: reduce)").
    rechnet bei Ankerlinks scroll-padding-top (html) ein. */
 const lenis = new Lenis({ autoRaf: true, anchors: true });
 
+/* Liegt eine Akte auf dem Lesetisch (Abschnitt 06), steht die Seite dahinter still, auch mitten in
+   einer Fahrt. Kam sie per Tiefenlink, ist der Tisch schon offen, bevor Lenis startet. */
+document.addEventListener("praxis:tisch", (e) => ((e as CustomEvent<{ offen: boolean }>).detail.offen ? lenis.stop() : lenis.start()));
+if (document.documentElement.classList.contains("praxis-offen")) lenis.stop();
+
 /* Hilfsfunktionen ------------------------------------------------------------ */
 
 async function kopieren(text: string, ausweich?: HTMLTextAreaElement | null): Promise<boolean> {

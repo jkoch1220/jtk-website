@@ -312,7 +312,8 @@ function starten(): void {
       },
       { threshold: Array.from({ length: 21 }, (_, i) => i / 20) },
     );
-    document.querySelectorAll<HTMLElement>("section[id]").forEach((s) => beobachter.observe(s));
+    // Nur die Abschnitte der Seite, nicht Bereiche in ihnen (etwa in den Akten)
+    document.querySelectorAll<HTMLElement>("main > section[id]").forEach((s) => beobachter.observe(s));
   }
 
   let heroGestempelt = false;
@@ -323,6 +324,14 @@ function starten(): void {
     },
     { once: true },
   );
+
+  // Akteneinsicht (06): Der Lesetisch meldet je Aufruf einmal je Akte, nicht jedes Blättern
+  const praxis = (ereignis: string, ziel: (d: Record<string, string>) => string) =>
+    document.addEventListener(ereignis, (e) => melden("klick", { ziel: ziel((e as CustomEvent<Record<string, string>>).detail ?? {}) }));
+  praxis("praxis:aufgeschlagen", (d) => `Praxis: Akte ${d.nr} aufgeschlagen`);
+  praxis("praxis:ende", (d) => `Praxis: Akte ${d.nr} bis zum Ende`);
+  praxis("praxis:lupe", () => "Praxis: Bild groß");
+  praxis("praxis:verweis", (d) => `Praxis: Querverweis nach Akte ${d.nr}`);
 
   document.addEventListener(
     "click",
@@ -352,6 +361,14 @@ function starten(): void {
           }
           return;
         }
+        // Akteneinsicht: Erstgespräch mit Aktennummer; Aufschlagen, Blättern und Lupe meldet der
+        // Lesetisch selbst (praxis:*), Klicks im Dialog zählen sonst nicht
+        const erstgespraech = start.closest<HTMLElement>("[data-erstgespraech]");
+        if (erstgespraech) {
+          melden("klick", { ziel: `Praxis: Erstgespräch aus Akte ${erstgespraech.dataset.erstgespraech}` });
+          return;
+        }
+        if (start.closest("[data-praxis-dialog], [data-akte-oeffnen], .akte__abzug, .akte__fenster")) return;
         const element = start.closest("a, button");
         const ziel = element ? klickZiel(element) : null;
         if (ziel) melden("klick", { ziel });

@@ -1,0 +1,113 @@
+---
+// Eine Mappe auf dem Tisch: Reiter, Rücken, ein Bündel Abzüge mit Büroklammer, das beim Zeigen
+// auffächert, und der Deckel mit Aktenschild, Wandel, Ergebnis-Zahlen und „Akte aufschlagen“.
+// Die große Akte hat dazu ein Sichtfenster: Ein Abzug liegt sichtbar in der Klarsichthülle.
+// Darunter die ganze Geschichte im <details>: ohne Skript zum Aufklappen, mit Skript liest man sie
+// im Lesetisch (scripts/praxis-lesetisch.ts hängt sie dorthin um).
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import type { Akte } from "../../data/praxis/typen";
+import { DATEN_TEXT, lesezeit } from "../../data/praxis";
+import Geschichte from "./Geschichte.astro";
+
+interface Props {
+  akte: Akte;
+  gross?: boolean;
+}
+
+const { akte, gross = false } = Astro.props;
+const minuten = lesezeit(akte);
+// Ein Abzug im Bündel öffnet das Kapitel, zu dem das Bild gehört
+const kapitelVon = (src: ImageMetadata) => akte.kapitel.find((k) => k.bilder?.some((b) => b.src === src))?.id;
+const groesse = (art: string) =>
+  art === "handy"
+    ? "(min-width: 1280px) 110px, (min-width: 680px) 96px, 24vw"
+    : gross
+      ? "(min-width: 1280px) 300px, (min-width: 680px) 280px, 52vw"
+      : "(min-width: 1280px) 220px, (min-width: 680px) 240px, 52vw";
+---
+
+<article class:list={["akte", gross && "akte--gross"]} id={`akte-${akte.id}`} data-akte={akte.id} aria-labelledby={`akte-${akte.id}-name`}>
+  <div class="akte__mappe" data-nr={`AKTE ${akte.nr}`}>
+    <div class="akte__ruecken" aria-hidden="true"></div>
+    <div class="akte__buendel" aria-hidden="true">
+      {
+        akte.vorschau.map((b, i) => (
+          <figure
+            class:list={["akte__abzug", `akte__abzug--${b.art}`]}
+            style={`--i: ${i}${b.ausschnitt ? `; --ausschnitt: ${b.ausschnitt}` : ""}`}
+            data-kapitel={kapitelVon(b.src)}
+          >
+            <Image
+              src={b.src}
+              format="webp"
+              width={b.art === "handy" ? 240 : 640}
+              widths={b.art === "handy" ? [120, 180, 240] : [240, 360, 480, 640]}
+              sizes={groesse(b.art)}
+              quality={60}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        ))
+      }
+      <svg class="akte__klammer" viewBox="0 0 22 46" aria-hidden="true" focusable="false">
+        <path d="M7 41V9.5a4 4 0 0 1 8 0V35a2.6 2.6 0 0 1-5.2 0V13" />
+      </svg>
+    </div>
+    <div class="akte__deckel">
+      <div class="akte__schild">
+        <h3 class="akte__name" id={`akte-${akte.id}-name`}>{akte.name}</h3>
+        <p class="akte__rolle">{akte.rolle}</p>
+        <p class="akte__kontext">{akte.kontext}</p>
+      </div>
+      <p class="akte__wandel">{akte.wandel}</p>
+      {
+        akte.fenster && (
+          <figure class="akte__fenster" data-kapitel={kapitelVon(akte.fenster.src)} aria-hidden="true">
+            <div class="akte__huelle">
+              <Image
+                src={akte.fenster.src}
+                format="webp"
+                width={1280}
+                widths={[480, 720, 960, 1280]}
+                sizes="(min-width: 1280px) 620px, (min-width: 900px) 44vw, calc(100vw - 96px)"
+                quality={62}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+            <figcaption class="akte__fenstertext">
+              {akte.fenster.unterschrift} · {DATEN_TEXT[akte.fenster.daten]}
+            </figcaption>
+          </figure>
+        )
+      }
+      <dl class="akte__zahlen">
+        {
+          akte.kennzahlen.map((z) => (
+            <div>
+              <dt>{z.text}</dt>
+              <dd>{z.wert}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <div class="akte__fuss">
+        <p class="akte__plakette">{akte.status}</p>
+        <p class="akte__umfang">
+          {akte.kapitel.length} Kapitel · rund {minuten} {minuten === 1 ? "Minute" : "Minuten"}<span class="akte__gelesen" hidden> · gelesen</span>
+        </p>
+      </div>
+      <button class="akte__oeffnen knopf" type="button" data-akte-oeffnen={akte.id} aria-haspopup="dialog" aria-controls="lesetisch">
+        Akte aufschlagen<span class="sr-only">: {akte.name}</span>
+      </button>
+    </div>
+  </div>
+  <details class="akte__inhalt" id={`akte-${akte.id}-inhalt`}>
+    <summary class="akte__lesen">Die ganze Akte lesen · {akte.kapitel.length} Kapitel</summary>
+    <Geschichte akte={akte} />
+  </details>
+</article>

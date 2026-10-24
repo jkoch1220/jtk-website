@@ -1,0 +1,21 @@
+---
+// Aktenvermerk: Julians eigene Worte, mit Paraphe und dem Tag der Aussage. Der Fuß ist bewusst kein
+// <footer>: Im Dialog wäre er sonst eine weitere Landmarke.
+import type { Vermerk } from "../../data/praxis/typen";
+import { tagKurz } from "../../data/praxis";
+
+interface Props {
+  vermerk: Vermerk;
+}
+
+const { vermerk } = Astro.props;
+---
+
+<blockquote class="aktenvermerk">
+  <p>„{vermerk.text}“</p>
+  <div class="aktenvermerk__fuss">
+    <svg class="paraphe" viewBox="0 0 62 28" aria-hidden="true" focusable="false"><use href="#praxis-paraphe" /></svg>
+    <span class="sr-only">Julian Koch,</span>
+    <time class="aktenvermerk__datum" datetime={vermerk.am}>{tagKurz(vermerk.am)}</time>
+  </div>
+</blockquote>

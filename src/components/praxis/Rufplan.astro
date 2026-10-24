@@ -1,0 +1,27 @@
+---
+// Rufplan als Zeichnung im Stil eines Schaltplans: Stationen eines Anrufs von links nach rechts,
+// auf schmalen Bildschirmen untereinander. Echte Liste statt Grafik, damit sie vorgelesen wird.
+import type { Rufplan } from "../../data/praxis/typen";
+
+interface Props {
+  plan: Rufplan;
+}
+
+const { plan } = Astro.props;
+---
+
+<figure class="rufplan">
+  <ol class="rufplan__schritte" aria-label={plan.alt}>
+    {
+      plan.schritte.map((s, i) => (
+        <li class="rufplan__schritt">
+          <span class="rufplan__nr" aria-hidden="true">
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          {s}
+        </li>
+      ))
+    }
+  </ol>
+  <figcaption class="abzug__text">Rufplan · Zeichnung, ohne Anrufdaten</figcaption>
+</figure>

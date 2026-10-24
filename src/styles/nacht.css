@@ -80,7 +80,7 @@
   /* Papier unter der Lampe: gedämpft gegen Blendung, Licht fällt von oben links ab */
   --insel-bogen: #e9e8f1;
   --insel-tinte: #2b2a7e;
-  --insel-matt: #55538f;
+  --insel-matt: #4a4882; /* 5,1 : 1 auf --insel-gelb, 4,6 : 1 auf --insel-rosa */
   --insel-linie: rgb(43 42 126 / 0.2);
   --insel-linie-stark: rgb(43 42 126 / 0.55);
   --insel-hauch: rgb(43 42 126 / 0.06);
@@ -89,4 +89,9 @@
   --insel-kohle: #0f0e30;
   --insel-stempel: #c9283a;
   --insel-licht: linear-gradient(150deg, rgb(255 255 255 / 0.35) 0%, rgb(255 255 255 / 0) 38%, rgb(21 20 74 / 0.08) 100%);
+
+  /* Akten im Abschnitt 06 */
+  --praxis-mischung: normal;
+  --abzug-filter: brightness(0.92) saturate(0.95);
+  --lesetisch-grund: rgb(0 0 0 / 0.62);
 }

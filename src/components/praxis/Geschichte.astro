@@ -1,0 +1,212 @@
+---
+// Eine Akte von innen: Arbeitsprotokoll, Ausgangslage mit Laufzettel und Vorher-Deckblatt, die
+// Kapitel, die Bilanz mit Akte 04. Dieselbe .geschichte steht ohne Skript im <details> der Mappe
+// und wird vom Lesetisch zum Lesen in den Dialog umgehängt; es gibt jeden Text und jede id nur einmal.
+// Landmarke ist nur der Laufzettel; Durchschläge und Bilanzspalten sind benannte Gruppen.
+// Ein Aktenvermerk steht hinter Zettel, Stempel und Links: Auf Laptops bleiben die so im Bild,
+// das Zitat darf in die Ausblendung am unteren Rand laufen.
+import type { Akte } from "../../data/praxis/typen";
+import { akten, datumText, stempelDatum, STAND_TEXT, BELEGART_TEXT, monatKurz, zusageTitel, zusageNr, spur, kapitelLage } from "../../data/praxis";
+import Abzug from "./Abzug.astro";
+import Vermerk from "./Vermerk.astro";
+import Stempel from "./Stempel.astro";
+import Protokoll from "./Protokoll.astro";
+import Rufplan from "./Rufplan.astro";
+
+interface Props {
+  akte: Akte;
+}
+
+const { akte } = Astro.props;
+const p = (teil: string) => `akte-${akte.id}-${teil}`;
+const s = spur(akte.id);
+const naechste = akten[(akten.findIndex((a) => a.id === akte.id) + 1) % akten.length];
+const nameVon = (id: string) => akten.find((a) => a.id === id);
+const belegZeile = (belege: { art: keyof typeof BELEGART_TEXT; text: string; stand: string }[]) =>
+  belege.map((b) => `${BELEGART_TEXT[b.art]}: ${b.text}, Stand ${monatKurz(b.stand)}`).join(" · ");
+const EINGANG_OBEN = { erledigt: "EINGANG", laeuft: "IN ARBEIT", ruht: "EINGANG", offen: "VORGEMERKT" } as const;
+const lageText = (lage: number | null) => (lage === null ? undefined : lage.toFixed(4));
+---
+
+<div class="geschichte" data-geschichte={akte.id} data-nr={akte.nr} data-name={akte.name}>
+  <Protokoll akte={akte} />
+  <ol class="geschichte__seiten">
+    <li class="seite seite--aufschlag" id={p("aufschlag")} data-seite="aufschlag" data-kurz="Ausgangslage" data-pos="0">
+      <div class="seite__text">
+        <h4 class="seite__titel" id={p("aufschlag-titel")} tabindex="-1">Ausgangslage</h4>
+        <p class="seite__absatz">{akte.ausgangslage.text}</p>
+        {akte.ausgangslage.vermerk && <Vermerk vermerk={akte.ausgangslage.vermerk} />}
+        <nav class="laufzettel" aria-label={`Laufzettel: Kapitel der Akte ${akte.name}`}>
+          <p class="laufzettel__kopf" aria-hidden="true"><span>Bl.</span><span>Datum</span><span>Vorgang</span><span>Stand</span></p>
+          <ol>
+            {
+              akte.kapitel.map((k, i) => (
+                <li>
+                  <a class="laufzettel__eintrag" href={`#${p(k.id)}`} data-blaettern={k.id}>
+                    <span class="laufzettel__nr">{i + 1}</span>
+                    <span class="laufzettel__datum">{datumText(k.datum)}</span>
+                    <span class="laufzettel__titel">{k.titel}</span>
+                    <span class="laufzettel__stand">{STAND_TEXT[k.stand]}</span>
+                  </a>
+                </li>
+              ))
+            }
+          </ol>
+        </nav>
+        <p class="seite__belege">Belege · {belegZeile(akte.ausgangslage.belege)}</p>
+      </div>
+      <div class="seite__beleg">
+        {akte.ausgangslage.bild && <Abzug bild={akte.ausgangslage.bild} />}
+        <div class="durchschlag durchschlag--deckblatt" role="group" aria-labelledby={p("vorher-titel")}>
+          <p class="durchschlag__kopf" id={p("vorher-titel")}>{akte.vorher.kopf}</p>
+          <ul class="durchschlag__zeilen">
+            {akte.vorher.zeilen.map((z) => <li>{z}</li>)}
+          </ul>
+        </div>
+      </div>
+    </li>
+
+    {
+      akte.kapitel.map((k, i) => (
+        <li
+          class:list={["seite", "seite--kapitel", `seite--${k.stand}`]}
+          id={p(k.id)}
+          data-seite={k.id}
+          data-kurz={k.kurz}
+          data-titel={k.titel}
+          data-wann={datumText(k.datum)}
+          data-pos={lageText(kapitelLage(s, k))}
+        >
+          <div class="seite__text">
+            <Stempel
+              art="eingang"
+              oben={EINGANG_OBEN[k.stand]}
+              mitte={stempelDatum(k.datum)}
+              unten={k.stand === "erledigt" ? `BL. ${i + 1} · ERL.` : `BL. ${i + 1} · ${STAND_TEXT[k.stand].toUpperCase()}`}
+              paraphe={k.stand === "erledigt"}
+            />
+            <h4 class="seite__titel" id={p(`${k.id}-titel`)} tabindex="-1">
+              <span class="sr-only">
+                Kapitel {i + 1}, {datumText(k.datum)}, {STAND_TEXT[k.stand]}:{" "}
+              </span>
+              {k.titel}
+            </h4>
+            <p class="seite__absatz">{k.text}</p>
+            {(k.notiz || k.stempel) && (
+              <div class="seite__vermerke">
+                {k.notiz && (
+                  <div class="notiz" role="note">
+                    <p>
+                      <strong class="notiz__wert">{k.notiz.wert}</strong> <span class="notiz__text">{k.notiz.text}</span>
+                    </p>
+                  </div>
+                )}
+                {k.stempel && (
+                  <p class="seite__stempel">
+                    <Stempel art="akte" oben={k.stempel.oben} unten={k.stempel.unten} farbe={k.stempel.farbe} />
+                    <span class="sr-only">
+                      Stempel: {k.stempel.oben}
+                      {k.stempel.unten ? `, ${k.stempel.unten}` : ""}.
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+            {k.zusage && (
+              <p class="seite__zusage">
+                <a href={`#zusage-${k.zusage}`} data-zusage>
+                  Beleg zu {zusageNr(k.zusage)} · {zusageTitel(k.zusage)}
+                </a>
+              </p>
+            )}
+            {k.verweis && (
+              <p class="seite__verweis">
+                <a href={`#akte-${k.verweis.akte}-${k.verweis.kapitel}`} data-verweis={`${k.verweis.akte}:${k.verweis.kapitel}`}>
+                  {k.verweis.text}
+                  <span class="seite__verweis-ziel">&nbsp;· Akte&nbsp;{nameVon(k.verweis.akte)?.nr}</span>
+                </a>
+              </p>
+            )}
+            {k.vermerk && <Vermerk vermerk={k.vermerk} />}
+            <p class="seite__belege">Belege · {belegZeile(k.belege)}</p>
+          </div>
+          <div class="seite__beleg">
+            {k.bilder && (
+              <div class:list={["seite__bilder", k.bilder.length === 2 && "seite__bilder--paar"]}>
+                {k.bilder.map((b) => (
+                  <Abzug bild={b} paar={k.bilder?.length === 2} lasche={!!k.vorher} />
+                ))}
+              </div>
+            )}
+            {k.rufplan && <Rufplan plan={k.rufplan} />}
+            {k.vorher && (
+              <div class="durchschlag durchschlag--lasche" id={p(`${k.id}-vorher`)} role="group" aria-labelledby={p(`${k.id}-vorher-titel`)}>
+                <p class="durchschlag__kopf" id={p(`${k.id}-vorher-titel`)}>
+                  Vorher
+                </p>
+                <p class="durchschlag__text">{k.vorher}</p>
+                <button class="durchschlag__schalter" type="button" data-vorher hidden>
+                  Vorher ansehen
+                </button>
+              </div>
+            )}
+          </div>
+        </li>
+      ))
+    }
+
+    <li class="seite seite--bilanz" id={p("bilanz")} data-seite="bilanz" data-kurz="Bilanz" data-pos="1">
+      <div class="seite__text">
+        <h4 class="seite__titel" id={p("bilanz-titel")} tabindex="-1">Bilanz</h4>
+        <div class="bilanz">
+          <div class="durchschlag bilanz__spalte" role="group" aria-labelledby={p("bilanz-vorher")}>
+            <p class="durchschlag__kopf" id={p("bilanz-vorher")}>Vorher</p>
+            <ul class="durchschlag__zeilen">
+              {akte.bilanz.vorher.map((z) => <li>{z}</li>)}
+            </ul>
+          </div>
+          <div class="notiz bilanz__spalte" role="group" aria-labelledby={p("bilanz-nachher")}>
+            <p class="notiz__kopf" id={p("bilanz-nachher")}>Heute</p>
+            <ul class="notiz__zeilen">
+              {akte.bilanz.nachher.map((z) => <li>{z}</li>)}
+            </ul>
+          </div>
+        </div>
+        {akte.bilanz.naechstes && <p class="bilanz__naechstes"><strong>Als Nächstes:</strong> {akte.bilanz.naechstes}</p>}
+        {
+          akte.bilanz.faden && (
+            <p class="seite__verweis">
+              <a href={`#akte-${akte.bilanz.faden.akte}-${akte.bilanz.faden.kapitel}`} data-verweis={`${akte.bilanz.faden.akte}:${akte.bilanz.faden.kapitel}`}>
+                {akte.bilanz.faden.text}
+                <span class="seite__verweis-ziel">&nbsp;· Akte&nbsp;{nameVon(akte.bilanz.faden.akte)?.nr}</span>
+              </a>
+            </p>
+          )
+        }
+      </div>
+      <div class="seite__beleg">
+        <div class="vordruck">
+          <p class="vordruck__reiter" aria-hidden="true">AKTE 04</p>
+          <p class="vordruck__name">Ihr Betrieb</p>
+          <dl class="vordruck__felder">
+            <div>
+              <dt>Betrieb</dt>
+              <dd><span class="vordruck__luecke">noch leer</span></dd>
+            </div>
+            <div>
+              <dt>Blatt&nbsp;1</dt>
+              <dd>Gespräch, 15&nbsp;Minuten</dd>
+            </div>
+          </dl>
+          <p class="vordruck__text">Danach wissen Sie, wo Ihr Betrieb Zeit verliert und womit Sie anfangen.</p>
+          <a class="knopf knopf--voll" href="#kontakt" data-erstgespraech={akte.nr}>
+            Kostenloses Erstgespräch vereinbaren
+          </a>
+        </div>
+        <a class="geschichte__naechste" href={`#akte-${naechste.id}`} data-naechste={naechste.id}>
+          Nächste Akte: {naechste.name}
+        </a>
+      </div>
+    </li>
+  </ol>
+</div>

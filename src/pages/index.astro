@@ -11,45 +11,10 @@ import Persoenlich from "../components/Persoenlich.astro";
 import Anfrage from "../components/Anfrage.astro";
 import Rand from "../components/Rand.astro";
 import Rasterkante from "../components/Rasterkante.astro";
+import Praxis from "../components/praxis/Praxis.astro";
 import { kontakt } from "../data/kontakt";
+import { erfolge, schritte } from "../data/zusagen";
 
-const erfolge = [
-  {
-    titel: "Sie verlieren keine Anfrage mehr",
-    text: "Jede Anfrage landet direkt im System statt im Postfach. Mit wenigen Klicks machen Sie daraus ein Angebot.",
-  },
-  {
-    titel: "Sie verpassen keinen Anruf mehr",
-    text: "Ein KI-Telefonassistent nimmt jeden Anruf an, auch nach Feierabend. Routinefragen beantwortet er selbst, neue Anfragen legt er im System an, und was Ihr Team braucht, stellt er durch.",
-  },
-  {
-    titel: "Sie schreiben keine Rechnung mehr von Hand",
-    text: "Aus dem Auftrag wird die Rechnung, und sie geht als E-Rechnung raus. Die Pflicht ab 2027 bzw. 2028 erfüllen Sie nebenbei.",
-  },
-  {
-    titel: "Sie tippen nichts mehr doppelt",
-    text: "Shop, Warenwirtschaft und Buchhaltung tauschen Daten selbst aus. Auch alte Programme lassen sich in den meisten Fällen anbinden.",
-  },
-  {
-    titel: "Sie entscheiden, die KI bereitet vor",
-    text: "E-Mails vorsortiert, Dokumente ausgelesen, Antworten vorformuliert. Die KI nimmt Ihrem Team Routine ab, damit mehr Zeit für Kunden bleibt. Was rausgeht, entscheiden Sie.",
-  },
-];
-
-const schritte = [
-  {
-    titel: "Kostenloses Erstgespräch",
-    text: "15 Minuten per Google Meet oder am Telefon, unverbindlich. Danach wissen Sie, wo Ihr Betrieb Zeit verliert und wo Sie anfangen sollten.",
-  },
-  {
-    titel: "Ihr Plan mit Festpreis",
-    text: "Sie bekommen einen Plan in Etappen. Jede Etappe hat einen festen Preis und ist für sich nutzbar. Nach jeder Etappe entscheiden Sie, ob es weitergeht.",
-  },
-  {
-    titel: "Sie gewinnen Zeit zurück",
-    text: "Ihr Team arbeitet von Anfang an mit und wird geschult. Wartung und Weiterentwicklung bleiben in einer Hand, solange Sie das wollen.",
-  },
-];
 ---
 
 <Base
@@ -103,7 +68,7 @@ const schritte = [
         <dl class="leistungen">
           {
             erfolge.map((e) => (
-              <div>
+              <div id={`zusage-${e.id}`}>
                 <dt>{e.titel}</dt>
                 <dd>{e.text}</dd>
               </div>
@@ -160,74 +125,7 @@ const schritte = [
     </div>
   </section>
 
-  <section class="projekte-abschnitt" id="projekte" aria-labelledby="projekte-titel">
-    <div class="bogen band--papier">
-      <Rand nr="06" titel="So läuft das in der Praxis" />
-      <div class="satz">
-        <div class="projekte__kopf">
-          <p class="kicker" aria-hidden="true">06 · So läuft das in der Praxis</p>
-          <h2 id="projekte-titel">So läuft das in der Praxis</h2>
-        </div>
-        <div class="projekte">
-          <article class="projekt akte" data-akte="AKTE 01">
-            <span class="akte__blatt" aria-hidden="true"></span>
-            <span class="akte__blatt" aria-hidden="true"></span>
-            <div class="projekt__kopf">
-              <h3>Tennismehl GmbH</h3>
-              <p class="projekt__kontext">
-                Lieferant für Tennisplatzbeläge, Giebelstadt. Mein eigenes Unternehmen, als Mitgesellschafter und Geschäftsführer, seit 2026.
-              </p>
-            </div>
-            <div class="projekt__text">
-              <p>
-                Mein eigener Betrieb ist der erste Prüfstand. Früher schrieben dort zwei Leute Angebote und Rechnungen
-                im alten Warenwirtschaftsprogramm, die Touren standen in Excel. Heute übernimmt ein eigenes Portal die
-                Büroarbeit:
-              </p>
-              <ul>
-                <li>Anfragen von der Website landen direkt im Portal statt im Postfach.</li>
-                <li>
-                  Bestellungen aus dem Online-Shop laufen von selbst ins Portal, Bestellungen beim Lieferanten gehen mit
-                  einem Klick raus.
-                </li>
-                <li>
-                  Die Rechnungen einer Lieferwoche entstehen auf einen Klick, die Belege gehen pro Quartal per Knopfdruck
-                  an die Steuerkanzlei.
-                </li>
-                <li>Über 2.000 Kunden mit 24 Jahren Bestellhistorie sind aus dem alten Programm übernommen.</li>
-                <li>
-                  Auch im Werk: Die Absackanlage für 40-kg-Säcke läuft mit programmierbarer Steuerung statt reiner
-                  Pneumatik.
-                </li>
-              </ul>
-              <p>
-                Gerade im Bau ist die Tourenplanung. Die Saison ist kurz, von Februar bis April rollt ein LKW nach dem
-                anderen raus. Mit Google Maps im Hintergrund plant das Portal Routen und Touren halbautomatisch, damit
-                jeder Auftrag schnell auf dem richtigen Wagen landet. Als Nächstes folgt ein KI-Telefonassistent, damit
-                in der Saison kein Anruf mehr verloren geht.
-              </p>
-            </div>
-          </article>
-
-          <article class="projekt akte" data-akte="AKTE 02">
-            <span class="akte__blatt" aria-hidden="true"></span>
-            <span class="akte__blatt" aria-hidden="true"></span>
-            <div class="projekt__kopf">
-              <h3>Anfrage-Plattform</h3>
-              <p class="projekt__kontext">Zwei Online-Services, ein System. 2026.</p>
-            </div>
-            <div class="projekt__text">
-              <p>
-                Für einen Betreiber zweier Online-Services, eines Anfrage- und eines Energie-Service: Statt zwei Systeme
-                doppelt zu pflegen, laufen beide künftig auf einer gemeinsamen Plattform. Jeder Service behält seinen
-                eigenen Auftritt, die Abläufe im Hintergrund laufen von selbst.
-              </p>
-            </div>
-          </article>
-        </div>
-      </div>
-    </div>
-  </section>
+  <Praxis />
 
   <section class="ablauf-abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
     <div class="bogen band--papier ablauf-band">
@@ -246,7 +144,7 @@ const schritte = [
       <ol class="ablauf">
         {
           schritte.map((s) => (
-            <li>
+            <li id={`zusage-${s.id}`}>
               <h3>{s.titel}</h3>
               <p>{s.text}</p>
             </li>

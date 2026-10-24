@@ -1,0 +1,72 @@
+---
+// Ein Bildschirmfoto als Abzug: weißer Rand, Unterschrift mit Datenhinweis und Monat. Der Link
+// „Groß ansehen“ liegt über dem ganzen Bild und zeigt auf die große Fassung; mit Skript öffnet er
+// stattdessen die Lupe. Das Bild selbst bleibt außerhalb des Links, damit sein Alt-Text als Bild
+// vorgelesen wird und der Link einen kurzen Namen behält.
+import { Image, getImage } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import type { Bild } from "../../data/praxis/typen";
+import { DATEN_TEXT, monatKurz } from "../../data/praxis";
+
+interface Props {
+  bild: Bild;
+  /** zwei Handys nebeneinander teilen sich die Breite */
+  paar?: boolean;
+  /** im Kapitel liegt die Vorher-Lasche über dem Bild und nimmt Höhe weg */
+  lasche?: boolean;
+}
+
+const { bild, paar = false, lasche = false } = Astro.props;
+// Maße über clone lesen: Jeder andere Zugriff auf das importierte Bild legt das Original mit in den Build
+const masse = (bild.src as ImageMetadata & { clone?: ImageMetadata }).clone ?? bild.src;
+const sv = masse.width / masse.height;
+const handy = bild.art === "handy";
+const foto = bild.art === "foto";
+
+// sizes nach dem Platz, den das Bild bekommt. Auf der Doppelseite (ab 1280 × 780 px) begrenzt die
+// Fensterhöhe das Bild: Für das Bild bleiben rund 435 px weniger als das Fenster hoch ist, mit Lasche
+// 505 px, höchstens bis zur Obergrenze des Lesetischs. Im Fluss teilen sich ab 900 px Text und Bild die Zeile.
+const maxBreite = handy ? (paar ? 220 : 300) : foto ? 520 : 0;
+const passt = (fenster: number) => Math.round((fenster - (lasche ? 505 : 435)) * sv + 14);
+const doppelseite = (fenster: number) =>
+  maxBreite ? `${Math.min(maxBreite, passt(fenster))}px` : `min(${passt(fenster)}px, 50vw - 100px)`;
+const fluss = (spalte: string, klein = false) =>
+  handy ? `${paar ? (klein ? 160 : 240) : 300}px` : foto ? `min(520px, ${spalte})` : `calc(${spalte})`;
+const groesse = [
+  `(min-width: 1280px) and (max-height: 779px) ${fluss("50vw - 60px")}`,
+  `(min-width: 1280px) and (max-height: 899px) ${doppelseite(900)}`,
+  `(min-width: 1280px) and (max-height: 999px) ${doppelseite(1000)}`,
+  `(min-width: 1280px) ${doppelseite(1072)}`,
+  `(min-width: 900px) ${fluss("50vw - 60px")}`,
+  `(min-width: 680px) ${fluss("100vw - 80px")}`,
+  fluss("100vw - 32px", true),
+].join(", ");
+const breiten = (handy ? [260, 390, 520, 780] : foto ? [400, 600, 800] : [640, 960, 1280, 1600]).filter((b) => b <= masse.width);
+const gross = await getImage({ src: bild.src, format: "webp", width: Math.min(masse.width, 2400), quality: 82 });
+const text = [bild.unterschrift, DATEN_TEXT[bild.daten], bild.aufgenommen && monatKurz(bild.aufgenommen)].filter(Boolean).join(" · ");
+---
+
+<figure class:list={["abzug", `abzug--${bild.art}`]} style={`--sv: ${sv.toFixed(4)}`}>
+  <div class="abzug__rahmen" style={`--seiten: ${masse.width} / ${masse.height}`}>
+    <Image
+      class="abzug__bild"
+      src={bild.src}
+      format="webp"
+      width={Math.max(...breiten)}
+      widths={breiten}
+      sizes={groesse}
+      quality={handy ? 70 : 64}
+      alt={bild.alt}
+      loading="lazy"
+      decoding="async"
+    />
+    <a class="abzug__gross" href={gross.src} data-lupe data-lupe-text={text} data-breite={gross.attributes.width} data-hoehe={gross.attributes.height}>
+      <svg class="abzug__lupe" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <circle cx="6.5" cy="6.5" r="4.5"></circle>
+        <path d="M10 10l4.5 4.5"></path>
+      </svg>
+      <span class="sr-only">Groß ansehen: {bild.unterschrift}</span>
+    </a>
+  </div>
+  <figcaption class="abzug__text">{text}</figcaption>
+</figure>
