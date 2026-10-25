@@ -13,6 +13,7 @@
 import { gsap } from "gsap";
 import { FEIERABEND, STEMPEL_ZEICHEN_MAX, mitJahr } from "../data/akten";
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 import { ploppen } from "./zeitfresser-stapel";
 
 declare global {
@@ -697,6 +698,7 @@ export function belegEinrichten(ruhig: boolean): void {
         `${abgelegt(akten[anzahl - 1], anzahl)} Alle ${ZAHLWORTE[anzahl] ?? anzahl} Beispielakten abgelegt. Feierabend.`,
       );
       document.dispatchEvent(new CustomEvent("beleg:feierabend"));
+      nutzung("Hero", "alle Akten abgelegt");
     });
   };
 
@@ -739,6 +741,7 @@ export function belegEinrichten(ruhig: boolean): void {
     if (zustand !== "bereit" || !akte) return;
     zustand = "stempelt";
     knopf.setAttribute("aria-disabled", "true");
+    nutzung("Hero", "Akte gestempelt", { detail: punkt === null ? "Tastatur" : touch ? "Touch" : "Maus" });
     if (!gestempelt) {
       gestempelt = true;
       if (hinweis) hinweis.hidden = true;
@@ -753,8 +756,14 @@ export function belegEinrichten(ruhig: boolean): void {
 
   const maus = (e: PointerEvent) => (e.pointerType === "mouse" || e.pointerType === "pen") && feinerZeiger.matches;
 
+  let inDerHand = false;
   knopf.addEventListener("pointerenter", (e) => {
     if (!maus(e)) return;
+    // Einmal je Aufruf: Der Stempel springt bei jedem Überqueren in die Hand
+    if (!inDerHand) {
+      inDerHand = true;
+      nutzung("Hero", "Stempel in die Hand genommen");
+    }
     zeigerDrin = true;
     zeiger = { x: e.clientX, y: e.clientY };
     aufnehmen();
@@ -803,6 +812,7 @@ export function belegEinrichten(ruhig: boolean): void {
 
   nochmal?.addEventListener("click", () => {
     spiele("papier");
+    nutzung("Hero", "Stapel neu aufgelegt");
     neuAuflegen();
   });
 

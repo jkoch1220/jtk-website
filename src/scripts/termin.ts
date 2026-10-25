@@ -2,11 +2,14 @@
    Holt freie Zeiten aus dem Website-Dienst (GET {ziel}/frei) und bucht per POST {ziel}. Der Dienst
    prüft alles noch einmal und trägt den Termin in den Google-Kalender ein (Vertrag: website-dienst/API.md
    im Portal-Repo). Liefert er keine Zeiten, bleibt alles beim Anfrageformular aus seite.ts: Umschalter
-   und Buchung bleiben unsichtbar. Nichts wird im Browser gespeichert. */
+   und Buchung bleiben unsichtbar. Nichts wird im Browser gespeichert.
+   Für die Statistik meldet die Buchung ihre Schritte (nutzung.ts, Bereich „Termin“); die Namen der
+   Trichterschritte stehen auch im Dienst (TERMIN_SCHRITTE in statistik.ts). Nie Feldinhalte. */
 
 import { aufrufId, seitenStart } from "./tracking";
 import { turnstileToken, turnstileVorbereiten, turnstileZuruecksetzen } from "./turnstile";
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 
 type TerminOrt = "meet" | "telefon";
 type FreieZeit = { start: number; label: string };
@@ -26,6 +29,8 @@ type BuchungAntwort = {
 };
 
 const ZEITZONE = "Europe/Berlin";
+// Felder der Buchung, wie sie in der Statistik heißen (der Honigtopf „website“ fehlt bewusst)
+const FELDNAMEN: Record<string, string> = { name: "Name", firma: "Firma", email: "E-Mail", telefon: "Telefon", nachricht: "Nachricht" };
 const TAGE = 21;
 const ZEITLIMIT_MS = 8000;
 // Etwas mehr als die Mindestdauer im Dienst (3000 ms), sonst gilt die Buchung als Spam und verfällt still
@@ -149,7 +154,9 @@ function terminEinrichten(): void {
   reiter.forEach((r) =>
     r.addEventListener("click", () => {
       const neu = r.dataset.terminModus === "termin" ? "termin" : "nachricht";
-      if (neu !== modus) modusSetzen(neu);
+      if (neu === modus) return;
+      nutzung("Termin", neu === "termin" ? "zur Terminbuchung gewechselt" : "zur Nachricht gewechselt");
+      modusSetzen(neu);
     }),
   );
 
@@ -184,6 +191,7 @@ function terminEinrichten(): void {
       k.dataset.start = String(zeit.start);
       k.setAttribute("aria-label", `${zeit.label} Uhr`);
       k.addEventListener("click", () => {
+        if (gewaehlterStart !== zeit.start) nutzung("Termin", "Uhrzeit gewählt");
         gewaehlterStart = zeit.start;
         zeitenListe.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === k)));
         zeitenListe.removeAttribute("aria-invalid");
@@ -204,6 +212,7 @@ function terminEinrichten(): void {
       k.setAttribute("aria-label", tagLang.format(datum));
       k.addEventListener("click", () => {
         if (gewaehlterTag === tag.tag) return;
+        nutzung("Termin", "Tag gewählt");
         gewaehlterTag = tag.tag;
         gewaehlterStart = 0;
         tageListe.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === k)));
@@ -238,7 +247,12 @@ function terminEinrichten(): void {
     if (!pflicht) telefon.removeAttribute("aria-invalid");
   };
 
-  ortKnoepfe.forEach((k) => k.addEventListener("change", telefonPflicht));
+  ortKnoepfe.forEach((k) =>
+    k.addEventListener("change", () => {
+      nutzung("Termin", k.value === "telefon" ? "Telefon gewählt" : "Google Meet gewählt");
+      telefonPflicht();
+    }),
+  );
 
   /** Lädt die freien Zeiten. false, wenn es nichts zu buchen gibt. */
   const laden = async (): Promise<boolean> => {
@@ -274,6 +288,7 @@ function terminEinrichten(): void {
 
   // Eingetragenes mitnehmen, damit niemand zweimal tippen muss
   zumFormular.addEventListener("click", () => {
+    nutzung("Termin", "stattdessen Nachricht schreiben");
     const paare: [string, string][] = [
       ["name", name.value],
       ["firma", firma.value],
@@ -322,6 +337,10 @@ function terminEinrichten(): void {
     }
     return null;
   };
+
+  // Für die Statistik: welches Feld der Hinweis betraf, als festes Wort
+  const fehlerName = (element: HTMLElement): string =>
+    element === name ? "Name" : element === mail ? "E-Mail" : element === telefon ? "Telefon" : "Uhrzeit";
 
   /** Feld zu einer Feldmeldung des Dienstes (400), damit es markiert und fokussiert werden kann */
   const feldZurMeldung = (meldung: string): HTMLElement | null => {
@@ -400,12 +419,16 @@ function terminEinrichten(): void {
       });
       const daten = (await antwort.json().catch(() => null)) as BuchungAntwort | null;
       if (antwort.ok) {
+        nutzung("Termin", "gebucht");
         spiele("erfolg");
         erfolg(daten?.termin?.start ?? start, daten?.termin?.ort ?? gewaehlterOrt, daten?.termin?.meetLink ?? null);
         return;
       }
       const roh = daten?.error ?? daten?.fehler;
       const meldung = typeof roh === "string" ? roh.trim() : "";
+      nutzung("Termin", antwort.status === 409 ? "Zeit war schon vergeben" : `vom Dienst abgelehnt (${antwort.status})`, {
+        detail: meldung.slice(0, 80),
+      });
       if (antwort.status === 409) {
         gewaehlterStart = 0;
         const nochWas = await laden();
@@ -438,6 +461,7 @@ function terminEinrichten(): void {
         );
       }
     } catch {
+      nutzung("Termin", "Verbindung gescheitert");
       spiele("stopp");
       statusSetzen("Die Buchung hat nicht geklappt, vielleicht ist die Verbindung weg.");
       auswegZeigen("Schreiben Sie mir stattdessen eine Nachricht, ich melde mich mit einem Termin.");
@@ -452,8 +476,10 @@ function terminEinrichten(): void {
   formular.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (sendetGerade || gebucht) return;
+    nutzung("Termin", "Absenden geklickt");
     const fehler = pruefen();
     if (fehler) {
+      nutzung("Termin", `Hinweis: ${fehlerName(fehler)} fehlt oder stimmt nicht`);
       spiele("ding");
       fehler.focus();
       return;
@@ -466,9 +492,16 @@ function terminEinrichten(): void {
     await buchen();
   });
 
+  // Je Feld einmal „begonnen“ (nur der Name des Felds), so zeigt die Statistik, wo jemand aufhört
+  const begonnen = new Set<string>();
   formular.addEventListener("input", (event) => {
     const element = event.target as HTMLElement;
     if (element.getAttribute("aria-invalid") === "true") element.removeAttribute("aria-invalid");
+    const feldName = (element as HTMLInputElement).name;
+    if (!feldName || !FELDNAMEN[feldName] || begonnen.has(feldName)) return;
+    if (begonnen.size === 0) nutzung("Termin", "Angaben begonnen");
+    begonnen.add(feldName);
+    nutzung("Termin", `Feld „${FELDNAMEN[feldName]}“ begonnen`);
   });
 
   // Ergebnis aus dem Zeitfresser-Check: seite.ts füllt das Formular, hier dasselbe für die Buchung

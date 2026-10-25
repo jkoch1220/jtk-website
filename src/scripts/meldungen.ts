@@ -9,6 +9,7 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 
 type Zeichen = "info" | "warnung" | "fehler";
 // Klang zum Symbol einer neuen Meldung (bei ausgeschaltetem Ton passiert nichts)
@@ -469,6 +470,7 @@ export function meldungenEinrichten(): void {
     const text = document.createElement("span");
     knopf.append(text);
     knopf.addEventListener("click", () => {
+      nutzung("Problem", "Fenster über die Taskleiste geholt");
       aktivieren(f);
       fokussieren(f);
     });
@@ -917,6 +919,7 @@ export function meldungenEinrichten(): void {
   };
 
   const feierabend = () => {
+    nutzung("Problem", "Feierabend in der Taskleiste geklickt");
     if (feierabendDialog && !feierabendDialog.weg) {
       aktivieren(feierabendDialog);
       blinken(feierabendDialog);
@@ -957,6 +960,8 @@ export function meldungenEinrichten(): void {
       bilanz.textContent = `Sie haben gerade ${n}${NBSP}${n === 1 ? "Meldung" : "Meldungen"} weggeklickt, in ${dauerText(dauer)}. In Ihrem Büro kommen die jeden Tag. Nur ohne Knopf zum Wegklicken.`;
     }
     if (!offene.includes(abschluss)) {
+      // wert: Sekunden bis alles weg war, es zählt der längste Durchgang
+      nutzung("Problem", "alle Meldungen weggeklickt", { wert: Math.round(dauer / 1000) });
       abschluss.weg = false;
       leerEl.hidden = false;
       eintragAnlegen(abschluss);
@@ -1105,6 +1110,7 @@ export function meldungenEinrichten(): void {
     if (!knopf || !f || f.weg) return;
     merken();
     if (knopf.hasAttribute("data-meldungen-zurueck")) {
+      nutzung("Problem", "nochmal von vorn");
       zuruecksetzen();
       return;
     }
@@ -1126,22 +1132,33 @@ export function meldungenEinrichten(): void {
       fokussieren(f.dialog);
       return;
     }
+    // Gezählt wird erst hier: Klicks auf hängende, gerade aufgeploppte oder verdeckte Fenster verpuffen
     if (knopf.classList.contains("fenster__zu")) {
+      nutzung("Problem", "Fenster mit × geschlossen");
       zuKnopf(f);
     } else if (knopf.dataset.wahl) {
+      nutzung("Problem", `Antwort „${knopf.textContent?.trim() ?? knopf.dataset.wahl}“`);
       f.antwort?.(knopf.dataset.wahl);
     } else if (knopf.dataset.knopf && f.meldung) {
       const k = f.meldung.knoepfe[Number(knopf.dataset.knopf)];
-      if (k) aktionAusfuehren(f, k);
+      if (k) {
+        nutzung("Problem", `Knopf „${k.text}“`);
+        aktionAusfuehren(f, k);
+      }
     }
   });
 
   feierabendKnopf?.addEventListener("click", feierabend);
 
   /* Bedienung: nach vorn holen, Fokus merken */
+  let bedient = false;
   const merken = () => {
     interagiert = true;
     startZeit ??= performance.now();
+    if (!bedient) {
+      bedient = true;
+      nutzung("Problem", "Schreibtisch bedient");
+    }
   };
 
   tisch.addEventListener("pointerdown", (e) => {
@@ -1255,8 +1272,14 @@ export function meldungenEinrichten(): void {
     const sy = e.clientY;
     leisteEl.setPointerCapture(e.pointerId);
     tisch.classList.add("schreibtisch--zieht");
+    // Für die Statistik zählt ein Zug erst ab ein paar Pixeln, bloßes Antippen der Titelleiste nicht
+    let verschoben = false;
     const bewegen = (ev: PointerEvent) => {
       if (ev.pointerId !== e.pointerId) return;
+      if (!verschoben && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 8) {
+        verschoben = true;
+        nutzung("Problem", "Fenster verschoben");
+      }
       einklemmen(f, start.x + ev.clientX - sx, start.y + ev.clientY - sy);
     };
     const ende = () => {

@@ -18,6 +18,7 @@ import { lebenErwecken, type Leben } from "./berge-leben";
 import { spielErstellen, type Spiel } from "./berge-spiel";
 import { flugStarten, type Flug } from "./berge-flug";
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 
 /* Bühne des Bergbilds: ein Canvas, eine Schleife. Jedes Bild entsteht aus der Szene (Ebenen mit
    Parallax-Versatz), dem Leben (Palettenzyklen, Tiere, Wind), der Maus (Pixel wegdrücken) und beim
@@ -37,6 +38,9 @@ const MAX_H = 260;
 // Ein Finger tippt nur, wenn er kurz und fast ohne Weg aufliegt; sonst beginnt er eine Scrollgeste
 const TIPP_WEG = 10; // CSS-Pixel
 const TIPP_DAUER = 450; // ms
+// Nur für die Statistik: ab so langem Halten knallt es (berge-spiel.ts), ab so viel Mausweg spielt jemand
+const KNALL_AB_MS = 250;
+const MAUS_SPIELT = 600; // CSS-Pixel
 
 // Wirksame Darstellung: setzt das Inline-Skript im Kopf vor dem ersten Bild. Gedruckt wird immer hell.
 let druckt = false;
@@ -570,6 +574,7 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
   const neuZeichnen = async () => {
     // Ein Klick wird schon vorbereitet: Er zeigt gleich das neue Bild, ein zweiter würde ihn nur verwerfen
     if (bereitet) return;
+    nutzung("Berge", "neu gezeichnet");
     const meinLauf = ++lauf;
     const naechst: Vorrat = vorrat ?? { startwert: neuerStartwert(), schluessel: "", szene: null, leben: null, auftrag: 0 };
     vorrat = null;
@@ -750,6 +755,12 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
     // Der Finger auf dem Bild: Erst sein Weg entscheidet, ob er tippt, waagerecht wischt (Pixel schieben)
     // oder senkrecht scrollt (dann bleiben die Pixel in Ruhe)
     let finger: { id: number; x: number; y: number; t: number; weg: boolean; frei: boolean } | null = null;
+    // Für die Statistik: Wie lange die Maustaste gedrückt war (ab 250 ms knallt es), und wie weit die Maus
+    // über dem Bild gewandert ist. Erst echtes Bewegen zählt als Spielen, beim Scrollen schickt der
+    // Browser auch Zeigerereignisse, nur ohne Weg.
+    let gedruecktSeit: number | null = null;
+    let mausWeg = 0;
+    let letzteMaus: { x: number; y: number } | null = null;
 
     document.addEventListener(
       "pointermove",
@@ -780,6 +791,12 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
         finger.weg = true;
         if (Math.abs(dy) > Math.abs(dx)) return;
         finger.frei = true;
+        nutzung("Berge", "Pixel gewischt");
+      }
+      if (e.pointerType === "mouse" && mausWeg < MAUS_SPIELT) {
+        if (letzteMaus) mausWeg += Math.abs(e.clientX - letzteMaus.x) + Math.abs(e.clientY - letzteMaus.y);
+        letzteMaus = { x: e.clientX, y: e.clientY };
+        if (mausWeg >= MAUS_SPIELT) nutzung("Berge", "Pixel mit der Maus verschoben");
       }
       const { x, y } = lage(e);
       zeigerSetzen(x, y, e.timeStamp);
@@ -801,6 +818,8 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
       if (p.flug || bereitet) return;
       const { x, y } = lage(e);
       if (e.pointerType === "mouse") {
+        nutzung("Berge", "ins Bild geklickt");
+        gedruecktSeit = e.timeStamp;
         zeigerSetzen(x, y, e.timeStamp);
         spiele("plopp", { pan: (x / p.B) * 2 - 1 });
         p.spiel?.stoss(x, y, 0.8);
@@ -812,6 +831,10 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
     });
     bild.addEventListener("pointerup", (e) => {
       p.spiel?.druck(false);
+      if (gedruecktSeit !== null && e.pointerType === "mouse" && e.timeStamp - gedruecktSeit >= KNALL_AB_MS) {
+        nutzung("Berge", "Strudel zum Knall gebracht");
+      }
+      gedruecktSeit = null;
       const f = finger;
       finger = null;
       if (
@@ -824,6 +847,7 @@ export function panoramaEinrichten(bewegungReduziert: boolean): void {
         !bereitet
       ) {
         const { x, y } = lage(e);
+        nutzung("Berge", "ins Bild getippt");
         zeigerSetzen(x, y, e.timeStamp);
         spiele("plopp", { pan: (x / p.B) * 2 - 1 });
         p.spiel?.stoss(x, y, 0.8);

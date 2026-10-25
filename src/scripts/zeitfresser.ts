@@ -9,6 +9,7 @@
 
 import { belegPdfErstellen, dateiAnbieten, type BelegDaten } from "./beleg-pdf";
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 import {
   FLUGZEIT_MS,
   ploppen,
@@ -1039,6 +1040,8 @@ export function zeitfresserEinrichten(): void {
     if (!sortierModus) return;
     const karte = karten[index];
     if (!karte) return;
+    // Wie sortiert wird: Wischen oder Werfen bringt einen Wurf mit, Knöpfe und Pfeiltasten nicht
+    nutzung("Check", wurf ? "Karte gewischt" : "Karte per Knopf oder Taste sortiert");
     const id = kartenId(karte);
     const vorher = sortiert.get(id);
     verlauf.push({ aenderungen: [[id, vorher]], index, modus: true });
@@ -1107,6 +1110,7 @@ export function zeitfresserEinrichten(): void {
   };
 
   const rueckgaengig = () => {
+    if (verlauf.length) nutzung("Check", "Rückgängig");
     const schritt = verlauf.pop();
     if (!schritt) return;
     wuerfeAbbrechen();
@@ -1146,8 +1150,15 @@ export function zeitfresserEinrichten(): void {
   });
   zurueckKnopf?.addEventListener("click", rueckgaengig);
   zurueckFertig?.addEventListener("click", rueckgaengig);
-  restKnopf?.addEventListener("click", restUebernehmen);
+  restKnopf?.addEventListener("click", () => {
+    if (sortierModus && index < anzahl) nutzung("Check", "übrige Karten als von Hand");
+    restUebernehmen();
+  });
+  richtwerteBox?.addEventListener("toggle", () => {
+    if (richtwerteBox.open) nutzung("Check", "Richtwerte geöffnet");
+  });
   neuKnopf?.addEventListener("click", () => {
+    nutzung("Check", "Karten noch einmal sortiert");
     // Neue Runde, neuer Verlauf: Rückgängig springt sonst in die alte Runde
     wuerfeAbbrechen();
     verlauf.length = 0;
@@ -1217,6 +1228,7 @@ export function zeitfresserEinrichten(): void {
   };
 
   richtwerteStandard?.addEventListener("click", () => {
+    nutzung("Check", "Richtwerte zurückgesetzt");
     alle<HTMLInputElement>("[data-richtwerte] input[data-standard]").forEach((f) => (f.value = f.dataset.standard ?? ""));
     geaendert();
   });
@@ -1230,6 +1242,7 @@ export function zeitfresserEinrichten(): void {
     if (!hatErgebnis(z) || !belegBereich) return;
     belegNummer = neueNummer();
     letzterBeleg = "";
+    nutzung("Check", "Beleg ausgestellt");
     belegBereich.hidden = false;
     belegFuellen(z);
     if (pdfStatus) pdfStatus.textContent = "";
@@ -1261,9 +1274,11 @@ export function zeitfresserEinrichten(): void {
     try {
       const datei = await belegPdfErstellen(belegDaten(z));
       dateiAnbieten(datei, DATEINAME);
+      nutzung("Check", "Beleg als PDF geladen");
       spiele("hinweis");
       if (pdfStatus) pdfStatus.textContent = "Fertig. Ihr Beleg liegt als PDF bereit, heben Sie das Beweisstück gut auf.";
     } catch {
+      nutzung("Check", "PDF gescheitert");
       spiele("stopp");
       if (pdfStatus) {
         pdfStatus.textContent = "Das PDF hat leider nicht geklappt. Ein Bildschirmfoto vom Beleg tut es auch.";
@@ -1339,6 +1354,7 @@ export function zeitfresserEinrichten(): void {
   });
 
   rutschtUebernehmen?.addEventListener("click", () => {
+    nutzung("Check", "Durchrutscher-Vorschläge übernommen");
     rutschtGeprueft = true;
     geaendert();
     rutschtErgebnis?.focus({ preventScroll: true });

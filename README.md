@@ -85,6 +85,34 @@ und wie bisher `check_fertig` mit dem Ergebnis. Jeden Check einzeln samt CSV-Exp
 „Anfragen → Checks“. Neue Karten, Felder oder Wünsche im Check landen dort von selbst; ändert sich die Form
 des Stands, ziehen Dienst (`standPruefen`) und Portal mit.
 
+**Nutzung der Seite.** Was Besucher bedienen, meldet jeder Teil selbst über `nutzung("Bereich", "Aktion")`
+aus `src/scripts/nutzung.ts` (nur ein DOM-Ereignis, keine Abhängigkeit vom Tracking). `tracking.ts` zählt je
+„Bereich: Aktion“ und schickt je Aufruf einen Stand (Ereignis `nutzung`: Anzahl, Zeitpunkt des ersten Mals,
+größter `wert`, letztes `detail`), 5 s nach der letzten Aktion, alle 30 s und beim Verlassen; höchstens 60
+verschiedene Aktionen je Aufruf. Dazu `abschnitt_zeit`: wie lange jeder Abschnitt im Bild war. Ein Element mit
+`data-gesehen="Bereich: Aktion"` meldet sich einmal, sobald es zur Hälfte zu sehen ist (Bergbild, freie Termine).
+Das Portal zeigt alles unter „Anfragen → Statistik“ (Nutzung der Seite, Trichter, abgebrochene Buchungen) und
+je Besuch unter „Letzte Besuche“.
+
+| Bereich | Wo gemeldet | Beispiele |
+| --- | --- | --- |
+| Hero | `beleg-stempel.ts` | Akte gestempelt (Maus/Touch/Tastatur), Stempel in die Hand genommen, alle Akten abgelegt |
+| Problem | `meldungen.ts` | Knopf „OK“, Fenster mit × geschlossen, Antwort „Ja“, alle Meldungen weggeklickt (Sekunden) |
+| Check | `zeitfresser.ts` | Karte gewischt, Rückgängig, Richtwerte geöffnet, Beleg ausgestellt |
+| Berge | `berge-buehne.ts`, `Persoenlich.astro` | Bild gesehen, ins Bild geklickt, Strudel zum Knall gebracht, Pixel gewischt, neu gezeichnet |
+| Akten | `praxis-lesetisch.ts` | Akte 01 aufgeschlagen (Einstieg), geblättert (weiteste Seite), gelesen (Sekunden), Bild vergrößert |
+| Termin | `termin.ts`, `Anfrage.astro` | Zeiten angezeigt, Uhrzeit gewählt, Feld „Name“ begonnen, Absenden geklickt, Hinweis, gebucht |
+| Anfrage | `seite.ts` | Feld „Nachricht“ begonnen, Absenden geklickt, gesendet, vom Dienst abgelehnt |
+| Ton, Design | `klang.ts`, `tracking.ts` | eingeschaltet, dunkel geschaltet |
+| Kopf, Hero, Ablauf … | `tracking.ts` | Knopf „…“ und Link „…“ mit dem Abschnitt, in dem sie stehen |
+
+Regeln: Bereich und Aktion sind feste Wörter (Wechselndes in `detail` oder `wert`, sonst wird die Statistik
+unlesbar). **Nie Eingaben** von Besuchern melden, nur Schritte und Feldnamen. Die Trichter-Schritte
+„Termin: Zeiten angezeigt / Uhrzeit gewählt / Angaben begonnen / Absenden geklickt“ und „Anfrage: Absenden
+geklickt“ stehen auch im Dienst (`TERMIN_SCHRITTE`, `ANFRAGE_ABSENDEN` in `statistik.ts`) – umbenennen nur
+gemeinsam. Neue Messpunkte in die Liste in `src/pages/datenschutz.astro` aufnehmen, wenn sie dort nicht schon
+gedeckt sind.
+
 Lokal: Website-Dienst mit `npm run dev` in `~/Workspace/kochConsultingPlatform/website-dienst` starten (Port 3100), dann hier
 `npm run dev`. Der Vite-Proxy in `astro.config.mjs` leitet `/api` dorthin. Läuft der Dienst nicht,
 gehen Statistik und Formular ins Leere; die Seite selbst funktioniert trotzdem.

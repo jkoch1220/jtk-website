@@ -4,6 +4,9 @@
 // derselben Seitenansicht nicht erneut laden. Startet das Skript gar nicht, klappt die Geschichte
 // unter der Mappe auf wie ohne Skript (Praxis.astro).
 import { oeffnen } from "./praxis-lesetisch";
+// Vor dem Tiefenlink unten: Dieses Skript läuft vor seite.ts, ohne den Import hörte beim Aufschlagen
+// per Link noch niemand zu, und die Akte zählte für den ganzen Aufruf nicht mehr
+import "./tracking";
 
 declare global {
   interface Window {

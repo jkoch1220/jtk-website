@@ -4,7 +4,10 @@
    Ziel ist /api/e auf derselben Domain (Koch-Plattform, siehe README).
    Fehler hier dürfen die Seite nie stören, deshalb ist alles abgefangen.
    Bewusst sparsam: keine Geräteeigenschaften wie Sprache oder Bildschirmbreite, die Sprache
-   leitet der Server aus dem ohnehin gesendeten Accept-Language-Kopf ab. */
+   leitet der Server aus dem ohnehin gesendeten Accept-Language-Kopf ab. Was Besucher auf der Seite
+   tun, melden die Teile selbst über nutzung.ts; hier wird nur gezählt und gebündelt. */
+
+import type { Nutzung } from "./nutzung";
 
 const ZIEL = "/api/e";
 const STAPEL_MAX = 20;
@@ -165,10 +168,99 @@ function verstecken(): void {
     sichtbarBisher += performance.now() - sichtbarSeit;
     sichtbarSeit = null;
   }
+  abschnitteAnhalten();
   // Wer gleich nach der letzten Änderung geht, soll seinen Stand trotzdem dalassen
   checkMelden();
+  nutzungMelden();
+  abschnittZeitMelden();
   endeMelden();
   leeren();
+}
+
+/* Nutzung der Seite (nutzung.ts) -------------------------------------------- */
+// Je Aufruf ein Stand mit Zählern je „Bereich: Aktion“ statt eines Ereignisses je Klick: Ein
+// Stempel-Marathon oder ein langes Spiel im Bergbild verbraucht so weder die Drossel des Dienstes
+// (300 je Stunde) noch sein Kontingent je Aufruf.
+
+type Nutzungswert = { n: number; ab: number; wert?: number; detail?: string };
+const nutzungen = new Map<string, Nutzungswert>();
+// „ab“ zählt ab dem Ereignis aufruf, nicht ab dem Laden: Der Dienst stempelt den Aufruf beim Empfang, so
+// stehen die Aktionen im Besuch an der richtigen Stelle zwischen den übrigen Ereignissen
+const aufrufStart = performance.now();
+// Der Dienst nimmt höchstens 80 Einträge an; 60 halten den Stand sicher unter 8 kB je Sendung, auch mit
+// Umlauten und Zusätzen (ein normaler Besuch hat kaum 20)
+const NUTZUNG_MAX = 60;
+let nutzungOffen = false;
+let nutzungZeitgeber = 0;
+
+function nutzungMelden(): void {
+  window.clearTimeout(nutzungZeitgeber);
+  if (!nutzungOffen) return;
+  nutzungOffen = false;
+  // Immer der ganze Stand; ein noch nicht gesendeter älterer fliegt aus dem Stapel
+  stapel = stapel.filter((e) => e.t !== "nutzung");
+  melden("nutzung", { daten: Object.fromEntries(nutzungen) });
+}
+
+function nutzungZaehlen(d: Partial<Nutzung> | null | undefined): void {
+  if (!d || typeof d.bereich !== "string" || typeof d.aktion !== "string") return;
+  const schluessel = `${d.bereich}: ${d.aktion}`;
+  let eintrag = nutzungen.get(schluessel);
+  if (!eintrag) {
+    if (nutzungen.size >= NUTZUNG_MAX) return;
+    // ab: Millisekunden seit dem Aufruf beim ersten Mal
+    eintrag = { n: 0, ab: Math.max(0, Math.round(performance.now() - aufrufStart)) };
+    nutzungen.set(schluessel, eintrag);
+  }
+  eintrag.n += 1;
+  if (typeof d.wert === "number" && Number.isFinite(d.wert) && d.wert >= 0) eintrag.wert = Math.max(eintrag.wert ?? 0, d.wert);
+  if (typeof d.detail === "string" && d.detail) eintrag.detail = d.detail.slice(0, 80);
+  nutzungOffen = true;
+  // Gebündelt: 5 s nach der letzten Aktion, spätestens alle 30 s und beim Verlassen der Seite
+  window.clearTimeout(nutzungZeitgeber);
+  nutzungZeitgeber = window.setTimeout(nutzungMelden, 5000);
+}
+
+/* Sichtbare Zeit je Abschnitt ----------------------------------------------- */
+// Läuft, solange ein Abschnitt 40 % seiner Fläche oder den halben Bildschirm füllt (wie „gesehen“)
+// und die Seite sichtbar ist. Gesendet beim Verlassen und alle zwei Minuten, nur bei einer Änderung.
+
+const abschnittBisher = new Map<string, number>();
+const abschnittSeit = new Map<string, number>();
+const abschnittImBild = new Set<string>();
+let abschnittGesendet = "";
+
+function abschnittStoppen(id: string, jetzt: number): void {
+  const seit = abschnittSeit.get(id);
+  if (seit === undefined) return;
+  abschnittBisher.set(id, (abschnittBisher.get(id) ?? 0) + jetzt - seit);
+  abschnittSeit.delete(id);
+}
+
+function abschnitteAnhalten(): void {
+  const jetzt = performance.now();
+  for (const id of [...abschnittSeit.keys()]) abschnittStoppen(id, jetzt);
+}
+
+function abschnitteFortsetzen(): void {
+  const jetzt = performance.now();
+  for (const id of abschnittImBild) if (!abschnittSeit.has(id)) abschnittSeit.set(id, jetzt);
+}
+
+function abschnittZeitMelden(): void {
+  const jetzt = performance.now();
+  const daten: Record<string, number> = {};
+  for (const id of new Set([...abschnittBisher.keys(), ...abschnittSeit.keys()])) {
+    const seit = abschnittSeit.get(id);
+    const ms = Math.round((abschnittBisher.get(id) ?? 0) + (seit === undefined ? 0 : jetzt - seit));
+    if (ms >= 1000) daten[id] = ms;
+  }
+  // Auf Sekunden verglichen: Ein offener Tab ohne Bewegung schickt nicht ständig dasselbe
+  const vergleich = JSON.stringify(Object.entries(daten).map(([id, ms]) => [id, Math.round(ms / 1000)]));
+  if (vergleich === abschnittGesendet || Object.keys(daten).length === 0) return;
+  abschnittGesendet = vergleich;
+  stapel = stapel.filter((e) => e.t !== "abschnitt_zeit");
+  melden("abschnitt_zeit", { daten });
 }
 
 /* Klicks -------------------------------------------------------------------- */
@@ -210,6 +302,39 @@ function klickZiel(element: Element): string | null {
       return null;
     }
   }
+  return null;
+}
+
+// Wo ein Knopf oder Link steht, als Bereich der Nutzung: „Erstgespräch vereinbaren“ gibt es im Hero und im
+// Ablauf, die Klickziele allein unterscheiden das nicht
+const BEREICHE: Record<string, string> = {
+  problem: "Problem",
+  check: "Check",
+  leistungen: "Leistungen",
+  "ueber-mich": "Über mich",
+  projekte: "Akten",
+  ablauf: "Ablauf",
+  kontakt: "Kontakt",
+};
+
+function bereichVon(element: Element): string {
+  if (element.closest("header")) return "Kopf";
+  if (element.closest("footer")) return "Fuß";
+  const abschnitt = element.closest<HTMLElement>("main > section");
+  if (!abschnitt) return "Seite";
+  if (abschnitt.classList.contains("hero")) return "Hero";
+  return BEREICHE[abschnitt.id] ?? (abschnitt.id || "Seite");
+}
+
+// Sichtbarer Text, kurz: Knöpfe und Links der Seite sind feste Wörter, keine Eingaben
+const sichtbarerText = (element: Element) => (element.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 50);
+
+function klickAktion(ziel: string | null, element: Element): string | null {
+  if (ziel === "telefon") return "Telefonnummer angeklickt";
+  if (ziel === "email") return "E-Mail-Adresse angeklickt";
+  const text = sichtbarerText(element);
+  if (ziel?.startsWith("cta:")) return text ? `Knopf „${text}“` : null;
+  if (element.tagName === "A") return text ? `Link „${text}“` : null;
   return null;
 }
 
@@ -302,7 +427,10 @@ function starten(): void {
   document.addEventListener("visibilitychange", () => {
     try {
       if (document.visibilityState === "hidden") verstecken();
-      else if (sichtbarSeit === null) sichtbarSeit = performance.now();
+      else {
+        if (sichtbarSeit === null) sichtbarSeit = performance.now();
+        abschnitteFortsetzen();
+      }
     } catch {
       // ignorieren
     }
@@ -314,9 +442,14 @@ function starten(): void {
       // ignorieren
     }
   });
+  let takt = 0;
   window.setInterval(() => {
     try {
       if (document.visibilityState === "visible") {
+        nutzungMelden();
+        // Abschnittszeiten nur jede vierte Runde (2 Minuten), beim Verlassen ohnehin
+        takt += 1;
+        if (takt % 4 === 0) abschnittZeitMelden();
         endeMelden();
         leeren();
       }
@@ -325,17 +458,52 @@ function starten(): void {
     }
   }, 30_000);
 
-  // Abschnitte: einmal je ID, wenn 40 % davon oder halber Bildschirm abgedeckt
+  document.addEventListener("nutzung", (event) => {
+    try {
+      nutzungZaehlen((event as CustomEvent<Partial<Nutzung>>).detail);
+    } catch {
+      // ignorieren
+    }
+  });
+
+  // Einzelne Elemente „gesehen“ (data-gesehen="Bereich: Aktion"), einmal je Aufruf, wenn die Hälfte davon
+  // oder der halbe Bildschirm gefüllt ist — feiner als die Abschnitte, etwa das Bergbild im Abschnitt „Über mich“
+  if ("IntersectionObserver" in window) {
+    const blick = new IntersectionObserver(
+      (eintraege) => {
+        for (const e of eintraege) {
+          if (!e.isIntersecting) continue;
+          if (e.intersectionRatio < 0.5 && e.intersectionRect.height < window.innerHeight * 0.5) continue;
+          blick.unobserve(e.target);
+          const [bereich, ...aktion] = ((e.target as HTMLElement).dataset.gesehen ?? "").split(": ");
+          if (bereich && aktion.length) nutzungZaehlen({ bereich, aktion: aktion.join(": ") });
+        }
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    document.querySelectorAll<HTMLElement>("[data-gesehen]").forEach((el) => blick.observe(el));
+  }
+
+  // Abschnitte: „gesehen“ einmal je ID, wenn 40 % davon oder halber Bildschirm abgedeckt; solange das
+  // so bleibt und die Seite sichtbar ist, läuft die Zeit des Abschnitts
   if ("IntersectionObserver" in window) {
     const gesehen = new Set<string>();
     const beobachter = new IntersectionObserver(
       (eintraege) => {
+        const jetzt = performance.now();
         for (const e of eintraege) {
           const ziel = (e.target as HTMLElement).id;
-          if (!e.isIntersecting || gesehen.has(ziel)) continue;
-          if (e.intersectionRatio >= 0.4 || e.intersectionRect.height >= window.innerHeight * 0.5) {
+          const imBild =
+            e.isIntersecting && (e.intersectionRatio >= 0.4 || e.intersectionRect.height >= window.innerHeight * 0.5);
+          if (!imBild) {
+            abschnittImBild.delete(ziel);
+            abschnittStoppen(ziel, jetzt);
+            continue;
+          }
+          abschnittImBild.add(ziel);
+          if (document.visibilityState === "visible" && !abschnittSeit.has(ziel)) abschnittSeit.set(ziel, jetzt);
+          if (!gesehen.has(ziel)) {
             gesehen.add(ziel);
-            beobachter.unobserve(e.target);
             melden("abschnitt", { ziel });
           }
         }
@@ -355,7 +523,8 @@ function starten(): void {
     { once: true },
   );
 
-  // Akteneinsicht (06): Der Lesetisch meldet je Aufruf einmal je Akte, nicht jedes Blättern
+  // Akteneinsicht (06): als Klickziel je Aufruf einmal je Akte. Blättern, Lesezeit, Lupe und Schließen
+  // meldet der Lesetisch selbst als Nutzung (praxis-lesetisch.ts, Bereich „Akten“).
   const praxis = (ereignis: string, ziel: (d: Record<string, string>) => string) =>
     document.addEventListener(ereignis, (e) => melden("klick", { ziel: ziel((e as CustomEvent<Record<string, string>>).detail ?? {}) }));
   praxis("praxis:aufgeschlagen", (d) => `Praxis: Akte ${d.nr} aufgeschlagen`);
@@ -392,16 +561,36 @@ function starten(): void {
           return;
         }
         // Akteneinsicht: Erstgespräch mit Aktennummer; Aufschlagen, Blättern und Lupe meldet der
-        // Lesetisch selbst (praxis:*), Klicks im Dialog zählen sonst nicht
+        // Lesetisch selbst (praxis:* und nutzung), Klicks im Dialog zählen sonst nicht
         const erstgespraech = start.closest<HTMLElement>("[data-erstgespraech]");
         if (erstgespraech) {
           melden("klick", { ziel: `Praxis: Erstgespräch aus Akte ${erstgespraech.dataset.erstgespraech}` });
+          nutzungZaehlen({ bereich: "Akten", aktion: `Erstgespräch aus Akte ${erstgespraech.dataset.erstgespraech}` });
           return;
         }
         if (start.closest("[data-praxis-dialog], [data-akte-oeffnen], .akte__abzug, .akte__fenster")) return;
+        // Nachtmodus: Base.astro schaltet erst nach diesem Capture-Handler um, data-theme ist noch der alte Wert
+        if (start.closest("[data-modus-schalter]")) {
+          const dunkel = document.documentElement.dataset.theme === "dark";
+          nutzungZaehlen({ bereich: "Design", aktion: dunkel ? "hell geschaltet" : "dunkel geschaltet" });
+          return;
+        }
+        // Problem-Schreibtisch: Seine Knöpfe zählt meldungen.ts selbst, nur wirksame (nicht die auf hängende
+        // Fenster); als Klickziel wäre jedes „OK“ ein eigenes Ereignis. Links (zum Check) zählen wie überall.
+        if (start.closest("[data-meldungen]") && !start.closest("a")) return;
+        // Was seine Nutzung selbst meldet: Ton, Neu zeichnen, Termin- und Anfrageformular
+        if (start.closest("[data-ton-schalter], [data-berge-neu], [data-termin], form[data-anfrage]")) {
+          const element = start.closest("a, button");
+          const ziel = element ? klickZiel(element) : null;
+          if (ziel) melden("klick", { ziel });
+          return;
+        }
         const element = start.closest("a, button");
-        const ziel = element ? klickZiel(element) : null;
+        if (!element) return;
+        const ziel = klickZiel(element);
         if (ziel) melden("klick", { ziel });
+        const aktion = klickAktion(ziel, element);
+        if (aktion) nutzungZaehlen({ bereich: bereichVon(element), aktion });
       } catch {
         // ignorieren
       }

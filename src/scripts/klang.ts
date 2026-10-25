@@ -5,6 +5,8 @@
    und lädt das Klangwerk (klang-werk.ts) nach. Solange der Ton aus ist, ist spiele() ein No-op.
    Kein Ton trägt allein eine Information: Was klingt, ist auch sichtbar und wird angesagt. */
 
+import { nutzung } from "./nutzung";
+
 declare global {
   interface Window {
     webkitAudioContext?: typeof AudioContext;
@@ -163,7 +165,10 @@ export function klangEinrichten(): void {
   zustandSetzen();
 
   document.addEventListener("click", (e) => {
-    if (e.target instanceof Element && e.target.closest("[data-ton-schalter]")) (an ? ausschalten : einschalten)();
+    const schalter = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-ton-schalter]") : null;
+    if (!schalter) return;
+    nutzung("Ton", an ? "ausgeschaltet" : "eingeschaltet", { detail: schalter.classList.contains("taskleiste__ton") ? "Taskleiste" : "Kopf" });
+    (an ? ausschalten : einschalten)();
   });
 
   // Capture: läuft vor dem Klick-Handler in Base.astro, der ohne Übergang `theme` synchron feuert.

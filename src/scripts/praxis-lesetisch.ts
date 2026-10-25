@@ -6,6 +6,7 @@
 // praxis:lupe mit { akte }, praxis:verweis mit { von, nach, nr }. Für das weiche Scrollen (seite.ts):
 // praxis:tisch mit { offen }.
 import { spiele } from "./klang";
+import { nutzung } from "./nutzung";
 
 const ruhig = matchMedia("(prefers-reduced-motion: reduce)");
 const doppelseiteMoeglich = matchMedia("(min-width: 1280px) and (min-height: 780px)");
@@ -132,6 +133,32 @@ function stelleHalten(stand: Stand): void {
 
 const gemeldet = new Set<string>();
 const gelesen = new Set<string>();
+
+/* Statistik (nutzung.ts, Bereich „Akten“): Lesezeit je Aufschlagen, weiteste Seite, Lupe, Schließen.
+   Die Lesezeit ruht, solange der Tab verdeckt ist. */
+let leseStart: number | null = null;
+let letzteSeite = "";
+const SCHLIESS_GRUND: Record<string, string> = {
+  knopf: "Schließen-Knopf",
+  escape: "Escape",
+  daneben: "daneben geklickt",
+  ziel: "Link aus der Akte",
+  historie: "Zurück des Browsers",
+  vor: "Vor des Browsers",
+};
+
+function lesezeitMelden(): void {
+  if (!offen || leseStart === null) return;
+  const sekunden = Math.round((performance.now() - leseStart) / 1000);
+  leseStart = null;
+  // wert: die längste Lesezeit am Stück, n: wie oft
+  if (sekunden >= 2) nutzung("Akten", `Akte ${offen.geschichte.dataset.nr ?? "?"} gelesen`, { wert: sekunden });
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") lesezeitMelden();
+  else if (offen && leseStart === null) leseStart = performance.now();
+});
 
 const melden = (name: string, detail: Record<string, string>) => document.dispatchEvent(new CustomEvent(name, { detail }));
 
@@ -273,6 +300,13 @@ function anzeigen(i: number, still = false): void {
   }
   vorladen(i);
   if (!still) history.replaceState(history.state, "", hashVon(i));
+  const nr = geschichte.dataset.nr ?? "?";
+  if (letzteSeite !== `${akte}:${i}`) {
+    letzteSeite = `${akte}:${i}`;
+    // n: Seitenwechsel, wert: die weiteste Seite (0 Ausgangslage … n + 1 Bilanz)
+    nutzung("Akten", `Akte ${nr} geblättert`, { wert: i, detail: `${seiten.length} Seiten` });
+  }
+  if (id === "bilanz" && !gelesen.has(akte)) nutzung("Akten", `Akte ${nr} bis zur Bilanz gelesen`);
   if (id === "bilanz") {
     gelesen.add(akte);
     gelesenZeigen(akte);
@@ -433,6 +467,11 @@ export function oeffnen(akte: string, kapitel?: string, ausloeser?: HTMLElement,
   if (!o) return;
   seiteFesthalten(true);
   dialog.showModal();
+  // Vor dem ersten Anzeigen, sonst stünde „geblättert“ im Besuch vor „aufgeschlagen“
+  leseStart = performance.now();
+  nutzung("Akten", `Akte ${o.geschichte.dataset.nr ?? "?"} aufgeschlagen`, {
+    detail: art === "tiefenlink" ? "per Link" : art === "historie" ? "Zurück/Vor" : kapitel ? "über ein Bild" : "über die Mappe",
+  });
   const i = indexVon(kapitel);
   o.index = i;
   modusSetzen();
@@ -462,11 +501,16 @@ export function oeffnen(akte: string, kapitel?: string, ausloeser?: HTMLElement,
  *  anderen Akte, der schon besteht. Sonst bekommt jede Akte einen eigenen Eintrag. */
 function wechseln(akte: string, kapitel?: string, o: { verweis?: boolean; historie?: boolean } = {}): void {
   if (!offen) return oeffnen(akte, kapitel);
+  lesezeitMelden();
   const { akte: von, ausloeser, y } = offen;
   zuruecklegen();
   // Beim Zuklappen geht der Fokus dorthin zurück, wo die erste Akte aufgeschlagen wurde
   const neu = einhaengen(akte, ausloeser, y);
   if (!neu) return;
+  const neueNr = neu.geschichte.dataset.nr ?? "?";
+  leseStart = performance.now();
+  if (o.verweis) nutzung("Akten", `Querverweis nach Akte ${neueNr}`);
+  nutzung("Akten", `Akte ${neueNr} aufgeschlagen`, { detail: o.verweis ? "über Querverweis" : o.historie ? "Zurück/Vor" : "nächste Akte" });
   const i = indexVon(kapitel);
   neu.index = i;
   modusSetzen();
@@ -489,6 +533,9 @@ type Grund = "knopf" | "escape" | "daneben" | "ziel" | "historie" | "vor";
 // ohneRahmen: per Zeiger zugeklappt, der Fokus kommt ohne Rahmen an.
 function schliessen(grund: Grund, ziel?: HTMLElement | null, ohneRahmen = false): void {
   if (!offen) return;
+  lesezeitMelden();
+  nutzung("Akten", "Lesetisch geschlossen", { detail: SCHLIESS_GRUND[grund] ?? grund });
+  letzteSeite = "";
   const { ausloeser, y } = offen;
   lupeSchliessen(true);
   zuruecklegen();
@@ -653,6 +700,8 @@ function lupeOeffnen(link: HTMLAnchorElement, neuerEintrag = true): void {
   if (neuerEintrag) {
     const gemerkt = { blatt: lupeStand.blatt ?? 0, haelften: (lupeStand.haelften ?? []).map(([, oben]) => oben) };
     eintragen({ ...zustand(), lupe: bildVon(link), blatt: gemerkt }, location.href);
+    // Welches Bild: Akte und Bildunterschrift, nicht die Datei (deren Name wechselt mit jedem Bau)
+    nutzung("Akten", "Bild vergrößert", { detail: `Akte ${offen?.geschichte.dataset.nr ?? "?"}: ${link.dataset.lupeText ?? ""}`.slice(0, 80) });
   }
   einmalMelden("praxis:lupe", { akte: offen?.akte ?? "" }, "lupe");
 }
@@ -695,6 +744,7 @@ function lupeSchliessen(still = false, ohneRahmen = false): void {
 
 function lupeBlaettern(schritt: number): void {
   if (!lupeListe.length) return;
+  nutzung("Akten", "in der Lupe geblättert");
   lupeIndex = (lupeIndex + schritt + lupeListe.length) % lupeListe.length;
   lupeZeigen();
   // Der Fokus bleibt auf dem Knopf; was jetzt zu sehen ist, sagt die Ansage

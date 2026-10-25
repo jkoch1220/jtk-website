@@ -2,6 +2,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { aufrufId, checkErgebnis, seitenStart, type CheckErgebnis } from "./tracking";
+import { nutzung } from "./nutzung";
 import { turnstileToken, turnstileVorbereiten, turnstileZuruecksetzen } from "./turnstile";
 import { BAYER, palette } from "./berge-szene";
 import { panoramaEinrichten } from "./berge-buehne";
@@ -81,6 +82,8 @@ function anfrageEinrichten(): void {
   const MINDESTDAUER_MS = 3200;
   // Wie der Server: keine Zeichen, die in mailto-Links oder Kopfzeilen etwas bedeuten
   const emailMuster = /^[\p{L}\p{N}._+'-]+@(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{2,}$/u;
+  // Felder, wie sie in der Statistik heißen (nutzung.ts); der Honigtopf „website“ fehlt bewusst
+  const FELDNAMEN: Record<string, string> = { name: "Name", firma: "Firma", email: "E-Mail", telefon: "Telefon", nachricht: "Nachricht" };
 
   const formular = document.querySelector<HTMLFormElement>("[data-anfrage]");
   if (!formular) return;
@@ -182,12 +185,14 @@ function anfrageEinrichten(): void {
       // Ein Token gilt nur einmal, auch wenn das Senden scheitert
       turnstileZuruecksetzen(formular);
       if (antwort.ok) {
+        nutzung("Anfrage", "gesendet");
         spiele("erfolg");
         erfolg();
         return;
       }
       const daten = (await antwort.json().catch(() => null)) as { fehler?: string } | null;
       const meldung = typeof daten?.fehler === "string" ? daten.fehler.trim() : "";
+      nutzung("Anfrage", `vom Dienst abgelehnt (${antwort.status})`, { detail: meldung.slice(0, 80) });
       spiele("stopp");
       if (antwort.status === 429) {
         statusSetzen(`${meldung || "Gerade kommen zu viele Anfragen an."} ${umDirekt}`);
@@ -197,6 +202,7 @@ function anfrageEinrichten(): void {
         statusSetzen(`Senden hat nicht geklappt. ${umDirekt}`);
       }
     } catch {
+      nutzung("Anfrage", "Verbindung gescheitert");
       spiele("stopp");
       statusSetzen(`Senden hat nicht geklappt, vielleicht ist die Verbindung weg. ${umDirekt}`);
     } finally {
@@ -207,8 +213,11 @@ function anfrageEinrichten(): void {
   formular.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (sendetGerade) return;
+    // Der Name des Schritts steht auch im Dienst (ANFRAGE_ABSENDEN in statistik.ts)
+    nutzung("Anfrage", "Absenden geklickt");
     const fehler = pruefen();
     if (fehler) {
+      nutzung("Anfrage", `Hinweis: ${fehler === name ? "Name" : "E-Mail"} fehlt oder stimmt nicht`);
       spiele("ding");
       fehler.focus();
       return;
@@ -225,16 +234,24 @@ function anfrageEinrichten(): void {
       return;
     }
 
+    nutzung("Anfrage", "E-Mail-Programm geöffnet");
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text())}`;
     statusSetzen("Ihr E-Mail-Programm sollte sich jetzt öffnen. Falls nicht: Text kopieren.");
   });
 
+  // Je Feld einmal „begonnen“ (nur der Name des Felds, nie der Inhalt): Wo hören Besucher auf?
+  const begonnen = new Set<string>();
   formular.addEventListener("input", (event) => {
     const element = event.target as HTMLElement;
     if (element.getAttribute("aria-invalid") === "true") element.removeAttribute("aria-invalid");
+    const feldName = (element as HTMLInputElement).name;
+    if (!feldName || !FELDNAMEN[feldName] || begonnen.has(feldName)) return;
+    begonnen.add(feldName);
+    nutzung("Anfrage", `Feld „${FELDNAMEN[feldName]}“ begonnen`);
   });
 
   kopierKnopf?.addEventListener("click", async () => {
+    nutzung("Anfrage", "Text kopiert");
     const ok = await kopieren(text(), textfeld);
     if (ok) spiele("plopp");
     rueckmeldung(kopierKnopf, ok ? "Kopiert" : "Text unten markiert");
@@ -248,6 +265,7 @@ function anfrageEinrichten(): void {
     const bisher = nachricht.value.replace(/Ergebnis aus dem Zeitfresser-Check:[\s\S]*?Stunden im Jahr\.\n*/u, "").trim();
     nachricht.value = bisher ? `${block}\n\n${bisher}` : block;
     statusSetzen("Ergebnis aus dem Check übernommen");
+    nutzung("Anfrage", "aus dem Check vorbelegt");
     const abschnitt = document.querySelector<HTMLElement>("#kontakt");
     if (abschnitt) {
       lenis.scrollTo(abschnitt, {
@@ -392,6 +410,8 @@ function persoenlichEinrichten(): void {
 function kopierKnoepfeEinrichten(): void {
   document.querySelectorAll<HTMLButtonElement>("[data-kopiere]").forEach((knopf) => {
     knopf.addEventListener("click", async () => {
+      // Nur dass kopiert wurde, nie was (die Adresse steht ohnehin auf der Seite)
+      nutzung("Kontakt", `„${knopf.textContent?.trim() ?? "Kopieren"}“ geklickt`);
       const ok = await kopieren(knopf.dataset.kopiere ?? "");
       if (ok) spiele("plopp");
       rueckmeldung(knopf, ok ? "Kopiert" : "Bitte markieren und kopieren");
