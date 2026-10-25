@@ -437,6 +437,10 @@ function terminEinrichten(): void {
         if (nochWas) {
           zeitenTitel.focus();
         } else {
+          // Die alten Knöpfe stammen aus der Liste vor dem 409: Klickbar führten sie nur zum nächsten
+          tage = [];
+          gewaehlterTag = "";
+          tageZeigen();
           auswegZeigen("Gerade ist kein Termin mehr frei. Schreiben Sie mir gern eine Nachricht.");
           zumFormular.focus();
         }

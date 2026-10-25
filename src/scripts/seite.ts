@@ -80,6 +80,8 @@ function datumSetzen(): void {
 function anfrageEinrichten(): void {
   // Etwas mehr als die Mindestdauer im Server (3000 ms, Website-Dienst /api/anfrage)
   const MINDESTDAUER_MS = 3200;
+  // Der Dienst prüft Turnstile mit bis zu 8 s; wer länger wartet, hängt sonst ewig bei „Wird gesendet …“
+  const SENDEN_ZEITLIMIT_MS = 15_000;
   // Wie der Server: keine Zeichen, die in mailto-Links oder Kopfzeilen etwas bedeuten
   const emailMuster = /^[\p{L}\p{N}._+'-]+@(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}\p{N}-]{2,}$/u;
   // Felder, wie sie in der Statistik heißen (nutzung.ts); der Honigtopf „website“ fehlt bewusst
@@ -156,6 +158,9 @@ function anfrageEinrichten(): void {
     const umDirekt = `Bitte schreiben Sie direkt an ${email}.`;
     statusSetzen("Wird gesendet …");
     sendetGerade = true;
+    let turnstile = "";
+    const abbruch = new AbortController();
+    let zeitgeber = 0;
     try {
       // Der Server verwirft Anfragen, die schneller als 3 s nach dem Laden kommen (Spam-Schutz).
       // Mit wiederhergestellten oder automatisch ausgefüllten Feldern schaffen das auch Menschen,
@@ -163,9 +168,11 @@ function anfrageEinrichten(): void {
       const wartezeit = MINDESTDAUER_MS - (Date.now() - seitenStart);
       if (wartezeit > 0) await new Promise((fertig) => window.setTimeout(fertig, wartezeit));
 
-      const turnstile = await turnstileToken(formular);
+      turnstile = await turnstileToken(formular);
+      zeitgeber = window.setTimeout(() => abbruch.abort(), SENDEN_ZEITLIMIT_MS);
       const antwort = await fetch(ziel, {
         method: "POST",
+        signal: abbruch.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.value.trim(),
@@ -182,8 +189,6 @@ function anfrageEinrichten(): void {
           turnstile,
         }),
       });
-      // Ein Token gilt nur einmal, auch wenn das Senden scheitert
-      turnstileZuruecksetzen(formular);
       if (antwort.ok) {
         nutzung("Anfrage", "gesendet");
         spiele("erfolg");
@@ -202,10 +207,13 @@ function anfrageEinrichten(): void {
         statusSetzen(`Senden hat nicht geklappt. ${umDirekt}`);
       }
     } catch {
-      nutzung("Anfrage", "Verbindung gescheitert");
+      nutzung("Anfrage", abbruch.signal.aborted ? "Zeitlimit beim Senden" : "Verbindung gescheitert");
       spiele("stopp");
       statusSetzen(`Senden hat nicht geklappt, vielleicht ist die Verbindung weg. ${umDirekt}`);
     } finally {
+      window.clearTimeout(zeitgeber);
+      // Ein Token gilt nur einmal, auch wenn das Senden scheitert oder die Verbindung abreißt
+      if (turnstile) turnstileZuruecksetzen(formular);
       sendetGerade = false;
     }
   };
