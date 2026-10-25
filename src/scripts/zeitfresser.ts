@@ -4,7 +4,8 @@
    3. Was durchrutscht: verpasste Anrufe und Angebote ohne Nachfassen.
    4. Wünsche, 5. Richtwerte, 6. Beleg als Beweisstück, auch als PDF.
    Das Ergebnis rechnet live mit und steht für Tracking und Anfrage als JSON in
-   form[data-check].dataset.ergebnis. Die Daten kommen aus Zeitfresser.astro. */
+   form[data-check].dataset.ergebnis, alle Angaben samt Sortierung (auch ohne Ergebnis) für die
+   Statistik in dataset.angaben. Die Daten kommen aus Zeitfresser.astro. */
 
 import { belegPdfErstellen, dateiAnbieten, type BelegDaten } from "./beleg-pdf";
 import { spiele } from "./klang";
@@ -271,6 +272,9 @@ export function zeitfresserEinrichten(): void {
   let rutschtGeprueft = false;
   // Die Teamgröße zählt nur, wenn der Besucher die Auswahl auch gesehen hat
   let teamGesehen = false;
+  // Für die Statistik: Was hat der Besucher selbst eingestellt und was ist nur ein Vorschlag?
+  let teamAngeklickt = false;
+  const eingestellt = new Set<string>();
   // modus: ob beim Schritt gerade sortiert wurde, damit Rückgängig dorthin zurückkehrt
   const verlauf: { aenderungen: [string, Sortierung | undefined][]; index: number; modus: boolean }[] = [];
   let belegNummer = "";
@@ -347,6 +351,51 @@ export function zeitfresserEinrichten(): void {
     return { stufe, ...(daten.urteile[stufe] ?? daten.urteile[daten.urteile.length - 1]) };
   };
   const urteilSatz = (z: Zustand, text: string) => text.replace("{betrag}", euro(z.euro + z.umsatz));
+
+  // Alles, was der Besucher angegeben hat, auch ohne Ergebnis und auch, was schon digital läuft.
+  // Format CheckStand aus website-dienst/API.md im Portal-Repo; Mengen nur für Karten von Hand.
+  const standFuerStatistik = (z: Zustand) => {
+    const verlust = (id: string) => z.verluste.find((v) => v.v.id === id);
+    // Leere Felder rechnen mit dem Standard, also zählen sie auch hier nicht als geändert
+    const abweichend = (f: HTMLInputElement) => (zahlAus(f) || Number(f.dataset.standard)) !== Number(f.dataset.standard);
+    return {
+      karten: daten.aufgaben.map((a) => {
+        const sortierung = sortiert.get(a.id) ?? null;
+        const vonHand = sortierung === "hand";
+        const menge = vonHand ? Number(regler.get(a.id)?.eingabe.value ?? 0) : null;
+        return {
+          id: a.id,
+          name: a.name,
+          sortierung,
+          einheit: a.einheit,
+          art: a.art,
+          menge,
+          eingestellt: vonHand ? eingestellt.has(a.id) : null,
+          minutenJe: vonHand ? minutenJe(a) : null,
+          stunden: menge === null ? null : Math.min(STUNDEN_DECKEL, jahresStunden(a, menge)),
+        };
+      }),
+      alleSortiert: daten.aufgaben.every((a) => sortiert.has(a.id)),
+      teamgroesse: z.teamGewaehlt ? z.team.wert : null,
+      teamGewaehlt: teamAngeklickt,
+      stundensatz: z.satz,
+      richtwerteGeaendert: [...richtwertFelder.values(), ...quoteFelder.values()].some(abweichend),
+      durchrutscher:
+        z.verluste.length > 0
+          ? {
+              verpassteAnrufeProWoche: verlust("verpasst")?.menge ?? 0,
+              angeboteOhneNachfassenProMonat: verlust("nachfassen")?.menge ?? 0,
+              auftragswert: z.auftragswert,
+              quoteAnrufe: verlust("verpasst")?.quote ?? null,
+              quoteAngebote: verlust("nachfassen")?.quote ?? null,
+            }
+          : null,
+      wuensche: z.wuensche,
+      ergebnis: hatErgebnis(z)
+        ? { stunden: Math.min(STUNDEN_DECKEL, z.stunden), euro: z.euro, umsatz: z.umsatz, urteil: urteilStufe(z) }
+        : null,
+    };
+  };
 
   // Programmatische Änderungen melden, wie es Regler und Checkboxen von selbst tun
   const geaendert = () => formular.dispatchEvent(new Event("change", { bubbles: true }));
@@ -925,6 +974,8 @@ export function zeitfresserEinrichten(): void {
     } else {
       delete formular.dataset.ergebnis;
     }
+    // Immer, auch nach „alles rückgängig“: Gesendet wird ohnehin erst nach einer Änderung (tracking.ts)
+    formular.dataset.angaben = JSON.stringify(standFuerStatistik(z));
 
     if (belegBereich && !belegBereich.hidden) {
       if (fertig) belegFuellen(z);
@@ -1123,6 +1174,8 @@ export function zeitfresserEinrichten(): void {
   /* Werkbank ------------------------------------------------------------------ */
 
   const presetsSetzen = (stufe: number) => {
+    // Ab jetzt stehen überall wieder Vorschläge, nichts mehr selbst eingestellt
+    eingestellt.clear();
     for (const a of daten.aufgaben) {
       const r = regler.get(a.id);
       if (r) r.eingabe.value = String(a.presets[stufe] ?? 0);
@@ -1270,7 +1323,10 @@ export function zeitfresserEinrichten(): void {
     const feld = event.target;
     rutschtGeaendert(feld);
     if (feld instanceof HTMLInputElement) {
-      if (feld.name === "team") presetsSetzen(Number(feld.dataset.team));
+      if (feld.name === "team") {
+        teamAngeklickt = true;
+        presetsSetzen(Number(feld.dataset.team));
+      }
       if (feld.type === "text") feldAufraeumen(feld);
     }
     aktualisieren();
@@ -1301,6 +1357,7 @@ export function zeitfresserEinrichten(): void {
   formular.addEventListener("input", (event) => {
     const feld = event.target;
     rutschtGeaendert(feld);
+    if (feld instanceof HTMLInputElement && feld.dataset.menge) eingestellt.add(feld.dataset.menge);
     window.clearTimeout(tippen);
     if (feld instanceof HTMLInputElement && feld.type === "range") aktualisieren();
     else tippen = window.setTimeout(aktualisieren, 250);

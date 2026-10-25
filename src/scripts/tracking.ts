@@ -165,6 +165,8 @@ function verstecken(): void {
     sichtbarBisher += performance.now() - sichtbarSeit;
     sichtbarSeit = null;
   }
+  // Wer gleich nach der letzten Änderung geht, soll seinen Stand trotzdem dalassen
+  checkMelden();
   endeMelden();
   leeren();
 }
@@ -239,6 +241,34 @@ export function checkErgebnis(): CheckErgebnis | null {
   const minuten = Number(formular.querySelector<HTMLInputElement>('input[name="zeit"]:checked')?.value ?? 0);
   if (punkte.length === 0 || !(minuten > 0)) return null;
   return { punkte, minuten, stunden: Math.round((minuten * 220) / 60) };
+}
+
+// Gesendet wird entprellt nach der letzten Änderung, spätestens beim Verlassen der Seite
+let checkOffen = false;
+let ergebnisZuletzt = "";
+let angabenZuletzt = "";
+
+/** Angaben (check_stand, auch ohne Ergebnis) und Ergebnis (check_fertig) melden, wenn sie neu sind */
+function checkMelden(): void {
+  if (!checkOffen) return;
+  checkOffen = false;
+  const angaben = document.querySelector<HTMLFormElement>("form[data-check]")?.dataset.angaben;
+  if (angaben && angaben !== angabenZuletzt) {
+    try {
+      const daten: unknown = JSON.parse(angaben);
+      angabenZuletzt = angaben;
+      // Es zählt nur der neueste Stand: Ein noch nicht gesendeter älterer fliegt aus dem Stapel
+      stapel = stapel.filter((e) => e.t !== "check_stand");
+      melden("check_stand", { daten });
+    } catch {
+      // ignorieren
+    }
+  }
+  const daten = checkErgebnis();
+  const json = JSON.stringify(daten);
+  if (!daten || json === ergebnisZuletzt) return;
+  ergebnisZuletzt = json;
+  melden("check_fertig", { daten });
 }
 
 /* Start --------------------------------------------------------------------- */
@@ -383,21 +413,15 @@ function starten(): void {
   if (check) {
     let begonnen = false;
     let entprellen = 0;
-    let zuletzt = "";
     check.addEventListener("change", () => {
       try {
         if (!begonnen) {
           begonnen = true;
           melden("check_start");
         }
+        checkOffen = true;
         window.clearTimeout(entprellen);
-        entprellen = window.setTimeout(() => {
-          const daten = checkErgebnis();
-          const json = JSON.stringify(daten);
-          if (!daten || json === zuletzt) return;
-          zuletzt = json;
-          melden("check_fertig", { daten });
-        }, 1500);
+        entprellen = window.setTimeout(checkMelden, 1500);
       } catch {
         // ignorieren
       }

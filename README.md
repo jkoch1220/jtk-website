@@ -77,6 +77,14 @@ Datenschutzerklärung). Geräteeigenschaften wie Sprache oder Bildschirmbreite l
 aus; die Sprache leitet der Dienst aus dem `Accept-Language`-Kopf ab. Wer etwas am Skript ändert, muss
 die Liste in `src/pages/datenschutz.astro` mitziehen.
 
+Vom Zeitfresser-Check gehen zwei Ereignisse raus, jeweils 1,5 s nach der letzten Änderung (spätestens beim
+Verlassen der Seite): `check_stand` mit allen Angaben, auch ohne Ergebnis (jede Karte von Hand, digital oder
+unsortiert, Mengen und ob der Regler selbst bewegt wurde, Team, Stundensatz, Durchrutscher, Wünsche, Ergebnis;
+Format `CheckStand` in `website-dienst/API.md`, gebaut in `standFuerStatistik` in `src/scripts/zeitfresser.ts`),
+und wie bisher `check_fertig` mit dem Ergebnis. Jeden Check einzeln samt CSV-Export zeigt das Portal unter
+„Anfragen → Checks“. Neue Karten, Felder oder Wünsche im Check landen dort von selbst; ändert sich die Form
+des Stands, ziehen Dienst (`standPruefen`) und Portal mit.
+
 Lokal: Website-Dienst mit `npm run dev` in `~/Workspace/kochConsultingPlatform/website-dienst` starten (Port 3100), dann hier
 `npm run dev`. Der Vite-Proxy in `astro.config.mjs` leitet `/api` dorthin. Läuft der Dienst nicht,
 gehen Statistik und Formular ins Leere; die Seite selbst funktioniert trotzdem.
