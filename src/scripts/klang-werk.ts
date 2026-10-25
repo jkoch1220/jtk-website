@@ -520,15 +520,15 @@ function rendern(id: KlangId, variante = ""): Promise<AudioBuffer> {
     const sek = typeof r.sekunden === "function" ? r.sekunden(variante) : r.sekunden;
     const Offline = window.OfflineAudioContext ?? window.webkitOfflineAudioContext;
     if (!Offline) throw new Error("Kein OfflineAudioContext");
-    let rate = RATE;
+    let rate = r.rate ?? RATE;
     let tiefpass = false;
     let off: OfflineAudioContext;
     try {
       off = new Offline(r.kanaele, Math.ceil(sek * rate), rate);
     } catch {
       // Rückfall, falls der Browser 22,05 kHz nicht zulässt
+      tiefpass = rate < 44100;
       rate = 44100;
-      tiefpass = true;
       off = new Offline(r.kanaele, Math.ceil(sek * rate), rate);
     }
     const rng = zufall(hash(schluessel));

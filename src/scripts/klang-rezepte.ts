@@ -2,13 +2,16 @@
    Herkunftsnachweis: Alle vierzehn Klänge sind eigene Kompositionen, zur Laufzeit aus Sinus,
    Dreieck, Säge, FM und Rauschen erzeugt. Es stecken keine fremden Aufnahmen, Ausschnitte oder
    Melodiezitate darin, nur der Stil der frühen 2000er (Es-Dur, plagale Wendung, Glocke, Pad,
-   Hall, 22,05 kHz). Abgehört und festgeschrieben im Oktober 2026.
+   Hall, 22,05 kHz). Abgehört und festgeschrieben im Oktober 2026; die Begrüßung „Kristall“
+   (klang-begruessung.ts) im selben Monat aus vier eigenen Entwürfen ausgewählt, ihre
+   Glockenfigur gegen die bekannten Starttöne jener Zeit auf Abstand geprüft.
 
    Je Rezept: Ebene (Bus), Kanäle, Länge, Hall, Zielpegel (Momentan-Maximum in LUFS,
    K-gewichtet) und die Varianten. „zufall“ wählt bei jeder Wiedergabe eine davon,
    „standard“ gilt, wenn der Aufruf keine nennt. Notennamen englisch: Bb = B, Eb = Es, Ab = As. */
 
 import type { KlangId } from "./klang";
+import { KRISTALL_DAUER, kristall } from "./klang-begruessung";
 import {
   dbg,
   glocke,
@@ -33,6 +36,8 @@ export interface Rezept {
   kanaele: 1 | 2;
   sekunden: number | ((variante: string) => number);
   hall: Hall | null;
+  // Abtastrate fürs Vorrendern, sonst 22,05 kHz
+  rate?: number;
   ziel: number;
   varianten?: readonly string[];
   zufall?: readonly string[];
@@ -48,18 +53,14 @@ export const REZEPTE: Record<KlangId, Rezept> = {
   anmelden: {
     ebene: "moment",
     kanaele: 2,
-    sekunden: 3.4,
-    hall: { t60: 2.8, nass: 0.35 },
+    sekunden: KRISTALL_DAUER,
+    // eigener Hall in klang-begruessung.ts; 48 kHz, sonst fallen Glas und Celesta weg
+    hall: null,
+    rate: 48000,
     ziel: -20,
-    beschreibung: "Willkommen: Pad As-Dur auf Es add9, aufsteigende FM-Glocke B5-C6-Es6, Dyade F6+B6",
+    beschreibung: "Willkommen „Kristall“: Fläche As add9 auf Es add9, gläserne Glocken C6-F6-G6-Es6/B6, Schimmer-Hall",
     bauen(w, a) {
-      pad(w, a, [H("Ab2"), H("Ab3"), H("C4"), H("Eb4")], 0.01, { an: 0.5, halten: 0.54, tau: 0.1, db: -12, pegel: [-3, 0, -1, -2] });
-      pad(w, a, [H("Eb2"), H("Bb2"), H("Eb4"), H("G4"), H("F5")], 1.05, { an: 0.25, halten: 0.6, tau: 0.45, db: -12, pegel: [-3, -2, 0, -1, -7] });
-      glocke(w, a, H("Bb5"), 0.05, { db: -3, pan: -0.25 });
-      glocke(w, a, H("C6"), 0.32, { db: -3.5, pan: 0.05 });
-      glocke(w, a, H("Eb6"), 0.58, { db: -3, pan: 0.25 });
-      glocke(w, a, H("F6"), 1.05, { db: -5, tau: 1.1, pan: -0.15 });
-      glocke(w, a, H("Bb6"), 1.05, { db: -8, tau: 1.1, pan: 0.3 });
+      kristall(w.c, a);
     },
   },
   abmelden: {
