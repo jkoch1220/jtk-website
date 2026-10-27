@@ -39,9 +39,13 @@ import { erfolge, schritte } from "../data/zusagen";
             <a class="knopf knopf--voll" href="#kontakt">Kostenloses Erstgespräch vereinbaren</a>
             <a class="knopf" href="#check">Zeitfresser-Check machen</a>
           </div>
-          <p class="hero__telefon">
-            Oder direkt anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
-          </p>
+          {
+            kontakt.telefonAnzeige && (
+              <p class="hero__telefon">
+                Oder direkt anrufen: <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+              </p>
+            )
+          }
         </div>
         <Beleg />
       </div>

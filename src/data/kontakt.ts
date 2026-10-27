@@ -5,8 +5,8 @@ export const kontakt = {
   // Voller Name: dafür steht „JTK“. Sichtbar im Über-mich-Absatz, dazu alternateName in src/data/strukturdaten.ts.
   nameVoll: "Julian Tim Koch",
   email: "julian@koch.consulting",
-  telefonAnzeige: "+49 160 6102912",
-  telefonLink: "tel:+491606102912",
+  telefonAnzeige: "",
+  telefonLink: "",
   strasse: "Adersstraße 79",
   plz: "40215",
   ort: "Düsseldorf",

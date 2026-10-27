@@ -31,7 +31,7 @@ import { kontakt, mailBetreff, anfrageUrl, terminUrl, turnstileSiteKey } from ".
             <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
             <button class="leise-knopf" type="button" data-kopiere={kontakt.email}>Adresse kopieren</button>
           </div>
-          <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+          {kontakt.telefonAnzeige && <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>}
           <p class="kontakt__ort">{kontakt.ort}, für Unternehmen in ganz NRW</p>
         </div>
       </div>

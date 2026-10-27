@@ -20,7 +20,13 @@ import { kontakt } from "../data/kontakt";
         {kontakt.firma}<br />
         {kontakt.strasse}<br />
         {kontakt.plz} {kontakt.ort}<br />
-        Telefon: {kontakt.telefonAnzeige}<br />
+        {
+          kontakt.telefonAnzeige && (
+            <>
+              Telefon: {kontakt.telefonAnzeige}<br />
+            </>
+          )
+        }
         E-Mail: <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
       </p>
       <p>

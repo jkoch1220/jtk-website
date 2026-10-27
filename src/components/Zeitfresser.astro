@@ -899,7 +899,7 @@ const tage = Array.from({ length: 220 });
                 </p>
                 <p class="zettel__kontakt">
                   <span>{kontakt.name}, {kontakt.firma}</span>
-                  <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>
+                  {kontakt.telefonAnzeige && <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>}
                   <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
                   <a href="https://jtkconsulting.de">jtkconsulting.de</a>
                 </p>

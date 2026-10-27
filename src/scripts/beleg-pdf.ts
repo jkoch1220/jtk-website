@@ -460,9 +460,14 @@ function seiteZeichnen(ctx: Ctx, d: BelegDaten): { hoehe: number; links: PdfLink
     pdfLinks.push({ x: rechtsX - w - 2, y: basis - groesse, b: w + 4, h: groesse + 4, uri });
   };
   ctx.fillStyle = FARBE.tinte;
-  eintrag(d.kontakt.telefonAnzeige, cy + 22, d.kontakt.telefonLink, 12, 650);
-  eintrag(d.kontakt.email, cy + 37, `mailto:${d.kontakt.email}`, 9.5, 520);
-  eintrag(d.kontakt.web, cy + 50, `https://${d.kontakt.web}`, 9.5, 520);
+  if (d.kontakt.telefonAnzeige) {
+    eintrag(d.kontakt.telefonAnzeige, cy + 22, d.kontakt.telefonLink, 12, 650);
+    eintrag(d.kontakt.email, cy + 37, `mailto:${d.kontakt.email}`, 9.5, 520);
+    eintrag(d.kontakt.web, cy + 50, `https://${d.kontakt.web}`, 9.5, 520);
+  } else {
+    eintrag(d.kontakt.email, cy + 28, `mailto:${d.kontakt.email}`, 11, 600);
+    eintrag(d.kontakt.web, cy + 46, `https://${d.kontakt.web}`, 10, 520);
+  }
   cy += leisteH + 24;
 
   return { hoehe: cy, links: pdfLinks };

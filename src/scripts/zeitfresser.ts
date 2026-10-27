@@ -935,8 +935,8 @@ export function zeitfresserEinrichten(): void {
       if (urteilTitel) urteilTitel.textContent = u.titel;
       if (urteilText) urteilText.textContent = urteilSatz(z, u.text);
       if (urteilTelefon) {
-        urteilTelefon.hidden = !u.telefon;
-        urteilTelefon.textContent = u.telefon ? `${u.telefon}: ${daten.kontakt.telefonAnzeige}` : "";
+        urteilTelefon.hidden = !u.telefon || !daten.kontakt.telefonAnzeige;
+        urteilTelefon.textContent = u.telefon && daten.kontakt.telefonAnzeige ? `${u.telefon}: ${daten.kontakt.telefonAnzeige}` : "";
       }
     }
 

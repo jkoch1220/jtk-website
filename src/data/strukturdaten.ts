@@ -27,7 +27,7 @@ export function startseitenDaten(site: URL) {
         ...firma,
         name: kontakt.firma,
         url,
-        telephone: kontakt.telefonLink.replace("tel:", ""),
+        ...(kontakt.telefonLink ? { telephone: kontakt.telefonLink.replace("tel:", "") } : {}),
         email: kontakt.email,
         address: {
           "@type": "PostalAddress",
