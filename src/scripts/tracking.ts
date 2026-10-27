@@ -407,15 +407,22 @@ function herkunft(): string {
   }
 }
 
+// Google Ads hängt an jeden Anzeigenklick eine Klick-Kennung (gclid, auf iOS gbraid/wbraid). Gemeldet wird
+// nur, dass der Besuch aus einer Anzeige kommt, nie die Kennung selbst. Eigene utm-Angaben haben Vorrang.
+function ausAnzeige(p: URLSearchParams): boolean {
+  return !p.has("utm_source") && (p.has("gclid") || p.has("gbraid") || p.has("wbraid"));
+}
+
 function starten(): void {
   const adresse = new URL(window.location.href);
   const p = adresse.searchParams;
+  const anzeige = ausAnzeige(p);
   melden("aufruf", {
     pfad: adresse.pathname,
     referrer: herkunft(),
     utm: {
-      quelle: p.get("utm_source") ?? "",
-      medium: p.get("utm_medium") ?? "",
+      quelle: anzeige ? "google" : (p.get("utm_source") ?? ""),
+      medium: anzeige ? "cpc" : (p.get("utm_medium") ?? ""),
       kampagne: p.get("utm_campaign") ?? "",
     },
   });
