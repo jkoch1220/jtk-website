@@ -1,0 +1,40 @@
+---
+import Base from "../layouts/Base.astro";
+import { kontakt } from "../data/kontakt";
+---
+
+<Base
+  title="Vielen Dank | JTK Consulting"
+  description="Vielen Dank für Ihre Terminbuchung oder Anfrage bei JTK Consulting."
+  noindex
+>
+  <section class="innen">
+    <div class="recht">
+      <p class="kicker" aria-hidden="true">09 · Bestätigung</p>
+      <h1>Vielen Dank!</h1>
+      <p style="font-size: var(--t-gross); color: var(--tinte); font-weight: 600;">
+        Ihre Buchung bzw. Anfrage ist erfolgreich bei mir eingegangen.
+      </p>
+
+      <h2>Wie es jetzt weitergeht</h2>
+      <ul>
+        <li>
+          <strong>Bestätigung per E-Mail:</strong> Falls Sie einen Termin gebucht haben, erhalten Sie in Kürze eine
+          Kalendereinladung (Google Meet oder telefonischer Rückruf).
+        </li>
+        <li>
+          <strong>15 Minuten auf Augenhöhe:</strong> Wir sprechen ganz unverbindlich über Ihre aktuellen bürokratischen
+          Abläufe und wo Ihr Betrieb Zeit verliert. Sie müssen nichts vorbereiten.
+        </li>
+        <li>
+          <strong>Fragen vorab?</strong> Falls sich etwas ändert oder Sie mir vorab Informationen senden möchten,
+          erreichen Sie mich jederzeit unter <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>.
+        </li>
+      </ul>
+
+      <p style="margin-top: 2rem;">
+        <a class="knopf knopf--voll" href="/">Zurück zur Startseite</a>
+      </p>
+    </div>
+  </section>
+</Base>

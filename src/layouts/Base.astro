@@ -17,9 +17,10 @@ interface Props {
   // false nur für Seiten ohne eigene Adresse (404): ein canonical auf /404/ zeigte auf eine Seite, die es nicht
   // gibt. Stattdessen noindex, denn /404.html selbst liefert der Server mit Status 200 aus.
   kanonisch?: boolean;
+  noindex?: boolean;
 }
 
-const { title, description, startseite = false, kanonisch = true } = Astro.props;
+const { title, description, startseite = false, kanonisch = true, noindex = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // Link-Vorschau in WhatsApp, iMessage, Telegram, LinkedIn: ein Bild für alle Seiten. Über den Import bekommt
 // es einen Hash im Namen: Ein neues Bild hat eine neue Adresse, kein Cache liefert dort ein altes aus. Telegram
@@ -115,7 +116,8 @@ const nachtCss =
     </script>
     <title>{title}</title>
     <meta name="description" content={description} />
-    {kanonisch ? <link rel="canonical" href={canonical} /> : <meta name="robots" content="noindex" />}
+    {kanonisch && <link rel="canonical" href={canonical} />}
+    {(noindex || !kanonisch) && <meta name="robots" content="noindex" />}
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <Fragment set:html={`<style>${nachtCss}</style>`} />
     <meta property="og:type" content="website" />

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JTK Consulting – Logo Entwürfe</title>
+  <style>
+    :root {
+      --bg: #0c0b17;
+      --card: #151428;
+      --border: #272545;
+      --text: #f1f1f3;
+      --text-muted: #9493b8;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 40px 20px 80px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 30%, #818cf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 32px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+    }
+    .preview-box {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #090813;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+    .avatar-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    .avatar-round {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+    .avatar-round img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .avatar-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .avatar-text strong {
+      display: block;
+      color: var(--text);
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>JTK Consulting – Logo Entwürfe</h1>
+      <p>Klicke auf den Knopf, um das Logo direkt als hochauflösendes 1000 × 1000 Pixel PNG für Google Maps, LinkedIn & Co. herunterzuladen.</p>
+    </header>
+
+    <div class="grid">
+      <!-- Konzept 1 -->
+      <div class="card">
+        <div class="preview-box">
+          <img src="/logo-1.svg" id="img-1" alt="Konzept 1: Monogramm" />
+        </div>
+        <div class="avatar-preview">
+          <div class="avatar-round">
+            <img src="/logo-1.svg" alt="Avatar Vorschau" />
+          </div>
+          <div class="avatar-text">
+            <strong>Google / WhatsApp Vorschau</strong>
+            Runder Avatar-Ausschnitt
+          </div>
+        </div>
+        <div class="card-title">1. Modernes B2B-Monogramm</div>
+        <p class="card-desc">Typografisch fokussiert. Starkes, selbstbewusstes JTK-Monogramm mit subtilem Schnittstellen-Konnektor auf tiefem Indigo.</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="downloadPng('/logo-1.svg', 'jtk-logo-1.png')">
+            ⬇️ Als PNG (1000px)
+          </button>
+          <a class="btn btn-secondary" href="/logo-1.svg" download="jtk-logo-1.svg">SVG</a>
+        </div>
+      </div>
+
+      <!-- Konzept 2 -->
+      <div class="card">
+        <div class="preview-box">
+          <img src="/logo-2.svg" id="img-2" alt="Konzept 2: Tech-Nexus" />
+        </div>
+        <div class="avatar-preview">
+          <div class="avatar-round">
+            <img src="/logo-2.svg" alt="Avatar Vorschau" />
+          </div>
+          <div class="avatar-text">
+            <strong>Google / WhatsApp Vorschau</strong>
+            Runder Avatar-Ausschnitt
+          </div>
+        </div>
+        <div class="card-title">2. Der Integration-Nexus</div>
+        <p class="card-desc">Geometrisches Symbol für Datenströme, Konnektivität und Schnittstellen. Farbiger Cyber-Gradient mit hohem Wiedererkennungswert.</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="downloadPng('/logo-2.svg', 'jtk-logo-2.png')">
+            ⬇️ Als PNG (1000px)
+          </button>
+          <a class="btn btn-secondary" href="/logo-2.svg" download="jtk-logo-2.svg">SVG</a>
+        </div>
+      </div>
+
+      <!-- Konzept 3 -->
+      <div class="card">
+        <div class="preview-box">
+          <img src="/logo-3.svg" id="img-3" alt="Konzept 3: Shield Emblem" />
+        </div>
+        <div class="avatar-preview">
+          <div class="avatar-round">
+            <img src="/logo-3.svg" alt="Avatar Vorschau" />
+          </div>
+          <div class="avatar-text">
+            <strong>Google / WhatsApp Vorschau</strong>
+            Runder Avatar-Ausschnitt
+          </div>
+        </div>
+        <div class="card-title">3. Präzisions-Emblem</div>
+        <p class="card-desc">Deutscher Ingenieurs-Look: Solides, präzises Schild-Signet mit klaren Kanten. Steht für Stabilität, Sicherheit und Verlässlichkeit.</p>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="downloadPng('/logo-3.svg', 'jtk-logo-3.png')">
+            ⬇️ Als PNG (1000px)
+          </button>
+          <a class="btn btn-secondary" href="/logo-3.svg" download="jtk-logo-3.svg">SVG</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      JTK Consulting · Vektorgrafiken direkt im Browser skalierbar
+    </footer>
+  </div>
+
+  <script>
+    async function downloadPng(svgUrl, filename) {
+      const resp = await fetch(svgUrl);
+      const svgText = await resp.text();
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const URL = window.URL || window.webkitURL || window;
+      const blobURL = URL.createObjectURL(svgBlob);
+      
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1000;
+        canvas.height = 1000;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 1000, 1000);
+        
+        canvas.toBlob(function(pngBlob) {
+          const downloadUrl = URL.createObjectURL(pngBlob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(downloadUrl);
+        }, 'image/png');
+        URL.revokeObjectURL(blobURL);
+      };
+      img.src = blobURL;
+    }
+  </script>
+</body>
+</html>

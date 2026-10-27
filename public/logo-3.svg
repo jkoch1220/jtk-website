@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="bgGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#0f0e26" />
+    </linearGradient>
+    <linearGradient id="badgeBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="50%" stop-color="#4338ca" />
+      <stop offset="100%" stop-color="#1e1b4b" />
+    </linearGradient>
+    <linearGradient id="silverWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0e7ff" />
+    </linearGradient>
+    <filter id="softShadow3" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="25" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Dark Background -->
+  <rect width="1000" height="1000" rx="180" fill="url(#bgGrad3)"/>
+
+  <!-- Precision Engineering Shield / Emblem -->
+  <g filter="url(#softShadow3)">
+    <!-- Outer Shield Hexagon -->
+    <polygon points="500,120 780,270 780,630 500,820 220,630 220,270" fill="#18163d" stroke="url(#badgeBorder)" stroke-width="8" stroke-linejoin="round"/>
+    
+    <!-- Inner Accent Inset -->
+    <polygon points="500,145 755,282 755,618 500,790 245,618 245,282" fill="none" stroke="#6366f1" stroke-width="2" stroke-opacity="0.4" stroke-dasharray="16 8"/>
+
+    <!-- Emblem Monogram: JTK Monolith -->
+    <g transform="translate(500, 430)">
+      <!-- J -->
+      <path d="M -150 -130 L -100 -130 L -100 20 C -100 70 -125 100 -170 100 C -200 100 -225 85 -240 60 L -205 30 C -195 45 -185 55 -170 55 C -155 55 -150 45 -150 20 Z" fill="url(#silverWhite)"/>
+      
+      <!-- T (Center Column) -->
+      <path d="M -80 -130 L 80 -130 L 80 -85 L 25 -85 L 25 100 L -25 100 L -25 -85 L -80 -85 Z" fill="url(#silverWhite)"/>
+
+      <!-- K (Right Angle Arms) -->
+      <path d="M 100 -130 L 145 -130 L 145 100 L 100 100 Z" fill="url(#silverWhite)"/>
+      <path d="M 145 -15 L 220 -130 L 275 -130 L 180 0 L 280 100 L 225 100 L 145 15 Z" fill="#818cf8"/>
+    </g>
+
+    <!-- Sub-label inside shield -->
+    <text x="500" y="650" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" letter-spacing="14" fill="#a5b4fc">CONSULTING</text>
+  </g>
+
+  <!-- Outer Subtitle -->
+  <text x="500" y="905" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" letter-spacing="10" fill="#6366f1">IT-BERATUNG &amp; AUTOMATION</text>
+</svg>

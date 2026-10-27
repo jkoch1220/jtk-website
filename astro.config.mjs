@@ -16,7 +16,7 @@ function sitemap() {
       "astro:build:done": async ({ dir, pages }) => {
         const urls = pages
           .map((p) => p.pathname)
-          .filter((p) => !/^404\/?$/.test(p))
+          .filter((p) => !/^(404|danke)\/?$/.test(p))
           .map((p) => new URL(p.replace(/\/?$/, "/").replace(/^\/$/, ""), site + "/").href)
           .sort();
         const eintraege = urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n");
