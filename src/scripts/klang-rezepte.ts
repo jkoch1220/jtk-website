@@ -1,10 +1,14 @@
 /* Klangrezepte ------------------------------------------------------------------------
-   Herkunftsnachweis: Alle vierzehn Klänge sind eigene Kompositionen, zur Laufzeit aus Sinus,
-   Dreieck, Säge, FM und Rauschen erzeugt. Es stecken keine fremden Aufnahmen, Ausschnitte oder
-   Melodiezitate darin, nur der Stil der frühen 2000er (Es-Dur, plagale Wendung, Glocke, Pad,
-   Hall, 22,05 kHz). Abgehört und festgeschrieben im Oktober 2026; die Begrüßung „Kristall“
-   (klang-begruessung.ts) im selben Monat aus vier eigenen Entwürfen ausgewählt, ihre
-   Glockenfigur gegen die bekannten Starttöne jener Zeit auf Abstand geprüft.
+   Herkunftsnachweis: Alle zwanzig Klänge sind eigene Kompositionen, zur Laufzeit aus Sinus,
+   Dreieck, Säge, Rechteck, FM und Rauschen erzeugt. Es stecken keine fremden Aufnahmen,
+   Ausschnitte oder Melodiezitate darin, nur der Stil der frühen 2000er (Es-Dur, plagale Wendung,
+   Glocke, Pad, Hall, 22,05 kHz). Freiton, Besetztzeichen und Tastentöne folgen den Normsignalen
+   (425 Hz nach ITU-T E.180, DTMF nach ITU-T Q.23); das sind technische Signale, keine Werke,
+   sie werden ebenfalls synthetisiert. Die ersten vierzehn (bis „umschalten“) abgehört und
+   festgeschrieben im Oktober 2026; die Begrüßung „Kristall“ (klang-begruessung.ts) im selben
+   Monat aus vier eigenen Entwürfen ausgewählt, ihre Glockenfigur gegen die bekannten Starttöne
+   jener Zeit auf Abstand geprüft. Die sechs Klänge der KI-Demos (ab „freiton“) sind gerendert
+   und vermessen, aber noch nicht abgehört.
 
    Je Rezept: Ebene (Bus), Kanäle, Länge, Hall, Zielpegel (Momentan-Maximum in LUFS,
    K-gewichtet) und die Varianten. „zufall“ wählt bei jeder Wiedergabe eine davon,
@@ -48,6 +52,35 @@ export interface Rezept {
 }
 
 const H = hz;
+
+/* Telefon: Normsignale statt Komposition -----------------------------------------------
+   Freiton und Besetztzeichen (425 Hz, Takt nach ITU-T E.180 für Deutschland) und Tastentöne
+   (DTMF, ITU-T Q.23) sind technische Signale, keine Werke; sie entstehen wie alle Klänge zur Laufzeit.
+   Tabelle und Helfer stehen über REZEPTE, weil das Objekt sie schon beim Auswerten liest. */
+
+// Tastenwahl: Zeilenton (tief) und Spaltenton (hoch) in Hz
+const DTMF: Record<string, [number, number]> = {
+  "1": [697, 1209], "2": [697, 1336], "3": [697, 1477],
+  "4": [770, 1209], "5": [770, 1336], "6": [770, 1477],
+  "7": [852, 1209], "8": [852, 1336], "9": [852, 1477],
+  "*": [941, 1209], "0": [941, 1336], "#": [941, 1477],
+};
+const ZIFFERN = Object.keys(DTMF);
+
+/** Telefonband 300 bis 3400 Hz vor `a` (Hochpass, Tiefpass); gibt den Eingang zurück */
+function hoererBand(w: Werkbank, a: AudioNode): AudioNode {
+  const hp = w.c.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 300;
+  hp.Q.value = 0.7;
+  const lp = w.c.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 3400;
+  lp.Q.value = 0.7;
+  hp.connect(lp);
+  lp.connect(a);
+  return hp;
+}
 
 export const REZEPTE: Record<KlangId, Rezept> = {
   anmelden: {
@@ -391,6 +424,182 @@ export const REZEPTE: Record<KlangId, Rezept> = {
       folge.forEach((n, i) => {
         teilton(w, lp, H(n), 0.02 + i * 0.06, { typ: "triangle", an: 0.002, tau: 0.04, db: -4 - (6 * i) / 7 });
       });
+    },
+  },
+
+  /* KI-Demos: Telefon, Scanner, Röntgenblick, Streaming ------------------------------- */
+
+  freiton: {
+    ebene: "meldung",
+    kanaele: 1,
+    sekunden: (v) => (v === "besetzt" ? 1.75 : 1.3),
+    hall: null,
+    ziel: -32,
+    varianten: ["", "besetzt"],
+    // Normton: keine Zufallsverstimmung
+    jitter: { cent: 0, db: 0 },
+    beschreibung: "Freiton 425 Hz, ein Takt (1 s an), Telefonband, leises Leitungsrauschen; „besetzt“: 2 × 0,48 s an, 0,48 s aus",
+    bauen(w, a, v) {
+      const band = hoererBand(w, a);
+      // Der echte Freiton-Takt (1 s an, 4 s aus) wäre zu lang: ein Takt, dann hebt der Assistent ab
+      const takte: [number, number][] = v === "besetzt" ? [[0.01, 0.48], [0.97, 0.48]] : [[0.01, 1]];
+      for (const [t, dauer] of takte) {
+        teilton(w, band, 425, t, { an: 0.008, halten: dauer - 0.008, tau: 0.006 });
+        // Die Leitung färbt: leiser zweiter Teilton
+        teilton(w, band, 850, t, { db: -26, an: 0.008, halten: dauer - 0.008, tau: 0.006 });
+      }
+      const ende = v === "besetzt" ? 1.45 : 1.01;
+      rausch(w, band, 0.005, { filter: [{ typ: "bandpass", f: 1000, q: 0.5 }], an: 0.05, halten: ende - 0.05, tau: 0.04, db: -40 });
+    },
+  },
+  roentgen: {
+    ebene: "meldung",
+    kanaele: 1,
+    sekunden: (v) => (v === "kurz" ? 0.35 : 1.3),
+    hall: { t60: 0.5, nass: 0.1 },
+    ziel: -30,
+    varianten: ["", "kurz"],
+    beschreibung: "Durchleuchten: Netzbrummen schwillt an, Aufladeton 300 auf 1200 Hz, Zap (Rechteck 1800 auf 140 Hz), Relais; „kurz“ nur der Zap",
+    bauen(w, a, v) {
+      const c = w.c;
+      const zap = v === "kurz" ? 0.02 : 0.75;
+      if (v !== "kurz") {
+        const brummen: [number, number][] = [[50, -6], [100, 0], [150, -8], [200, -14]];
+        for (const [f, db] of brummen) teilton(w, a, f, 0.01, { db, an: 0.5, halten: 0.3, tau: 0.12, weich: true });
+        const o = c.createOscillator();
+        gleiten([[o.frequency, 1]], 0.05, [[0, 300], [zap - 0.05, 1200]]);
+        const g = c.createGain();
+        g.connect(a);
+        const ende = huelle(g.gain, 0.05, { an: zap - 0.1, halten: 0.02, tau: 0.02, spitze: dbg(-14), weich: true });
+        o.connect(g);
+        o.start(0.05);
+        o.stop(ende);
+      }
+      const z = c.createOscillator();
+      z.type = "square";
+      gleiten([[z.frequency, 1]], zap, [[0, 1800], [0.07, 140]]);
+      const bp = c.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 900;
+      bp.Q.value = 0.7;
+      bp.connect(a);
+      const zg = c.createGain();
+      zg.connect(bp);
+      const zEnde = huelle(zg.gain, zap, { an: 0.002, halten: 0.03, tau: 0.03, spitze: dbg(-4) });
+      z.connect(zg);
+      z.start(zap);
+      z.stop(zEnde);
+      klickBauen(w, a, "tief", Math.max(0.005, zap - 0.01)); // Relais
+      rausch(w, a, zap, { filter: [{ typ: "highpass", f: 3000, q: 0.7 }], an: 0.001, halten: 0.02, tau: 0.03, db: -14 });
+    },
+  },
+  scanner: {
+    ebene: "mikro",
+    kanaele: 2,
+    sekunden: (v) => (v === "kurz" ? 0.35 : 1.5),
+    hall: null,
+    ziel: -32,
+    varianten: ["", "kurz"],
+    beschreibung: "Flachbettscanner: Anlauf-Klack, Schrittmotor (Säge 120 bis 185 Hz), Rauschen, Pfeifen 2,1 kHz, Fahrt links nach rechts, Anschlag",
+    bauen(w, a, v) {
+      const c = w.c;
+      const t = 0.04;
+      const dauer = v === "kurz" ? 0.12 : 1.1;
+      klickBauen(w, a, "tief", 0.005);
+      // Fahrt: Panorama von links nach rechts, wie der Lichtbalken im Bild
+      let fahrt: AudioNode = a;
+      if (w.kanaele >= 2 && "createStereoPanner" in c) {
+        const p = c.createStereoPanner();
+        p.pan.setValueAtTime(-0.6, t);
+        p.pan.linearRampToValueAtTime(0.6, t + dauer);
+        p.connect(a);
+        fahrt = p;
+      }
+      const lp = c.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 900;
+      lp.Q.value = 0.8;
+      lp.connect(fahrt);
+      const g = c.createGain();
+      g.connect(lp);
+      const ende = huelle(g.gain, t, { an: 0.06, halten: Math.max(0, dauer - 0.12), tau: 0.03 });
+      const o = c.createOscillator();
+      o.type = "sawtooth";
+      gleiten([[o.frequency, 1]], t, [[0, 120], [0.06, 180], [Math.max(0.07, dauer - 0.06), 185], [dauer, 110]]);
+      o.connect(g);
+      o.start(t);
+      o.stop(ende);
+      rausch(w, fahrt, t, { filter: [{ typ: "bandpass", f: 2500, q: 0.7 }], an: 0.05, halten: Math.max(0, dauer - 0.1), tau: 0.04, db: -24 });
+      teilton(w, fahrt, 2100, t + 0.05, { db: -26, an: 0.05, halten: Math.max(0, dauer - 0.2), tau: 0.05 });
+      klickBauen(w, a, "", t + dauer + 0.02); // Anschlag
+    },
+  },
+  hoerer: {
+    ebene: "mikro",
+    kanaele: 1,
+    sekunden: 0.4,
+    hall: { t60: 0.2, nass: 0.05 },
+    ziel: -32,
+    varianten: ["ab", "auf"],
+    standard: "ab",
+    beschreibung: "Hörer: „ab“ Gabel springt, Plastik, kurz die Leitung im Telefonband; „auf“ dumpfer Rums 120 auf 60 Hz, Plastik, Gabelklick",
+    bauen(w, a, v) {
+      const c = w.c;
+      if (v === "auf") {
+        // Hörer fällt auf die Gabel: Körper wie beim Stempel, nur weicher
+        const o = c.createOscillator();
+        o.frequency.setValueAtTime(120, 0.005);
+        o.frequency.exponentialRampToValueAtTime(60, 0.06);
+        const g = c.createGain();
+        g.connect(a);
+        const ende = huelle(g.gain, 0.005, { an: 0.002, tau: 0.04, spitze: dbg(-4) });
+        o.connect(g);
+        o.start(0.005);
+        o.stop(ende);
+        // Das Plastik trägt den Klang auf Handy-Lautsprechern, die den Rums kaum wiedergeben
+        rausch(w, a, 0.005, { filter: [{ typ: "bandpass", f: 700, q: 1.2 }], an: 0.001, halten: 0.008, tau: 0.01 });
+        klickBauen(w, a, "tief", 0.03); // Gabelschalter
+        return;
+      }
+      klickBauen(w, a, "", 0.005); // Gabel springt hoch
+      rausch(w, a, 0.01, { filter: [{ typ: "bandpass", f: 400, q: 1 }], an: 0.003, halten: 0.01, tau: 0.02, db: -10 });
+      // Die Leitung öffnet: kurzes, leises Rauschen im Telefonband
+      rausch(w, hoererBand(w, a), 0.06, { filter: [{ typ: "bandpass", f: 1500, q: 0.6 }], an: 0.02, halten: 0.12, tau: 0.04, db: -22 });
+    },
+  },
+  taste: {
+    ebene: "mikro",
+    kanaele: 1,
+    sekunden: 0.14,
+    hall: null,
+    ziel: -34,
+    varianten: ZIFFERN,
+    // Ohne Angabe eine beliebige Taste; so werden auch alle zwölf vorgerendert
+    zufall: ZIFFERN,
+    // Normtöne: nicht verstimmen, nur der Pegel schwankt leicht
+    jitter: { cent: 0, db: 0.5 },
+    beschreibung: "Tastenton (DTMF): Zeilen- und Spaltenton, 85 ms, hohe Gruppe 2 dB lauter, Telefonband",
+    bauen(w, a, v) {
+      const [tief, hoch] = DTMF[v] ?? [770, 1336];
+      const band = hoererBand(w, a);
+      teilton(w, band, tief, 0.005, { db: -2, an: 0.004, halten: 0.08, tau: 0.004 });
+      teilton(w, band, hoch, 0.005, { an: 0.004, halten: 0.08, tau: 0.004 });
+    },
+  },
+  tippen: {
+    ebene: "mikro",
+    kanaele: 1,
+    sekunden: 0.05,
+    hall: null,
+    // Leiser als „klick“ (−42): Beim Streaming klingt es laufend, es soll nur mitlaufen
+    ziel: -46,
+    varianten: ["1", "2", "3"],
+    zufall: ["1", "2", "3"],
+    beschreibung: "Schreibmaschinen-Anschlag, sehr leise: Typenhebel (Rauschimpuls, Bandpass 2,2/2,6/3 kHz) und Walze (Bandpass 350 Hz)",
+    bauen(w, a, v) {
+      const hell = v === "1" ? 2200 : v === "2" ? 2600 : 3000;
+      rausch(w, a, 0.004, { filter: [{ typ: "bandpass", f: hell, q: 2.5 }], an: 0.0004, halten: 0.002, tau: 0.003 });
+      rausch(w, a, 0.005, { filter: [{ typ: "bandpass", f: 350, q: 1.5 }], an: 0.001, halten: 0.003, tau: 0.008, db: -8 });
     },
   },
 };

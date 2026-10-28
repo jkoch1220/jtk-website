@@ -706,10 +706,15 @@ function stimmeAnmelden(c: AudioContext, st: Stimme, einzeln = false): void {
     for (const alt of stimmen) if (alt.id === st.id) verklingen(alt, Math.max(c.currentTime, alt.beginn));
     stimmen = stimmen.filter((x) => x.id !== st.id);
   }
-  while (stimmen.length >= MAX_STIMMEN) {
-    const alt = stimmen.shift()!;
-    // Die älteste Stimme macht Platz
+  // Nur Stimmen, die mit der neuen zeitlich überlappen, belegen einen Platz. Geplante Stimmen, die erst
+  // nach ihr beginnen, bleiben unberührt: Die Anmeldung kann wegen des Renderns später kommen als geplant.
+  let belegt = stimmen.filter((x) => x.beginn < st.ende);
+  while (belegt.length >= MAX_STIMMEN) {
+    // Die am frühesten begonnene Stimme macht Platz
+    const alt = belegt.reduce((a, b) => (b.beginn < a.beginn ? b : a));
     verklingen(alt, Math.max(c.currentTime, alt.beginn, st.beginn));
+    stimmen = stimmen.filter((x) => x !== alt);
+    belegt = belegt.filter((x) => x !== alt);
   }
   stimmen.push(st);
 }

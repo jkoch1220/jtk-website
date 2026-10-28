@@ -1,0 +1,358 @@
+---
+// Programm 2 im Abschnitt 07: Büro-Röntgenblick. Besucher beschreiben, was im Büro nervt (getippt, gesprochen oder
+// als Beispiel); eine KI zeigt, wo der Ablauf hakt (IST in Stempelrot), wie er laufen könnte (SOLL in Leuchttinte,
+// angeschlossen an das, was bleiben darf), was es im Jahr kostet und wie dringend es ist. Kosten und Stufe rechnet
+// der Dienst mit den Richtwerten des Zeitfresser-Checks; die Seite zeigt sie nur. Darunter der Befund als
+// Durchschreibe-Beleg wie im Check (Klassen .zettel*, eigene data-befund-*), mit Stempel „KI-BEFUND“ und Fußzeile,
+// die sagt, dass kein Mensch ihn geprüft hat. Logik in scripts/ki/roentgen.ts, PDF in scripts/ki/befund-pdf.ts,
+// Texte in data/ki-demos.ts, Aussehen in styles/ki-roentgen.css.
+// Die Ergebnisfläche ist vorgezeichnet (data-ki-feld je Textstück): Der Stream füllt sie, statt sie aufzubauen.
+import Fenster from "../Fenster.astro";
+import { kontakt, turnstileSiteKey } from "../../data/kontakt";
+import { STUNDENSATZ } from "../../data/richtwerte";
+import { BEFUND, HINWEISE, PROGRAMME, ROENTGEN, ROENTGEN_BEISPIELE, SPRACHE } from "../../data/ki-demos";
+import "../../styles/ki-roentgen.css";
+
+const programm = PROGRAMME.roentgen;
+const e = ROENTGEN.ergebnis;
+const grenzen = ROENTGEN.grenzen;
+const zaehler = `${ROENTGEN.eingabe.hilfe} ${ROENTGEN.eingabe.zaehler("0", String(grenzen.beschreibungMax))}`;
+const schritte = [0, 1, 2];
+---
+
+<Fenster titel={programm.fenstertitel} class="ki-fenster ki-roentgen" data-ki-demo="roentgen" data-gesehen="Röntgenblick: Demo gesehen">
+  <form class="ki-fenster__buehne" method="post" data-turnstile-aktion={programm.aktion} novalidate>
+    <div class="ki-fenster__eingang">
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">1</span>{ROENTGEN.eingabe.titel}</h4>
+      <div class="feld">
+        <label for="ki-roentgen-text">{ROENTGEN.eingabe.label}</label>
+        <p class="ki-feldhinweis" id="ki-roentgen-hinweis">
+          <span class="ki-tag">KI</span>{" "}
+          <span>{programm.kiHinweis} {HINWEISE.keineEchtenDaten}</span>
+        </p>
+        <textarea
+          id="ki-roentgen-text"
+          name="beschreibung"
+          rows="4"
+          maxlength={grenzen.beschreibungMax}
+          placeholder={ROENTGEN.eingabe.platzhalter}
+          aria-describedby="ki-roentgen-hinweis ki-roentgen-zaehler"
+          data-ki-eingabe></textarea>
+        <p class="feld__hilfe ki-zaehler" id="ki-roentgen-zaehler" data-ki-zaehler>{zaehler}</p>
+      </div>
+      <div class="ki-roentgen__beispiele" role="group" aria-labelledby="ki-roentgen-beispiele">
+        <p class="feld__hilfe" id="ki-roentgen-beispiele">{ROENTGEN.beispiele}</p>
+        <div class="ki-roentgen__chips">
+          {
+            ROENTGEN_BEISPIELE.map((b) => (
+              <button type="button" class="retro-knopf ki-roentgen__beispiel" data-roentgen-beispiel={b.id}>
+                {b.knopf}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+      <div class="ki-sprache">
+        <button type="button" class="retro-knopf" data-ki-sprache hidden>
+          <span data-ki-sprache-text>{SPRACHE.knopf}</span>
+        </button>
+        <p class="feld__hilfe" data-ki-sprache-zeile></p>
+        <div class="ki-meldung" data-ki-sprache-hinweis hidden></div>
+      </div>
+      <div class="ki-roentgen__angaben">
+        <div class="feld">
+          <label for="ki-roentgen-branche">
+            {ROENTGEN.branche.label} <span class="optional">{ROENTGEN.branche.optional}</span>
+          </label>
+          <input
+            id="ki-roentgen-branche"
+            name="branche"
+            type="text"
+            maxlength={grenzen.brancheMax}
+            autocomplete="off"
+            placeholder={ROENTGEN.branche.platzhalter}
+            data-roentgen-branche
+          />
+        </div>
+        <div class="feld">
+          <label for="ki-roentgen-team">{ROENTGEN.team.label} <span class="optional">{ROENTGEN.team.optional}</span></label>
+          <span class="ki-roentgen__team">
+            <input
+              id="ki-roentgen-team"
+              name="teamgroesse"
+              type="number"
+              inputmode="numeric"
+              min={grenzen.teamMin}
+              max={grenzen.teamMax}
+              step="1"
+              aria-describedby="ki-roentgen-team-einheit"
+              data-roentgen-team
+            />
+            <span id="ki-roentgen-team-einheit">{ROENTGEN.team.einheit}</span>
+          </span>
+        </div>
+      </div>
+      {turnstileSiteKey && <div class="ki-turnstile" data-turnstile data-sitekey={turnstileSiteKey} />}
+      <div class="ki-meldung" data-ki-meldung hidden></div>
+      <div class="check__aktionen">
+        <button type="submit" class="retro-knopf retro-knopf--voll" data-ki-start disabled>{ROENTGEN.start}</button>
+        <button type="button" class="retro-knopf" data-ki-anhalten hidden>{ROENTGEN.anhalten}</button>
+      </div>
+    </div>
+
+    <div class="ki-fenster__ausgang" aria-busy="false" data-ki-ausgang>
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">2</span>{e.ueberschrift}</h4>
+      <div class="ki-platz ki-roentgen__platz" data-ki-ergebnis>
+        <p class="ki-platz__leer" data-ki-leer>{e.leer}</p>
+
+        <!-- Leuchtschirm bis zum ersten Teilstand: Strahl, Blitz bei rund 0,75 s (mit dem Klang), Fund am Engpass -->
+        <div class="ki-roentgen__schirm" data-roentgen-schirm aria-hidden="true" hidden>
+          <div class="ki-roentgen__skelett">
+            <span></span><span></span><span></span>
+            <i class="ki-roentgen__fund"></i>
+          </div>
+          <span class="ki-roentgen__strahl"></span>
+          <span class="ki-roentgen__blitz"></span>
+          <p class="ki-roentgen__schirmtext">{ROENTGEN.durchleuchtet}</p>
+        </div>
+
+        <div class="ki-roentgen__befund" data-ki-vorschau hidden>
+          <h5 class="ki-roentgen__label">{e.diagnose}</h5>
+          <p class="ki-roentgen__diagnose ki-text" data-ki-feld="diagnose"></p>
+
+          <div class="ki-roentgen__blaetter">
+            <div class="ki-papier ki-roentgen__blatt ki-roentgen__blatt--ist">
+              <h5 class="ki-roentgen__blatttitel">{e.ist}</h5>
+              <ol class="ki-roentgen__schritte">
+                {
+                  schritte.map((i) => (
+                    <li>
+                      <span class="ki-roentgen__was ki-text" data-ki-feld={`ist-${i}-schritt`} />
+                      <span class="ki-roentgen__warum" data-ki-zeile={`ist-${i}-bremse`}>
+                        <span class="ki-roentgen__marke">
+                          <svg class="ki-roentgen__symbol" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                            <path d="M4 0h4l4 4v4l-4 4H4L0 8V4z" />
+                            <path class="ki-roentgen__symbol-innen" d="M3 5h6v2H3z" />
+                          </svg>
+                          {e.bremse}:
+                        </span>{" "}
+                        <span class="ki-text" data-ki-feld={`ist-${i}-bremse`} />
+                      </span>
+                    </li>
+                  ))
+                }
+              </ol>
+            </div>
+            <div class="ki-papier ki-roentgen__blatt ki-roentgen__blatt--soll">
+              <h5 class="ki-roentgen__blatttitel">{e.soll}</h5>
+              <ol class="ki-roentgen__schritte">
+                {
+                  schritte.map((i) => (
+                    <li>
+                      <span class="ki-roentgen__was ki-text" data-ki-feld={`soll-${i}-schritt`} />
+                      <span class="ki-roentgen__warum" data-ki-zeile={`soll-${i}-hebel`}>
+                        <span class="ki-roentgen__marke">
+                          <svg class="ki-roentgen__symbol pfeil--rechts" viewBox="0 0 7 7" aria-hidden="true" focusable="false">
+                            <path d="M3 0h1v1H3zM2 1h1v1H2zM1 2h1v1H1zM0 3h7v1H0zM1 4h1v1H1zM2 5h1v1H2zM3 6h1v1H3z" />
+                          </svg>
+                          {e.hebel}:
+                        </span>{" "}
+                        <span class="ki-text" data-ki-feld={`soll-${i}-hebel`} />
+                      </span>
+                    </li>
+                  ))
+                }
+              </ol>
+              <!-- Die Schnittstelle: Der neue Ablauf hängt an dem, was bleiben darf -->
+              <div class="ki-roentgen__alt" data-ki-zeile="altsystem">
+                <p class="ki-roentgen__schnittstelle">{e.schnittstelle}</p>
+                <div class="ki-roentgen__notiz">
+                  <p data-ki-zeile="bleibt">
+                    <span class="ki-roentgen__notizwort">{e.bleibt}:</span>{" "}
+                    <span class="ki-text" data-ki-feld="bleibt"></span>
+                  </p>
+                  <p data-ki-zeile="davor">
+                    <span class="ki-roentgen__notizwort">{e.davor}:</span>{" "}
+                    <span class="ki-text" data-ki-feld="davor"></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p class="ki-roentgen__hebel" data-ki-zeile="hebel">
+            <span class="ki-roentgen__hebelwort">{e.groessterHebel}:</span>{" "}
+            <span class="ki-text" data-ki-feld="hebel"></span>
+          </p>
+
+          <!-- Kacheln und Stufe nur aus der Rechnung des Dienstes (fertig.rechnung), nie aus dem Teilstand -->
+          <div class="ki-roentgen__kacheln" data-ki-zeile="kacheln">
+            <div class="ki-roentgen__kachel">
+              <p class="ki-roentgen__kachelwert" data-ki-feld="stunden"></p>
+              <p class="ki-roentgen__kachelunter">{ROENTGEN.kacheln.stundenUnterzeile}</p>
+            </div>
+            <div class="ki-roentgen__kachel ki-roentgen__kachel--kosten">
+              <p class="ki-roentgen__kachelwert" data-ki-feld="kosten"></p>
+              <p class="ki-roentgen__kachelunter" data-ki-feld="rechenweg"></p>
+            </div>
+            <p class="ki-roentgen__fuss">{ROENTGEN.kacheln.fuss}</p>
+          </div>
+
+          <h5 class="ki-roentgen__label">{e.fazit}</h5>
+          <div class="urteil ki-roentgen__urteil" data-roentgen-urteil>
+            <p class="urteil__kicker" data-ki-feld="dachzeile"></p>
+            <p class="urteil__titel" data-ki-feld="stufentitel"></p>
+            <p class="urteil__text ki-text" data-ki-feld="fazit"></p>
+          </div>
+
+          <div class="ki-roentgen__knoepfe" data-roentgen-knoepfe hidden>
+            <button type="button" class="retro-knopf" data-befund-ausstellen>{ROENTGEN.ausstellen}</button>
+            <button type="button" class="retro-knopf" data-roentgen-termin data-klickziel="Röntgenblick: Termin mit Befund">
+              {ROENTGEN.termin}
+            </button>
+            <button type="button" class="check__link" data-roentgen-nochmal>{ROENTGEN.nochmal}</button>
+          </div>
+        </div>
+      </div>
+      <p class="ki-pruefhinweis">{HINWEISE.unterErgebnis}</p>
+    </div>
+  </form>
+
+  <!-- Befund als Durchschreibe-Beleg: Klassen wie der Beleg des Checks, eigene data-befund-* (die des Checks zählt die
+       Messung seitenweit als Klicks im Check), eigene Filter-id für die Tinte des Stempels -->
+  <div class="ki-roentgen__beleg" data-befund-bereich hidden>
+    <div class="zettel" data-befund-zettel>
+      <div class="zettel__kopie zettel__kopie--rosa" aria-hidden="true"></div>
+      <div class="zettel__kopie zettel__kopie--gelb" aria-hidden="true"></div>
+      <div class="zettel__bogen">
+        <p class="zettel__absender">{BEFUND.kopf}</p>
+        <h4 class="zettel__titel" tabindex="-1" data-befund-titel>{BEFUND.titel[0]}<br />{BEFUND.titel[1]}</h4>
+
+        <dl class="zettel__meta">
+          <div>
+            <dt>{BEFUND.nummer.label}</dt>
+            <dd data-befund-nr></dd>
+          </div>
+          <div>
+            <dt>{BEFUND.datum}</dt>
+            <dd data-befund-datum></dd>
+          </div>
+          <div>
+            <dt>{BEFUND.geprueft.label}</dt>
+            <dd>{BEFUND.geprueft.wert}</dd>
+          </div>
+        </dl>
+
+        <p class="ki-roentgen__belegdiagnose">
+          <span class="ki-roentgen__belegwort">{e.diagnose}</span>{" "}
+          <span data-befund-diagnose></span>
+        </p>
+
+        <table class="zettel__tabelle">
+          <caption class="sr-only">{BEFUND.tabellenTitel}</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="zettel__pos">{BEFUND.spalten.schritt}</th>
+              <th scope="col" class="ki-roentgen__th-ist">{BEFUND.spalten.ist}</th>
+              <th scope="col">{BEFUND.spalten.soll}</th>
+            </tr>
+          </thead>
+          <tbody data-befund-zeilen></tbody>
+        </table>
+
+        <div class="zettel__abschluss">
+          <div class="zettel__stempelfeld">
+            <svg class="zettel__stempel" viewBox="0 0 260 104" aria-hidden="true" focusable="false">
+              <defs>
+                <filter id="rb-stempel-tinte" x="-6%" y="-12%" width="112%" height="124%" color-interpolation-filters="sRGB">
+                  <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="7" result="fein"></feTurbulence>
+                  <feDisplacementMap
+                    in="SourceGraphic"
+                    in2="fein"
+                    scale="2.6"
+                    xChannelSelector="R"
+                    yChannelSelector="G"
+                    result="rau"></feDisplacementMap>
+                  <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed="23" result="flecken"
+                  ></feTurbulence>
+                  <feColorMatrix
+                    in="flecken"
+                    type="matrix"
+                    values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
+                    result="maske"></feColorMatrix>
+                  <feComposite in="rau" in2="maske" operator="in"></feComposite>
+                </filter>
+              </defs>
+              <g filter="url(#rb-stempel-tinte)">
+                <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"></rect>
+                <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+                <text
+                  x="130"
+                  y="60"
+                  text-anchor="middle"
+                  fill="currentColor"
+                  font-size="40"
+                  font-weight="800"
+                  textLength="214"
+                  lengthAdjust="spacingAndGlyphs"
+                  data-befund-stempel-oben>{BEFUND.stempelOben}</text
+                >
+                <text
+                  x="130"
+                  y="82"
+                  text-anchor="middle"
+                  fill="currentColor"
+                  font-size="13"
+                  font-weight="650"
+                  textLength="196"
+                  lengthAdjust="spacingAndGlyphs"
+                  data-befund-stempel-unten></text
+                >
+              </g>
+            </svg>
+            <span class="sr-only" data-befund-stempel-text></span>
+          </div>
+          <dl class="zettel__summen">
+            <div>
+              <dt>{BEFUND.zeileStunden}</dt>
+              <dd data-befund-stunden></dd>
+            </div>
+            <div>
+              <dt>{BEFUND.zeileStundenJahr}</dt>
+              <dd data-befund-stundenjahr></dd>
+            </div>
+            <div class="gesamt">
+              <dt>{BEFUND.summe}</dt>
+              <dd data-befund-summe></dd>
+            </div>
+          </dl>
+        </div>
+
+        <p class="zettel__hinweis" data-befund-hinweis></p>
+        <p class="zettel__hinweis" data-befund-beschreibung></p>
+        <p class="ki-roentgen__fusszeile" data-befund-fusszeile></p>
+        <p class="zettel__kontakt">
+          <span>{BEFUND.kontakt}</span>
+          {kontakt.telefonAnzeige && <a href={kontakt.telefonLink}>{kontakt.telefonAnzeige}</a>}
+          <a href={`mailto:${kontakt.email}`}>{kontakt.email}</a>
+          <a href="https://jtkconsulting.de">jtkconsulting.de</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="ki-roentgen__belegseite">
+      <div class="check__aktionen">
+        <button type="button" class="retro-knopf" data-befund-pdf>{ROENTGEN.pdf}</button>
+        <button type="button" class="retro-knopf" data-roentgen-termin data-klickziel="Röntgenblick: Termin mit Befund">
+          {ROENTGEN.termin}
+        </button>
+      </div>
+      <p class="check__hilfe" role="status" data-befund-pdf-status></p>
+    </div>
+  </div>
+
+  <Fragment slot="status">
+    <span data-ki-stand>Wird vorbereitet …</span>
+    <span>{ROENTGEN.grundlage(String(STUNDENSATZ))}</span>
+  </Fragment>
+</Fenster>

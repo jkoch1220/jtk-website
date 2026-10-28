@@ -8,9 +8,12 @@
 #    (eine bestehende Konfiguration wird gesichert und ergänzt, nicht überschrieben)
 #  - trägt zusätzlich app.koch.consulting für den Website-Dienst ein (Docker auf 127.0.0.1:3100,
 #    Deployment über website-dienst/deploy/deploy.sh im Portal-Repo; dort liegt auch die Portal-API);
-#    von der Website gehen nur /api/anfrage, /api/e, /api/gesundheit und /api/termine(/*) dorthin
+#    von der Website gehen nur /api/anfrage, /api/e, /api/gesundheit, /api/termine(/*) und /api/ki/* dorthin
 #  - ergänzt in einer bestehenden Konfiguration ohne Terminbuchung den Matcher um /api/termine
 #    (gesichert, danach caddy validate, sonst zurück zum alten Stand)
+#  - ergänzt in einer bestehenden Konfiguration ohne KI-Demos den Matcher um /api/ki/* und nimmt den Pfad von der
+#    Kompression aus (Server-Sent Events); gesichert, danach caddy validate, sonst zurück zum alten Stand
+#  - sagt Bescheid, wenn Caddy älter als 2.11.7 ist (die KI-Demos brauchen es, siehe unten)
 #  - stellt eine bestehende Konfiguration, in der koch.consulting dieselbe Website zeigte, auf eine
 #    301-Weiterleitung nach jtkconsulting.de um und lässt die 404-Seite komprimiert ausliefern (ebenso gesichert)
 #  - begrenzt die Aufbewahrung des System-Journals auf 7 Tage (dort landen Caddys Fehlermeldungen
@@ -39,11 +42,17 @@ koch.consulting, www.koch.consulting {
 
 jtkconsulting.de {
 	root * /var/www/jtkconsulting
-	encode zstd gzip
+	# Komprimiert wird alles außer den KI-Demos: Deren Antworten sind Server-Sent Events und sollen Ereignis für
+	# Ereignis ankommen. Caddy vor 2.11.7 hielt sie hinter encode zurück (caddyserver/caddy#6293); die Ereignisse
+	# sind ohnehin klein.
+	@komprimieren not path /api/ki/*
+	encode @komprimieren zstd gzip
 
-	# Kontaktformular, Terminbuchung, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
+	# Kontaktformular, Terminbuchung, KI-Demos, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
 	# nur lokal erreichbar). Nur diese Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
-	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*
+	# Bewusst ohne flush_interval: Server-Sent Events reicht Caddy von selbst sofort durch, und nur so bricht Caddy
+	# die Anfrage an den Dienst ab, wenn der Besucher geht (der Dienst beendet dann den Aufruf bei Anthropic).
+	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/* /api/ki/*
 	handle @plattform {
 		reverse_proxy 127.0.0.1:3100
 	}
@@ -96,10 +105,11 @@ DATEI="${CADDYFILE:-/etc/caddy/Caddyfile}"
 NEU="${NEUE_KONFIG:-/tmp/jtk.caddy}"
 APP_NEU="${NEUE_APP_KONFIG:-/tmp/plattform.caddy}"
 
-# Matcher der Website für den Website-Dienst: ALT ohne Terminbuchung (bis Oktober 2026), NEU wie in
-# deploy/Caddyfile. ALT ist der Anfang von NEU, die Abbruch-Prüfung erkennt so beide Fassungen.
+# Matcher der Website für den Website-Dienst: ALT ohne Terminbuchung (bis Oktober 2026), NEU mit Terminbuchung,
+# KI wie in deploy/Caddyfile. Jede Fassung ist der Anfang der nächsten, die Abbruch-Prüfung erkennt so alle drei.
 MATCHER_ALT="@plattform path /api/anfrage /api/e /api/gesundheit"
 MATCHER_NEU="@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*"
+MATCHER_KI="$MATCHER_NEU /api/ki/*"
 
 if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_ALT" "$DATEI"; then
   echo "$DOMAIN steht schon in $DATEI, aber nicht mit der Weiterleitung von /api/anfrage, /api/e und"
@@ -138,6 +148,14 @@ if ! command -v caddy >/dev/null 2>&1; then
   apt-get install -y -qq caddy >/dev/null
 fi
 
+# Die KI-Demos streamen per Server-Sent Events auf POST. Caddy 2.11.6 bricht solche Streams über HTTP/1.1 nach
+# 60 s ab, erst 2.11.7 behebt das. Pakete aus der Caddy-Quelle aktualisiert unattended-upgrades standardmäßig
+# nicht, daher hier ein Hinweis.
+CADDY_VERSION=$(caddy version 2>/dev/null | awk '{print $1}' | sed 's/^v//')
+if [ -n "$CADDY_VERSION" ] && [ "$(printf '%s\n' 2.11.7 "$CADDY_VERSION" | sort -V | head -n 1)" != "2.11.7" ]; then
+  echo "Hinweis: Caddy $CADDY_VERSION ist älter als 2.11.7. Für die KI-Demos: apt-get install --only-upgrade caddy"
+fi
+
 mkdir -p "$ZIEL"
 
 # Vor der ersten Änderung einmal sichern
@@ -170,7 +188,7 @@ if grep -q "^$DOMAIN, $ZWEIT_DOMAIN {\$" "$DATEI" 2>/dev/null; then
   sed -i "s|^# $ZWEIT_DOMAIN zeigt dieselbe Website.*|# $ZWEIT_DOMAIN leitet auf $DOMAIN um (301 samt Pfad)|" "$DATEI"
   echo "$ZWEIT_DOMAIN leitet jetzt per 301 auf $DOMAIN um."
 elif grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
-  echo "$DOMAIN steht schon in $DATEI, dieser Block wird nur bei Bedarf ergänzt (Weiterleitung, komprimierte 404, Terminbuchung)."
+  echo "$DOMAIN steht schon in $DATEI, dieser Block wird nur bei Bedarf ergänzt (Weiterleitung, komprimierte 404, Terminbuchung, KI-Demos)."
 else
   eintragen "$NEU"
 fi
@@ -199,6 +217,34 @@ if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_NEU" "$DATEI"
   else
     echo "Hinweis: Die Zeile „$MATCHER_ALT“ in $DATEI wurde von Hand geändert und bleibt so."
     echo "Für die Terminbuchung muss sie lauten: $MATCHER_NEU"
+  fi
+fi
+
+# Fassung ohne KI-Demos: /api/ki/* zusätzlich an den Website-Dienst (wie oben /api/termine: nur genau die
+# bekannte Zeile wird ersetzt) und von der Kompression ausnehmen, damit die Server-Sent Events Ereignis für
+# Ereignis ankommen. Validiert wird unten, bei Fehler kommt der gesicherte Stand zurück.
+# MATCHER_NEU endet auf „/api/termine/*“: für grep und sed den Stern maskieren
+MATCHER_NEU_MUSTER=$(printf '%s' "$MATCHER_NEU" | sed 's/\*/\\*/g')
+if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_KI" "$DATEI"; then
+  if grep -q "^[[:space:]]*${MATCHER_NEU_MUSTER}[[:space:]]*\$" "$DATEI"; then
+    sichern
+    sed -i "s|^\([[:space:]]*\)${MATCHER_NEU_MUSTER}[[:space:]]*\$|\1${MATCHER_KI}|" "$DATEI"
+    echo "$DOMAIN leitet jetzt auch /api/ki/* an den Website-Dienst weiter (KI-Demos)."
+  else
+    echo "Hinweis: Die Zeile „$MATCHER_NEU“ in $DATEI wurde von Hand geändert und bleibt so."
+    echo "Für die KI-Demos muss sie lauten: $MATCHER_KI"
+  fi
+fi
+# Nur das encode direkt im Block der Website (ein Tab eingerückt); das in handle_errors und das von
+# app.koch.consulting bleiben, wie sie sind
+if grep -q "^$DOMAIN {" "$DATEI" 2>/dev/null && ! grep -q "encode @komprimieren" "$DATEI"; then
+  if sed -n "/^$DOMAIN {\$/,/^}\$/{/^\tencode zstd gzip\$/p;}" "$DATEI" | grep -q .; then
+    sichern
+    sed -i "/^$DOMAIN {\$/,/^}\$/s|^\tencode zstd gzip\$|\t@komprimieren not path /api/ki/*\n\tencode @komprimieren zstd gzip|" "$DATEI"
+    echo "Antworten unter /api/ki/* gehen jetzt unkomprimiert raus (Server-Sent Events)."
+  else
+    echo "Hinweis: „encode zstd gzip“ im Block $DOMAIN wurde von Hand geändert. Für die KI-Demos /api/ki/*"
+    echo "wie in deploy/Caddyfile von der Kompression ausnehmen (@komprimieren)."
   fi
 fi
 

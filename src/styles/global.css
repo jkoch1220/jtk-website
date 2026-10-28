@@ -831,8 +831,16 @@ a:hover {
   transform: translate(-1px, -1px);
 }
 
-@media (max-width: 1080px) {
+/* Die vier Links brauchen rund 1140 px, dazu Reserve für die Scrollleiste; schmaler bräche jeder zweizeilig um */
+@media (max-width: 1169px) {
   .nav-optional {
+    display: none;
+  }
+}
+
+/* Der fünfte Link braucht rund 1300 px, dazu Reserve für die Scrollleiste */
+@media (max-width: 1319px) {
+  .nav-breit {
     display: none;
   }
 }

@@ -10,6 +10,7 @@ import { aufrufId, seitenStart } from "./tracking";
 import { turnstileToken, turnstileVorbereiten, turnstileZuruecksetzen } from "./turnstile";
 import { spiele } from "./klang";
 import { nutzung } from "./nutzung";
+import { blockEinsetzen, quelleVon } from "./vorbelegen";
 
 type TerminOrt = "meet" | "telefon";
 type FreieZeit = { start: number; label: string };
@@ -508,12 +509,15 @@ function terminEinrichten(): void {
     nutzung("Termin", `Feld „${FELDNAMEN[feldName]}“ begonnen`);
   });
 
-  // Ergebnis aus dem Zeitfresser-Check: seite.ts füllt das Formular, hier dasselbe für die Buchung
+  // Ergebnis aus dem Zeitfresser-Check oder Befund aus dem Röntgenblick (vorbelegen.ts): seite.ts füllt das
+  // Formular, hier dasselbe für die Buchung; ein neuer Block ersetzt nur den alten derselben Quelle
   window.addEventListener("anfrage:vorbelegen", (event) => {
     const block = (event as CustomEvent<string>).detail;
     if (typeof block !== "string" || !block) return;
-    const bisher = nachricht.value.replace(/Ergebnis aus dem Zeitfresser-Check:[\s\S]*?Stunden im Jahr\.\n*/u, "").trim();
-    nachricht.value = bisher ? `${block}\n\n${bisher}` : block;
+    nachricht.value = blockEinsetzen(nachricht.value, block);
+    // Der Knopf im Röntgenblick verspricht den Kalender: zur Buchung wechseln, wenn es sie gibt. Ohne
+    // nutzung("Termin", …): Jeder „Termin: …“-Schlüssel zählt im Dienst als angefangene Buchung.
+    if (quelleVon(block) === "roentgen" && !gebucht && !anfrageGesendet && !umschalter.hidden) modusSetzen("termin");
     if (modus !== "termin" || gebucht) return;
     // seite.ts scrollt zum Kontakt und will danach ins (hier verborgene) Formular; stattdessen zum Tag
     let erledigt = false;

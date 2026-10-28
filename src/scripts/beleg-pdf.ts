@@ -2,7 +2,9 @@
    1. Der Beleg wird auf ein Canvas gezeichnet (A4, doppelte Auflösung).
    2. Das Canvas wird zu JPEG.
    3. pdfBauen() packt das JPEG in eine minimale, gültige PDF-Datei mit einer Seite.
-   pdfBauen() kommt ohne DOM aus und lässt sich so auch allein prüfen. */
+   pdfBauen() kommt ohne DOM aus und lässt sich so auch allein prüfen.
+   Ablauf (seiteAlsPdf), Zeichenhelfer, Stempel und die Rahmenteile der Seite nutzt auch der Befund des
+   Büro-Röntgenblicks (scripts/ki/befund-pdf.ts). Für den Beleg des Checks ändert sich dadurch kein Byte. */
 
 export type BelegDaten = {
   nummer: string;
@@ -27,12 +29,15 @@ export type BelegDaten = {
 /** Klickbare Fläche im PDF, in Punkt, y von oben gemessen */
 export type PdfLink = { x: number; y: number; b: number; h: number; uri: string };
 
-// A4 in Punkt (1/72 Zoll)
-const SEITE_B = 595;
-const SEITE_H = 842;
-const MASSSTAB = 2;
+/** Zusätzliche Angaben im Info-Wörterbuch, nur ASCII (pdfText). Ohne sie: Titel, Autor „JTK Consulting“, Datum. */
+export type PdfInfo = { autor?: string; betreff?: string; stichwoerter?: string };
 
-const FARBE = {
+// A4 in Punkt (1/72 Zoll)
+export const SEITE_B = 595;
+export const SEITE_H = 842;
+export const MASSSTAB = 2;
+
+export const FARBE = {
   papier: "#f1f1f3",
   bogen: "#ffffff",
   tinte: "#2b2a7e",
@@ -43,8 +48,8 @@ const FARBE = {
   rosa: "#f2cdd5",
   stempel: "#c9283a",
 };
-const SCHRIFT = '"Mona Sans Variable", "Mona Sans", Arial, sans-serif';
-const PIXEL = '"Jersey 10", "Courier New", monospace';
+export const SCHRIFT = '"Mona Sans Variable", "Mona Sans", Arial, sans-serif';
+export const PIXEL = '"Jersey 10", "Courier New", monospace';
 
 const ganzzahl = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
 const euro = (wert: number) => `${ganzzahl.format(wert)} €`;
@@ -58,6 +63,7 @@ export function pdfBauen(
   pixelHoehe: number,
   links: PdfLink[] = [],
   titel = "Zeitfresser-Beleg",
+  info: PdfInfo = {},
 ): Uint8Array {
   const kodierer = new TextEncoder();
   const teile: Uint8Array[] = [];
@@ -105,9 +111,14 @@ export function pdfBauen(
     "\nendstream",
   );
   objekt(5, `<< /Length ${kodierer.encode(inhalt).length} >>\nstream\n${inhalt}endstream`);
+  // Betreff und Stichwörter nur, wenn jemand sie mitgibt (der Befund des Röntgenblicks sagt dort maschinenlesbar,
+  // dass eine KI ihn erstellt hat); ohne sie steht hier Zeichen für Zeichen dasselbe wie vorher
   objekt(
     6,
-    `<< /Title ${pdfText(titel)} /Author (JTK Consulting) /Creator (jtkconsulting.de) /CreationDate (${datum}) >>`,
+    `<< /Title ${pdfText(titel)} /Author ${pdfText(info.autor ?? "JTK Consulting")} /Creator (jtkconsulting.de)` +
+      (info.betreff ? ` /Subject ${pdfText(info.betreff)}` : "") +
+      (info.stichwoerter ? ` /Keywords ${pdfText(info.stichwoerter)}` : "") +
+      ` /CreationDate (${datum}) >>`,
   );
   links.forEach((link, i) => {
     // PDF misst von unten links
@@ -145,11 +156,11 @@ export function pdfBauen(
 
 type Ctx = CanvasRenderingContext2D;
 
-function schrift(ctx: Ctx, groesse: number, gewicht = 400, familie = SCHRIFT): void {
+export function schrift(ctx: Ctx, groesse: number, gewicht = 400, familie = SCHRIFT): void {
   ctx.font = `${gewicht} ${groesse}px ${familie}`;
 }
 
-function umbrechen(ctx: Ctx, text: string, breite: number): string[] {
+export function umbrechen(ctx: Ctx, text: string, breite: number): string[] {
   const zeilen: string[] = [];
   let zeile = "";
   for (const wort of text.split(/\s+/)) {
@@ -166,7 +177,7 @@ function umbrechen(ctx: Ctx, text: string, breite: number): string[] {
 }
 
 // Verkleinert die Schrift bis zur Mindestgröße, kürzt danach mit Auslassungspunkten
-function einpassen(ctx: Ctx, text: string, breite: number, groesse: number, gewicht: number): string {
+export function einpassen(ctx: Ctx, text: string, breite: number, groesse: number, gewicht: number): string {
   let g = groesse;
   schrift(ctx, g, gewicht);
   while (ctx.measureText(text).width > breite && g > groesse * 0.82) {
@@ -179,7 +190,7 @@ function einpassen(ctx: Ctx, text: string, breite: number, groesse: number, gewi
   return `${kurz.trimEnd()}…`;
 }
 
-function linie(ctx: Ctx, x1: number, y: number, x2: number, farbe: string, dicke = 0.75): void {
+export function linie(ctx: Ctx, x1: number, y: number, x2: number, farbe: string, dicke = 0.75): void {
   ctx.strokeStyle = farbe;
   ctx.lineWidth = dicke;
   ctx.beginPath();
@@ -197,7 +208,7 @@ function zufall(startwert: number): () => number {
 }
 
 // Stempel mit leicht ausgefranster Tinte: erst sauber zeichnen, dann Löcher stanzen
-function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number, text: BelegDaten["stempel"]): void {
+export function stempel(ctx: Ctx, mitteX: number, mitteY: number, breite: number, text: BelegDaten["stempel"]): void {
   const hoehe = breite * 0.4;
   const aufloesung = MASSSTAB * 2;
   const blatt = document.createElement("canvas");
@@ -355,6 +366,146 @@ function bogenInhalt(ctx: Ctx, x: number, y: number, b: number, d: BelegDaten): 
   return cy + rand - 10;
 }
 
+/* Rahmenteile einer Seite: x und b sind linker Rand und Breite in Punkt, y die Oberkante. Jede Funktion liefert
+   die Höhe bzw. die nächste freie Zeile, damit Check und Befund sie untereinander setzen können. */
+
+/** Kopfzeile in Pixelschrift: Titel links, Adresse rechts */
+export function kopfzeileZeichnen(ctx: Ctx, x: number, y: number, b: number, titel: string, web: string): number {
+  ctx.fillStyle = FARBE.tinte;
+  schrift(ctx, 17, 400, PIXEL);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(titel, x, y + 12);
+  ctx.textAlign = "right";
+  ctx.fillText(web, x + b, y + 12);
+  ctx.textAlign = "left";
+  return y + 30;
+}
+
+/** Weißer Bogen mit rosa und gelbem Durchschlag darunter. Die Höhe wird erst gemessen, dann gezeichnet. */
+export function durchschlagZeichnen(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  b: number,
+  inhalt: (ctx: Ctx, x: number, y: number, b: number) => number,
+): number {
+  const messen = document.createElement("canvas").getContext("2d");
+  const hoehe = messen ? inhalt(messen, 0, 0, b) : 560;
+  const kopie = (farbe: string, dx: number, dy: number, grad: number) => {
+    ctx.save();
+    ctx.translate(x + b / 2 + dx, y + hoehe / 2 + dy);
+    ctx.rotate((grad * Math.PI) / 180);
+    ctx.fillStyle = farbe;
+    ctx.fillRect(-b / 2, -hoehe / 2, b, hoehe);
+    ctx.restore();
+  };
+  kopie(FARBE.rosa, 14, 15, 1.2);
+  kopie(FARBE.gelb, 7, 8, 0.6);
+  ctx.save();
+  ctx.shadowColor = "rgba(43, 42, 126, 0.22)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = FARBE.bogen;
+  ctx.fillRect(x, y, b, hoehe);
+  ctx.restore();
+  inhalt(ctx, x, y, b);
+  return hoehe;
+}
+
+/** Nummerierte Liste mit Titel in Pixelschrift (die größten Hebel); ohne Einträge zeichnet sie nichts */
+export function nummernListeZeichnen(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  b: number,
+  titel: string,
+  eintraege: { titel: string; schritt: string }[],
+): number {
+  if (eintraege.length === 0) return y;
+  let cy = y;
+  ctx.fillStyle = FARBE.tinte;
+  schrift(ctx, 18, 400, PIXEL);
+  ctx.fillText(titel, x, cy + 12);
+  cy += 24;
+  eintraege.forEach((h, i) => {
+    ctx.fillStyle = FARBE.tinte;
+    ctx.fillRect(x, cy + 1, 15, 15);
+    ctx.fillStyle = FARBE.bogen;
+    schrift(ctx, 14, 400, PIXEL);
+    ctx.textAlign = "center";
+    ctx.fillText(String(i + 1), x + 7.5, cy + 13);
+    ctx.textAlign = "left";
+    const textX = x + 24;
+    const textB = b - 24;
+    ctx.fillStyle = FARBE.tinte;
+    schrift(ctx, 9.5, 650);
+    for (const zeile of umbrechen(ctx, h.titel, textB)) {
+      ctx.fillText(zeile, textX, cy + 11);
+      cy += 13;
+    }
+    ctx.fillStyle = FARBE.matt;
+    schrift(ctx, 9);
+    for (const zeile of umbrechen(ctx, h.schritt, textB)) {
+      ctx.fillText(zeile, textX, cy + 11);
+      cy += 12.5;
+    }
+    cy += 8;
+  });
+  return cy + 8;
+}
+
+/**
+ * Kontaktleiste wie ein Retro-Fenster: „Nächster Schritt“, darunter eine Zeile (Standard: Name und Firma), rechts
+ * Telefon, Mail und Web als klickbare Flächen (in pdfLinks).
+ */
+export function kontaktleisteZeichnen(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  b: number,
+  schritt: string,
+  kontakt: BelegDaten["kontakt"],
+  pdfLinks: PdfLink[],
+  zeile = `${kontakt.name}, ${kontakt.firma}`,
+): number {
+  const leisteH = 58;
+  ctx.fillStyle = FARBE.tinte;
+  ctx.fillRect(x + 3, y + 3, b, leisteH);
+  ctx.fillStyle = FARBE.bogen;
+  ctx.fillRect(x, y, b, leisteH);
+  ctx.strokeStyle = FARBE.tinte;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y, b, leisteH);
+  ctx.fillStyle = FARBE.tinte;
+  schrift(ctx, 16, 400, PIXEL);
+  ctx.fillText("Nächster Schritt", x + 14, y + 22);
+  schrift(ctx, 9.5, 520);
+  ctx.fillText(schritt, x + 14, y + 38, b * 0.6);
+  ctx.fillStyle = FARBE.matt;
+  schrift(ctx, 8.5);
+  ctx.fillText(zeile, x + 14, y + 50);
+
+  const rechtsX = x + b - 14;
+  const eintrag = (text: string, basis: number, uri: string, groesse: number, gewicht: number) => {
+    schrift(ctx, groesse, gewicht);
+    ctx.textAlign = "right";
+    ctx.fillText(text, rechtsX, basis);
+    ctx.textAlign = "left";
+    const w = ctx.measureText(text).width;
+    pdfLinks.push({ x: rechtsX - w - 2, y: basis - groesse, b: w + 4, h: groesse + 4, uri });
+  };
+  ctx.fillStyle = FARBE.tinte;
+  if (kontakt.telefonAnzeige) {
+    eintrag(kontakt.telefonAnzeige, y + 22, kontakt.telefonLink, 12, 650);
+    eintrag(kontakt.email, y + 37, `mailto:${kontakt.email}`, 9.5, 520);
+    eintrag(kontakt.web, y + 50, `https://${kontakt.web}`, 9.5, 520);
+  } else {
+    eintrag(kontakt.email, y + 28, `mailto:${kontakt.email}`, 11, 600);
+    eintrag(kontakt.web, y + 46, `https://${kontakt.web}`, 10, 520);
+  }
+  return y + leisteH + 24;
+}
+
 /** Zeichnet die ganze Seite. Liefert die klickbaren Flächen mit. */
 function seiteZeichnen(ctx: Ctx, d: BelegDaten): { hoehe: number; links: PdfLink[] } {
   const rand = 48;
@@ -365,116 +516,17 @@ function seiteZeichnen(ctx: Ctx, d: BelegDaten): { hoehe: number; links: PdfLink
   ctx.fillStyle = FARBE.papier;
   ctx.fillRect(0, 0, SEITE_B, SEITE_H * 2);
 
-  // Kopfzeile in Pixelschrift
-  ctx.fillStyle = FARBE.tinte;
-  schrift(ctx, 17, 400, PIXEL);
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("Zeitfresser-Check", rand, cy + 12);
-  ctx.textAlign = "right";
-  ctx.fillText(d.kontakt.web, SEITE_B - rand, cy + 12);
-  ctx.textAlign = "left";
-  cy += 30;
-
-  // Bogen mit Durchschlägen: Höhe erst messen, dann zeichnen
-  const bogenB = breite - 18;
-  const messen = document.createElement("canvas").getContext("2d");
-  const bogenH = messen ? bogenInhalt(messen, 0, 0, bogenB, d) : 560;
-  const kopie = (farbe: string, dx: number, dy: number, grad: number) => {
-    ctx.save();
-    ctx.translate(rand + bogenB / 2 + dx, cy + bogenH / 2 + dy);
-    ctx.rotate((grad * Math.PI) / 180);
-    ctx.fillStyle = farbe;
-    ctx.fillRect(-bogenB / 2, -bogenH / 2, bogenB, bogenH);
-    ctx.restore();
-  };
-  kopie(FARBE.rosa, 14, 15, 1.2);
-  kopie(FARBE.gelb, 7, 8, 0.6);
-  ctx.save();
-  ctx.shadowColor = "rgba(43, 42, 126, 0.22)";
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 8;
-  ctx.fillStyle = FARBE.bogen;
-  ctx.fillRect(rand, cy, bogenB, bogenH);
-  ctx.restore();
-  bogenInhalt(ctx, rand, cy, bogenB, d);
-  cy += bogenH + 40;
-
+  cy = kopfzeileZeichnen(ctx, rand, cy, breite, "Zeitfresser-Check", d.kontakt.web);
+  cy += durchschlagZeichnen(ctx, rand, cy, breite - 18, (c, x, y, b) => bogenInhalt(c, x, y, b, d)) + 40;
   // Die größten Hebel
-  if (d.hebel.length > 0) {
-    ctx.fillStyle = FARBE.tinte;
-    schrift(ctx, 18, 400, PIXEL);
-    ctx.fillText(d.hebelTitel, rand, cy + 12);
-    cy += 24;
-    d.hebel.forEach((h, i) => {
-      ctx.fillStyle = FARBE.tinte;
-      ctx.fillRect(rand, cy + 1, 15, 15);
-      ctx.fillStyle = FARBE.bogen;
-      schrift(ctx, 14, 400, PIXEL);
-      ctx.textAlign = "center";
-      ctx.fillText(String(i + 1), rand + 7.5, cy + 13);
-      ctx.textAlign = "left";
-      const textX = rand + 24;
-      const textB = breite - 24;
-      ctx.fillStyle = FARBE.tinte;
-      schrift(ctx, 9.5, 650);
-      for (const zeile of umbrechen(ctx, h.titel, textB)) {
-        ctx.fillText(zeile, textX, cy + 11);
-        cy += 13;
-      }
-      ctx.fillStyle = FARBE.matt;
-      schrift(ctx, 9);
-      for (const zeile of umbrechen(ctx, h.schritt, textB)) {
-        ctx.fillText(zeile, textX, cy + 11);
-        cy += 12.5;
-      }
-      cy += 8;
-    });
-    cy += 8;
-  }
-
-  // Kontaktleiste wie ein Retro-Fenster
-  const leisteH = 58;
-  ctx.fillStyle = FARBE.tinte;
-  ctx.fillRect(rand + 3, cy + 3, breite, leisteH);
-  ctx.fillStyle = FARBE.bogen;
-  ctx.fillRect(rand, cy, breite, leisteH);
-  ctx.strokeStyle = FARBE.tinte;
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(rand, cy, breite, leisteH);
-  ctx.fillStyle = FARBE.tinte;
-  schrift(ctx, 16, 400, PIXEL);
-  ctx.fillText("Nächster Schritt", rand + 14, cy + 22);
-  schrift(ctx, 9.5, 520);
-  ctx.fillText(d.schritt, rand + 14, cy + 38, breite * 0.6);
-  ctx.fillStyle = FARBE.matt;
-  schrift(ctx, 8.5);
-  ctx.fillText(`${d.kontakt.name}, ${d.kontakt.firma}`, rand + 14, cy + 50);
-
-  const rechtsX = SEITE_B - rand - 14;
-  const eintrag = (text: string, basis: number, uri: string, groesse: number, gewicht: number) => {
-    schrift(ctx, groesse, gewicht);
-    ctx.textAlign = "right";
-    ctx.fillText(text, rechtsX, basis);
-    ctx.textAlign = "left";
-    const w = ctx.measureText(text).width;
-    pdfLinks.push({ x: rechtsX - w - 2, y: basis - groesse, b: w + 4, h: groesse + 4, uri });
-  };
-  ctx.fillStyle = FARBE.tinte;
-  if (d.kontakt.telefonAnzeige) {
-    eintrag(d.kontakt.telefonAnzeige, cy + 22, d.kontakt.telefonLink, 12, 650);
-    eintrag(d.kontakt.email, cy + 37, `mailto:${d.kontakt.email}`, 9.5, 520);
-    eintrag(d.kontakt.web, cy + 50, `https://${d.kontakt.web}`, 9.5, 520);
-  } else {
-    eintrag(d.kontakt.email, cy + 28, `mailto:${d.kontakt.email}`, 11, 600);
-    eintrag(d.kontakt.web, cy + 46, `https://${d.kontakt.web}`, 10, 520);
-  }
-  cy += leisteH + 24;
+  cy = nummernListeZeichnen(ctx, rand, cy, breite, d.hebelTitel, d.hebel);
+  cy = kontaktleisteZeichnen(ctx, rand, cy, breite, d.schritt, d.kontakt, pdfLinks);
 
   return { hoehe: cy, links: pdfLinks };
 }
 
 /** Wartet auf die Schriften der Seite, sonst zeichnet das Canvas mit Ersatzschrift. */
-async function schriftenLaden(): Promise<void> {
+export async function schriftenLaden(): Promise<void> {
   try {
     const probe = "Beweisstück äöüß 0123456789 €";
     await Promise.all([
@@ -488,7 +540,7 @@ async function schriftenLaden(): Promise<void> {
   }
 }
 
-function jpegBytes(canvas: HTMLCanvasElement): Uint8Array {
+export function jpegBytes(canvas: HTMLCanvasElement): Uint8Array {
   const url = canvas.toDataURL("image/jpeg", 0.92);
   const binaer = atob(url.slice(url.indexOf(",") + 1));
   const bytes = new Uint8Array(binaer.length);
@@ -496,13 +548,17 @@ function jpegBytes(canvas: HTMLCanvasElement): Uint8Array {
   return bytes;
 }
 
-/** Zeichnet den Beleg und liefert ihn als PDF-Blob. */
-export async function belegPdfErstellen(d: BelegDaten): Promise<Blob> {
+/** Zeichnet eine A4-Seite und liefert sie als PDF-Blob. Passt nicht alles drauf, wird gleichmäßig verkleinert. */
+export async function seiteAlsPdf(
+  zeichnen: (ctx: Ctx) => { hoehe: number; links: PdfLink[] },
+  titel: string,
+  info?: PdfInfo,
+): Promise<Blob> {
   await schriftenLaden();
 
   // Erst messen: Passt nicht alles auf die Seite, wird verkleinert
   const mess = document.createElement("canvas").getContext("2d");
-  const gemessen = mess ? seiteZeichnen(mess, d).hoehe : SEITE_H;
+  const gemessen = mess ? zeichnen(mess).hoehe : SEITE_H;
   const faktor = Math.min(1, SEITE_H / gemessen);
   const versatz = (SEITE_B - SEITE_B * faktor) / 2;
 
@@ -514,7 +570,7 @@ export async function belegPdfErstellen(d: BelegDaten): Promise<Blob> {
   ctx.fillStyle = FARBE.papier;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(MASSSTAB * faktor, 0, 0, MASSSTAB * faktor, MASSSTAB * versatz, 0);
-  const { links } = seiteZeichnen(ctx, d);
+  const { links } = zeichnen(ctx);
 
   const skaliert = links.map((l) => ({
     ...l,
@@ -523,8 +579,13 @@ export async function belegPdfErstellen(d: BelegDaten): Promise<Blob> {
     b: l.b * faktor,
     h: l.h * faktor,
   }));
-  const datei = pdfBauen(jpegBytes(canvas), canvas.width, canvas.height, skaliert, `Zeitfresser-Beleg ${d.nummer}`);
+  const datei = pdfBauen(jpegBytes(canvas), canvas.width, canvas.height, skaliert, titel, info);
   return new Blob([datei.buffer as ArrayBuffer], { type: "application/pdf" });
+}
+
+/** Zeichnet den Beleg und liefert ihn als PDF-Blob. */
+export function belegPdfErstellen(d: BelegDaten): Promise<Blob> {
+  return seiteAlsPdf((ctx) => seiteZeichnen(ctx, d), `Zeitfresser-Beleg ${d.nummer}`);
 }
 
 /** Bietet die Datei zum Herunterladen an. */

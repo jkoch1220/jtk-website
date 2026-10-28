@@ -1,4 +1,4 @@
-// Zusagen der Startseite: „So läuft Ihr Betrieb danach“ (04) und „In drei Schritten“ (07).
+// Zusagen der Startseite: „So läuft Ihr Betrieb danach“ (04) und „In drei Schritten“ (08).
 // Die Akten im Abschnitt 06 verweisen per id auf sie („Beleg zu 04 · …“).
 
 export interface Zusage {

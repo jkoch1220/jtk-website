@@ -1,0 +1,517 @@
+/* Büro-Röntgenblick (components/ki/Roentgenblick.astro, scripts/ki/roentgen.ts) -------------------------------
+   Programm 2 im Abschnitt 07. Eingabe mit Schnellauswahl und freiwilligen Angaben; bis zum ersten Teilstand ein
+   Leuchtschirm; danach der vorgezeichnete Befund, dessen leere Textstücke Platzhalter zeigen, bis der Stream sie
+   füllt: IST als Blatt in Stempelrot, SOLL in Leuchttinte mit der Schnittstelle zum gelben Zettel „Darf bleiben“
+   (das Paar „von Hand / digital“ aus dem Check), Kacheln, Urteil wie im Check (.urteil). Darunter der Befund als
+   Durchschreibe-Beleg mit den globalen .zettel*-Klassen; hier steht nur, was dazukommt.
+   Regeln wie in ki.css: nur Tokens, Papiere mit --insel-* (.ki-papier, .zettel__bogen), Bewegung nur über
+   transform und opacity in Stufen. Der Strahl ist die einzige Endlos-Animation und steht bei reduzierter Bewegung
+   still (den Schirm zeigt das Skript dann gar nicht). Container-Abfragen nach der Breite des Fensters bzw. des
+   Befunds, nicht des Browsers. */
+
+/* Eingabe: Schnellauswahl, Branche und Teamgröße */
+.ki-roentgen__beispiele {
+  display: grid;
+  gap: 8px;
+}
+
+.ki-roentgen__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.ki-roentgen .retro-knopf {
+  line-height: 1.1;
+  text-align: center;
+}
+
+.ki-roentgen__beispiel {
+  padding-inline: 12px;
+  font-size: 18px;
+}
+
+/* Die Branche bekommt den Platz, die Teamgröße nur so viel, wie die Zahl braucht */
+.ki-roentgen__angaben {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+}
+
+.ki-roentgen__angaben > .feld {
+  flex: 1 1 15rem;
+}
+
+.ki-roentgen__angaben > .feld + .feld {
+  flex: 0 1 auto;
+}
+
+.ki-roentgen__team {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ki-roentgen__team input {
+  max-width: 8rem;
+}
+
+.ki-roentgen__team span {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+/* Leuchtschirm bis zum ersten Teilstand: Raster wie das Nachtband, drei Kästen als Ablauf, ein Strahl, der Blitz
+   mit dem Zap des Klangs (68 % von 1,1 s, also rund 0,75 s) und der Fund am mittleren Schritt */
+.ki-roentgen__schirm {
+  position: relative;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 20px;
+  min-height: 13rem;
+  overflow: hidden;
+  border: 2px solid var(--rahmen);
+  background-color: var(--tinte-nacht);
+  background-image: conic-gradient(var(--nacht-raster) 25%, transparent 0 50%, var(--nacht-raster) 0 75%, transparent 0);
+  background-size: 4px 4px;
+}
+
+.ki-roentgen__skelett {
+  position: relative;
+  display: flex;
+  gap: 22px;
+}
+
+.ki-roentgen__skelett span {
+  position: relative;
+  width: 46px;
+  height: 32px;
+  border: 2px solid var(--auf-nacht-matt);
+}
+
+.ki-roentgen__skelett span + span::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 2px);
+  width: 22px;
+  height: 2px;
+  background: var(--auf-nacht-matt);
+}
+
+.ki-roentgen__fund {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 64px;
+  height: 50px;
+  border: 3px solid var(--stempel);
+  translate: -50% 0;
+  opacity: 0;
+  animation: ki-roentgen-fund 1.1s steps(1, end) both;
+}
+
+.ki-roentgen__strahl {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 24%;
+  background: linear-gradient(90deg, transparent, var(--auf-nacht-linie), transparent);
+  transform: translateX(-100%);
+  animation: ki-roentgen-strahl 1.5s steps(15, end) infinite;
+}
+
+.ki-roentgen__blitz {
+  position: absolute;
+  inset: 0;
+  background: var(--auf-nacht);
+  opacity: 0;
+  animation: ki-roentgen-blitz 1.1s linear both;
+}
+
+.ki-roentgen__schirmtext {
+  position: relative;
+  color: var(--auf-nacht-matt);
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+@keyframes ki-roentgen-strahl {
+  to {
+    transform: translateX(420%);
+  }
+}
+
+@keyframes ki-roentgen-blitz {
+  0%,
+  67% {
+    opacity: 0;
+  }
+  68% {
+    opacity: 0.8;
+    animation-timing-function: steps(3, end);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ki-roentgen-fund {
+  0%,
+  67% {
+    opacity: 0;
+  }
+  68%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Befund: vorgezeichnet, leere Textstücke zeigen einen Platzhalter, bis der Stream sie füllt */
+.ki-roentgen__befund {
+  container: ki-befund / inline-size;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ki-roentgen__befund:not(.ki-roentgen__befund--fertig) [data-ki-feld]:empty::before {
+  content: "";
+  display: inline-block;
+  width: min(100%, 12em);
+  height: 0.7em;
+  background: var(--linie);
+}
+
+/* h4 und h5 haben keine globale Grundregel (nur h1 bis h3): Abstände regelt das Raster. Ohne Gewicht, damit die
+   Klassen unten eigene Abstände setzen können. */
+:where(.ki-roentgen) h5 {
+  margin: 0;
+}
+
+.ki-roentgen .zettel__titel {
+  margin-bottom: 0;
+}
+
+.ki-roentgen__label,
+.ki-roentgen__blatttitel,
+.ki-roentgen__schnittstelle {
+  font-family: var(--pixel);
+  font-size: 18px;
+  font-stretch: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.ki-roentgen__label {
+  color: var(--tinte-matt);
+}
+
+.ki-roentgen__diagnose {
+  font-size: var(--t-h3);
+  font-stretch: var(--halbbreit);
+  font-weight: 560;
+  line-height: 1.25;
+}
+
+/* IST und SOLL: zwei Blätter auf dem Tisch, leicht verdreht wie die Papiere in Abschnitt 06 */
+.ki-roentgen__blaetter {
+  display: grid;
+  gap: 22px;
+  padding: 18px 14px 20px;
+  background: var(--papier);
+}
+
+.ki-roentgen__blatt {
+  --ki-farbe: var(--stempel);
+  min-width: 0;
+  padding: 14px 14px 16px;
+  border-top: 4px solid var(--ki-farbe);
+  box-shadow: var(--e2);
+  rotate: -0.6deg;
+}
+
+.ki-roentgen__blatt--soll {
+  --ki-farbe: var(--rahmen);
+  rotate: 0.5deg;
+}
+
+.ki-roentgen__blatttitel {
+  margin-bottom: 12px;
+  color: var(--stempel);
+  font-size: 20px;
+}
+
+.ki-roentgen__blatt--soll .ki-roentgen__blatttitel {
+  color: var(--tinte);
+}
+
+.ki-roentgen__schritte {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: ki-schritt;
+}
+
+.ki-roentgen__schritte li {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 10px 8px 36px;
+  border: 2px solid var(--ki-farbe);
+  background: var(--bogen);
+  counter-increment: ki-schritt;
+}
+
+/* Ziffer im Kasten wie .check__nr; Verbindungsstriche wie im Rufplan */
+.ki-roentgen__schritte li::before {
+  content: counter(ki-schritt);
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding-bottom: 2px;
+  background: var(--ki-farbe);
+  color: var(--bogen);
+  font-family: var(--pixel);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ki-roentgen__blatt--soll li::before {
+  color: var(--auf-rahmen);
+}
+
+.ki-roentgen__schritte li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 16px;
+  width: 2px;
+  height: 14px;
+  background: var(--ki-farbe);
+}
+
+.ki-roentgen__was {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ki-roentgen__warum {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ki-roentgen__marke {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--stempel);
+  font-weight: 650;
+}
+
+.ki-roentgen__blatt--soll .ki-roentgen__marke {
+  color: var(--tinte);
+}
+
+.ki-roentgen__symbol {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: var(--ki-farbe);
+  shape-rendering: crispEdges;
+}
+
+.ki-roentgen__symbol-innen {
+  fill: var(--bogen);
+}
+
+/* Schnittstelle: Der neue Ablauf hängt an dem, was bleiben darf (gelber Zettel wie .notiz in Abschnitt 06) */
+.ki-roentgen__alt {
+  display: grid;
+  justify-items: start;
+}
+
+.ki-roentgen__schnittstelle {
+  margin-left: 16px;
+  padding: 12px 0 12px 14px;
+  border-left: 2px dashed var(--rahmen);
+  color: var(--tinte-matt);
+  font-size: 16px;
+}
+
+.ki-roentgen__notiz {
+  display: grid;
+  gap: 4px;
+  max-width: 100%;
+  padding: 10px 12px 11px;
+  background: var(--kopie-gelb);
+  box-shadow: var(--e1);
+  color: var(--tinte);
+  font-size: var(--t-klein);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  rotate: -1deg;
+}
+
+.ki-roentgen__notizwort,
+.ki-roentgen__hebelwort {
+  font-weight: 650;
+}
+
+.ki-roentgen__hebel {
+  line-height: 1.45;
+}
+
+/* Kacheln nur aus der Rechnung des Dienstes; die Kosten rot wie im Check */
+.ki-roentgen__kacheln {
+  display: grid;
+  gap: 12px;
+}
+
+.ki-roentgen__kachel {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--versatz);
+}
+
+.ki-roentgen__kachelwert {
+  font-size: 1.25rem;
+  font-stretch: var(--halbbreit);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.ki-roentgen__kachel--kosten .ki-roentgen__kachelwert {
+  color: var(--stempel);
+}
+
+.ki-roentgen__kachelunter,
+.ki-roentgen__fuss {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-roentgen__knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+@container ki-befund (min-width: 440px) {
+  .ki-roentgen__kacheln {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ki-roentgen__fuss {
+    grid-column: 1 / -1;
+  }
+}
+
+@container ki-befund (min-width: 520px) {
+  .ki-roentgen__blaetter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@container ki-befund (max-width: 359px) {
+  .ki-roentgen__blaetter {
+    padding: 14px 6px 16px;
+  }
+
+  .ki-roentgen__blatt {
+    padding: 12px 10px 14px;
+  }
+}
+
+/* Befund als Beleg: daneben PDF und Termin, ab 760 px Fensterbreite zweispaltig wie im Check */
+.ki-roentgen__beleg {
+  display: grid;
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+  margin-top: clamp(28px, 3vw, 40px);
+  padding-top: clamp(24px, 3vw, 36px);
+  border-top: 2px dashed var(--linie-stark);
+}
+
+@container ki-fenster (min-width: 760px) {
+  .ki-roentgen__beleg {
+    grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
+  }
+}
+
+.ki-roentgen__belegseite .check__aktionen {
+  margin-top: 0;
+}
+
+.ki-roentgen__belegdiagnose {
+  display: grid;
+  gap: 0.3em;
+  margin-top: 4cqi;
+  font-size: max(13px, 2.8cqi);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ki-roentgen__belegwort {
+  color: var(--tinte-matt);
+  font-size: max(10px, 1.95cqi);
+  font-weight: 400;
+}
+
+.zettel__tabelle .ki-roentgen__th-ist {
+  color: var(--stempel);
+}
+
+.ki-roentgen__zusatz {
+  display: block;
+  margin-top: 0.2em;
+  color: var(--tinte-matt);
+  font-size: 0.9em;
+  font-stretch: normal;
+  font-weight: 400;
+}
+
+.ki-roentgen__fusszeile {
+  margin-top: 3cqi;
+  padding-top: 1.5cqi;
+  border-top: 1px solid var(--linie);
+  font-size: max(10px, 1.95cqi);
+  font-weight: 560;
+}
+
+/* Tippziele: Die Links im Beleg wachsen unsichtbar auf 44 px */
+@media (max-width: 767px), (pointer: coarse) {
+  .ki-roentgen .zettel__kontakt a {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ki-roentgen__strahl,
+  .ki-roentgen__blitz,
+  .ki-roentgen__fund {
+    animation: none;
+  }
+}

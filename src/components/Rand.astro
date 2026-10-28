@@ -1,6 +1,6 @@
 ---
 // Marginalien des Druckbogens: links Abschnittsnummer und Kolumnentitel (klebt beim Scrollen),
-// rechts Passermarke und Blattvermerk. Nur Zier, erst ab 1440 px sichtbar.
+// rechts Passermarke und Blattvermerk. Nur Zier, erst ab 1600 px sichtbar (global.css, „Marginalien“).
 interface Props {
   nr: string;
   titel: string;
@@ -8,6 +8,8 @@ interface Props {
 }
 
 const { nr, titel, blatt = nr } = Astro.props;
+// Blätter der Startseite insgesamt (01 Hero bis 09 Erstgespräch); ein neuer Abschnitt zählt hier mit
+const BLAETTER = "09";
 ---
 
 <div class="rand rand--l" aria-hidden="true">
@@ -18,5 +20,5 @@ const { nr, titel, blatt = nr } = Astro.props;
 </div>
 <div class="rand rand--r" aria-hidden="true">
   <svg class="passer" viewBox="0 0 30 30" focusable="false"><circle cx="15" cy="15" r="7"></circle><path d="M15 0v30M0 15h30"></path></svg>
-  <span class="rand__vermerk">FORMULAR JTK-01 · BLATT {blatt}/08</span>
+  <span class="rand__vermerk">FORMULAR JTK-01 · BLATT {blatt}/{BLAETTER}</span>
 </div>

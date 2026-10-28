@@ -1,0 +1,510 @@
+/* Abschnitt 07 „Ausprobieren“ (components/ki/, scripts/ki/) ------------------------------------------------
+   Drei kleine KI-Programme auf dem Schreibtisch: Nachtband mit Nähten (Rasterkante am Ende der Akteneinsicht und am
+   Ende des Abschnitts), darauf eine helle Programmleiste als Reiter und je Programm ein Retro-Fenster
+   (Fenster.astro, ohne Schließknopf).
+   Teile: Kopf wie beim Check, Programmleiste .ki-wahl, Panels .ki-programm, Hinweiszeile .ki-hinweis, Fenster
+   .ki-fenster (Container-Abfragen nach der Breite des Fensters, nicht des Browsers), Meldung .ki-fehler, Marken
+   .ki-tag, Cursor .ki-cursor, Papier .ki-papier.
+   Regeln: Papiere (Befund, Ticket, Zettel) nutzen --insel-* wie die Belege („Papier unter der Lampe“). Farben nur aus
+   Tokens. Bewegung nur über transform, opacity und clip-path; Blinken endlich (höchstens 3 Wechsel je Sekunde, nach
+   höchstens 5 s vorbei); jede Endlos-Animation bei reduzierter Bewegung mit animation: none (die globale Regel kürzt
+   nur die Dauer). Globale Klassen nur mit Kontext überschreiben (.ki-labor …), die Reihenfolge der style-Blöcke im
+   Kopf ist nicht fest. Je Programm eigenes CSS in ki-scanner.css, ki-roentgen.css, ki-telefon.css (Frontmatter der
+   Komponente). Klassen mit Präfix ki-, Daten-Attribute data-ki-*. Alles KI-CSS zusammen höchstens 40 KB minifiziert,
+   der Kopf der Startseite muss vor Byte 300 000 enden (WhatsApp). */
+
+/* Kopf wie .check__kopf: Überschrift links, Einleitung rechts, ab 1100 px im Raster des Satzes */
+.ki-labor__kopf {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.ki-labor__kopf .kicker {
+  margin-bottom: 0;
+}
+
+.ki-labor__lead {
+  max-width: 60ch;
+  color: var(--auf-nacht-matt);
+}
+
+@media (min-width: 1100px) {
+  .ki-labor__kopf {
+    grid-template-columns: subgrid;
+    align-items: end;
+  }
+
+  .ki-labor__kopf > * {
+    grid-column: 1 / -1;
+  }
+
+  /* oben, damit der Kicker direkt über ihr bleibt, auch wenn die Einleitung höher ist */
+  .ki-labor__kopf h2 {
+    grid-column: 1 / span 6;
+    align-self: start;
+  }
+
+  .ki-labor__lead {
+    grid-column: 8 / -1;
+  }
+}
+
+.ki-tisch {
+  display: grid;
+  gap: 18px;
+  margin-top: clamp(2rem, 1.5rem + 2vw, 3rem);
+}
+
+/* Programmleiste: helle Leiste auf dem Tisch wie die Taskleiste. Der gewählte Reiter ist eingedrückt und gefüllt
+   wie .team__wahl und die Reiter im Kontaktfenster. */
+.ki-wahl {
+  --fokus: var(--tinte);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 2px solid var(--fenster-auf-nacht);
+  background: var(--bogen);
+  box-shadow: var(--e-retro-nacht);
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+}
+
+.ki-wahl__reiter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 2px solid var(--rahmen);
+  border-radius: 0;
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--versatz);
+  color: var(--tinte);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.06s ease;
+}
+
+.ki-wahl__reiter:hover {
+  background: var(--papier);
+}
+
+.ki-wahl__reiter[aria-selected="true"] {
+  background: var(--rahmen);
+  box-shadow: none;
+  color: var(--auf-rahmen);
+  transform: translate(3px, 3px);
+}
+
+/* Ziffer im Kasten wie .check__nr, im gewählten Reiter umgekehrt */
+.ki-wahl__nr {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding-bottom: 2px;
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
+}
+
+.ki-wahl__reiter[aria-selected="true"] .ki-wahl__nr {
+  background: var(--auf-rahmen);
+  color: var(--rahmen);
+}
+
+/* Bricht am Bindestrich („Auftrags-“ / „Scanner“), lange Wörter mit Trennstrich („Röntgen-“ / „blick“ bei 320 px),
+   nur im Notfall überall */
+.ki-wahl__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+@media (max-width: 559px) {
+  .ki-wahl {
+    gap: 4px;
+    padding: 4px;
+    font-size: 18px;
+  }
+
+  .ki-wahl__reiter {
+    padding: 6px;
+  }
+
+  .ki-wahl__nr {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .ki-wahl {
+    font-size: 16px;
+  }
+}
+
+/* Gewählt auch ohne Hintergrundfarben erkennbar */
+@media (forced-colors: active) {
+  .ki-wahl__reiter[aria-selected="true"] {
+    outline: 3px solid CanvasText;
+    outline-offset: -6px;
+  }
+}
+
+/* Ohne Skript: keine Leiste, alle Programme untereinander (starten lassen sie sich ohne Skript ohnehin nicht) */
+@media (scripting: none) {
+  .ki-wahl {
+    display: none;
+  }
+
+  .ki-programm[hidden] {
+    display: grid !important;
+  }
+}
+
+/* Panel: Zwischenüberschrift auf dem Tisch, darunter das Fenster */
+.ki-programm {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.ki-programm__kopf {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 70ch;
+}
+
+.ki-programm__titel {
+  color: var(--auf-nacht);
+  font-size: var(--t-h3);
+}
+
+.ki-programm__text {
+  color: var(--auf-nacht-matt);
+}
+
+/* Hinweiszeile auf dem Nachtband: KI, keine echten Daten, Datenschutz, Rest */
+.ki-hinweis {
+  max-width: 90ch;
+  color: var(--auf-nacht-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-hinweis a {
+  color: var(--auf-nacht);
+  text-decoration-color: var(--auf-nacht-unterstrich);
+}
+
+.ki-hinweis__rest {
+  color: var(--auf-nacht);
+}
+
+.ki-hinweis .ki-tag {
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+/* Programmfenster: zwei Spalten, sobald das Fenster selbst breit genug ist */
+.ki-fenster .fenster__inhalt {
+  container: ki-fenster / inline-size;
+}
+
+.ki-fenster__buehne {
+  display: grid;
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+}
+
+@container ki-fenster (min-width: 760px) {
+  .ki-fenster__buehne {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+}
+
+.ki-fenster__eingang,
+.ki-fenster__ausgang {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.ki-fenster .check__titel,
+.ki-fenster .check__aktionen {
+  margin: 0;
+}
+
+.ki-fenster .fenster__status {
+  font-variant-numeric: tabular-nums;
+}
+
+/* KI-Hinweis direkt am Eingabefeld (KI-Verordnung Art. 50): Marke und Satz */
+.ki-feldhinweis {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  line-height: 1.45;
+}
+
+.ki-zaehler {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Feste Ergebnisfläche mit Mindesthöhe: Der Stream füllt sie, statt die Seite Stück für Stück wachsen zu lassen */
+.ki-platz {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 16rem;
+  padding: 16px;
+  border: 2px dashed var(--linie-stark);
+  background: var(--hauch);
+}
+
+.ki-platz__leer {
+  max-width: 46ch;
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-vorschau {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ki-vorschau dt,
+.ki-verlauf__wer {
+  color: var(--tinte-matt);
+  font-family: var(--pixel);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.ki-vorschau dd {
+  margin: 0;
+}
+
+/* Gestreamter Text der KI: Umbrüche behalten, lange Wörter und Adressen umbrechen */
+.ki-text,
+.ki-vorschau dd,
+.ki-verlauf li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.ki-verlauf {
+  max-height: 22rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ki-pruefhinweis {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+/* Laufender Durchlauf: Ein fokussierter Knopf bleibt fokussierbar (aria-disabled), sieht aber gesperrt aus */
+.ki-labor .retro-knopf[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 3px 3px 0 var(--versatz);
+}
+
+/* Spracheingabe: Knopf, Zeile darunter; während der Aufnahme ein roter Punkt vor dem Wort, ohne Blinken */
+.ki-sprache {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.ki-sprache .feld__hilfe {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.ki-sprache .ki-meldung {
+  flex-basis: 100%;
+}
+
+.ki-labor [data-ki-aufnahme]::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 10px;
+  background: var(--stempel-flaeche);
+}
+
+/* Meldung im Fenster: Symbol, Satz, Knöpfe (Muster .meldung__text, ohne die Klasse .meldung) */
+.ki-fehler {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 2px dashed var(--rahmen);
+  background: var(--papier);
+  color: var(--tinte);
+}
+
+/* Den Fokus bekommt der Kasten nur, damit Screenreader den Satz vorlesen */
+.ki-fehler:focus {
+  outline: none;
+}
+
+.ki-fehler--rot {
+  border-style: solid;
+  border-color: var(--stempel);
+}
+
+.ki-fehler--gelb {
+  --fokus: var(--auf-gelb);
+  border-style: solid;
+  border-color: var(--auf-gelb);
+  background: var(--kopie-gelb);
+  color: var(--auf-gelb);
+}
+
+.ki-fehler .pixel-icon {
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+}
+
+.ki-fehler__inhalt {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ki-fehler__titel {
+  font-weight: 600;
+}
+
+.ki-fehler__satz {
+  overflow-wrap: anywhere;
+}
+
+.ki-fehler__knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+
+.ki-fehler__link {
+  color: inherit;
+  font-size: var(--t-klein);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+
+.ki-fehler__link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Marken in Pixelschrift, immer mit Wort, nie nur Farbe */
+.ki-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px 2px;
+  border: 1.5px solid currentColor;
+  font-family: var(--pixel);
+  font-size: 16px;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ki-tag--gelb {
+  border-color: var(--auf-gelb);
+  background: var(--kopie-gelb);
+  color: var(--auf-gelb);
+}
+
+.ki-tag--rot {
+  border-color: var(--stempel-flaeche);
+  background: var(--stempel-flaeche);
+  color: var(--auf-rahmen);
+}
+
+/* Schreibcursor: höchstens 5 s Blinken, dann ruhig (WCAG 2.2.2) */
+.ki-cursor::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: currentColor;
+  animation: ki-blinken 1s steps(1, end) 5;
+}
+
+@keyframes ki-blinken {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Papier unter der Lampe (wie .zettel__bogen in global.css) für die eigenen Papiere: Befund, Ticket, Zettel */
+.ki-papier {
+  --bogen: var(--insel-bogen);
+  --tinte: var(--insel-tinte);
+  --tinte-matt: var(--insel-matt);
+  --linie: var(--insel-linie);
+  --linie-stark: var(--insel-linie-stark);
+  --hauch: var(--insel-hauch);
+  --kopie-gelb: var(--insel-gelb);
+  --kopie-rosa: var(--insel-rosa);
+  --tinte-tief: var(--insel-kohle);
+  --stempel: var(--insel-stempel);
+  --fokus: var(--insel-tinte);
+  background: var(--insel-licht), var(--bogen);
+  color: var(--tinte);
+}
+
+/* Tippziele: auf Touch-Geräten und schmalen Bildschirmen mindestens 44 px, die Trefferfläche wächst unsichtbar */
+@media (max-width: 767px), (pointer: coarse) {
+  .ki-fehler__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .ki-hinweis a {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ki-wahl__reiter {
+    transition: none;
+  }
+
+  /* Endlos- und Blink-Animationen aus den Programmdateien gehören in deren Block wie hier */
+  .ki-cursor::after {
+    animation: none;
+  }
+}

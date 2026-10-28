@@ -54,10 +54,11 @@ export default defineConfig({
       __PRAXIS_SPERRLISTE__: JSON.stringify(sperrlisteLesen()),
     },
     server: {
-      // Im Dev laufen Anfrageformular und Statistik gegen die lokale Koch-Plattform.
-      // Host bleibt localhost, damit die Plattform die Herkunft erkennt.
+      // Im Dev laufen Anfrageformular, Statistik und KI-Demos gegen die lokale Koch-Plattform.
+      // Host bleibt localhost, damit die Plattform die Herkunft erkennt. JTK_DIENST_URL zeigt auf
+      // einen Dienst an einem anderen Port, etwa wenn mehrere Testinstanzen nebeneinander laufen.
       proxy: {
-        "/api": { target: "http://localhost:3100", changeOrigin: false },
+        "/api": { target: process.env.JTK_DIENST_URL || "http://localhost:3100", changeOrigin: false },
       },
     },
   },

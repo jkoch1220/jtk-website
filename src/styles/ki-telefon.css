@@ -1,0 +1,527 @@
+/* Programm 3 im Abschnitt 07: Probeanruf (components/ki/TelefonSimulator.astro, scripts/ki/telefon.ts) ---------
+   Links der Hörer: Wahl des Betriebs, Anzeige der Leitung mit LED, Verlauf als Sprechblasen, Eingabe und Sätze;
+   rechts die Telefonnotiz als Papier unter der Lampe (.ki-papier aus ki.css) mit Stempel.
+   Welche Teile zu sehen sind, steuert die Phase am Fenster: data-ki-telefon = frei | waehlt | klingelt | verbunden |
+   ende (telefon.ts). Ohne Skript bleibt es bei „frei“, der Knopf „Anrufen“ ist dann gesperrt.
+   Laute Momente sind endlich: Die LED blinkt beim Klingeln und beim Abheben ein paar Mal, NOTFALL dreimal, dann steht
+   beides still (höchstens 3 Wechsel je Sekunde, nach höchstens 5 s vorbei); bei reduzierter Bewegung gar nicht. Rot
+   nur für den Notfall, seinen Stempel und das Auflegen. Globale Klassen nur mit Kontext (.ki-telefon …), weil die
+   Reihenfolge der style-Blöcke im Kopf nicht fest ist. */
+
+/* Hörer etwas breiter als die Notiz */
+@container ki-fenster (min-width: 760px) {
+  .ki-telefon .ki-fenster__buehne {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+}
+
+/* Phasen: Wahl nur vor dem Anruf, Eingabe nur im Gespräch, Abschluss nur danach. Der KI-Hinweis am Feld bleibt
+   immer stehen, auch wenn Feld und Beschriftung noch verborgen sind. */
+.ki-telefon:not([data-ki-telefon="frei"]) :is(.ki-telefon__wahl, .ki-telefon__anrufen),
+.ki-telefon[data-ki-telefon="frei"] .ki-telefon__leitung,
+.ki-telefon:not([data-ki-telefon="verbunden"]) .ki-telefon__feld > :not(.ki-feldhinweis),
+.ki-telefon:not([data-ki-telefon="verbunden"]) :is(.ki-telefon__sagen, .ki-telefon__mikro, .ki-telefon__sprache, .ki-telefon__saetze),
+.ki-telefon[data-ki-telefon="ende"] .ki-telefon__aktionen,
+.ki-telefon:not([data-ki-telefon="ende"]) .ki-telefon__ende,
+.ki-telefon:is([data-ki-telefon="frei"], [data-ki-telefon="ende"]) .ki-telefon__auflegen,
+.ki-telefon[data-ki-telefon="frei"] .ki-telefon__fuss {
+  display: none;
+}
+
+.ki-telefon__klein {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  line-height: 1.45;
+}
+
+/* Wahl des Betriebs: die Karten wie .team__wahl, zweizeilig lesbar */
+.ki-telefon__wahl {
+  display: grid;
+  gap: 6px;
+}
+
+.ki-telefon .ki-telefon__betriebe {
+  margin: 0;
+}
+
+.ki-telefon .ki-telefon__betriebe .team__wahl span {
+  line-height: 1.15;
+}
+
+/* Anzeige der Leitung wie das Display eines Telefons: LED, Zustand, Anschluss, Auflegen */
+.ki-telefon__leitung {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--rahmen);
+  background: var(--papier-tief);
+  box-shadow: var(--feld-schatten);
+}
+
+.ki-telefon__led {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--rahmen);
+}
+
+.ki-telefon:is([data-ki-telefon="klingelt"], [data-ki-telefon="verbunden"]) .ki-telefon__led {
+  background: var(--rahmen);
+}
+
+/* Zwei Namen, damit das Blinken beim Abheben neu beginnt statt das vom Klingeln fortzusetzen */
+.ki-telefon[data-ki-telefon="klingelt"] .ki-telefon__led {
+  animation: ki-telefon-klingeln 0.8s steps(1, end) 2;
+}
+
+.ki-telefon[data-ki-telefon="verbunden"] .ki-telefon__led {
+  animation: ki-telefon-abheben 1s steps(1, end) 3;
+}
+
+@keyframes ki-telefon-klingeln {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes ki-telefon-abheben {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.ki-telefon__anzeige {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ki-telefon__zeile {
+  font-family: var(--pixel);
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.ki-telefon__anschluss {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+  line-height: 1.3;
+}
+
+.ki-telefon .ki-telefon__auflegen {
+  border-color: var(--stempel);
+  color: var(--stempel);
+}
+
+@container ki-fenster (max-width: 439px) {
+  .ki-telefon .ki-telefon__auflegen {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+/* Verlauf: eingelassene Fläche mit fester Höhe, die Sprechblasen scrollen darin (data-lenis-prevent im Markup) */
+.ki-telefon__verlauf {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  height: 21rem;
+  margin: 0;
+  padding: 14px 14px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 2px solid var(--linie-stark);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
+  list-style: none;
+}
+
+@container ki-fenster (max-width: 759px) {
+  .ki-telefon__verlauf {
+    height: 17rem;
+  }
+}
+
+.ki-telefon__zug {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  min-width: 0;
+  max-width: 90%;
+}
+
+.ki-telefon__zug--sie {
+  justify-self: end;
+  justify-items: end;
+}
+
+.ki-telefon__wer {
+  color: var(--tinte-matt);
+  font-family: var(--pixel);
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Der Assistent im Kasten mit hartem Schatten, der Anrufer rechts auf Papier */
+.ki-telefon__blase {
+  margin: 0;
+  padding: 8px 12px 9px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--versatz);
+  line-height: 1.45;
+}
+
+.ki-telefon__zug--sie .ki-telefon__blase {
+  border-color: var(--linie-stark);
+  background: var(--papier-tief);
+  box-shadow: none;
+}
+
+/* Zeile neben dem Gespräch zu einem gewählten Satz */
+.ki-telefon__satzhinweis {
+  padding: 8px 12px;
+  border-left: 3px solid var(--rahmen);
+  background: var(--hauch);
+  font-size: var(--t-klein);
+}
+
+.ki-telefon__sprache {
+  display: grid;
+  gap: 10px;
+}
+
+.ki-telefon__sprache .feld__hilfe:empty {
+  display: none;
+}
+
+/* Vorgegebene Sätze: kleine Knöpfe, die umbrechen; ohne sichtbaren Satz verschwindet auch die Überschrift */
+.ki-telefon__saetze {
+  display: grid;
+  gap: 8px;
+}
+
+.ki-telefon__saetze:not(:has(.ki-telefon__satz:not([hidden]))) {
+  display: none;
+}
+
+.ki-telefon__saetze-titel {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-telefon__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ki-telefon__satz {
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 2px solid var(--rahmen);
+  border-radius: 0;
+  background: var(--bogen);
+  box-shadow: 2px 2px 0 var(--versatz);
+  color: var(--tinte);
+  font: inherit;
+  font-size: var(--t-klein);
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.06s ease;
+}
+
+.ki-telefon__satz:hover {
+  background: var(--papier);
+}
+
+.ki-telefon__satz:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.ki-telefon__satz[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0 var(--versatz);
+  transform: none;
+}
+
+/* Nach dem Gespräch: was es zeigt, und der Weg zum Erstgespräch */
+.ki-telefon__ende {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 2px dashed var(--rahmen);
+  background: var(--papier);
+}
+
+.ki-telefon__endtext {
+  font-weight: 560;
+}
+
+/* Den Fokus bekommt der Satz nur, damit Screenreader ihn vorlesen (wie .ki-fehler) */
+.ki-telefon__endtext:focus {
+  outline: none;
+}
+
+.ki-telefon__rechnung {
+  padding-left: 12px;
+  border-left: 3px solid var(--linie-stark);
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-telefon__endknoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ki-telefon .ki-telefon__cta {
+  line-height: 1.15;
+  text-align: center;
+}
+
+/* Ton und Vorlesen: gedrückt eingelassen wie .team__wahl */
+.ki-telefon__schalter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.ki-telefon .ki-telefon__ton {
+  gap: 8px;
+}
+
+.ki-telefon__ton .ton-symbol {
+  width: 18px;
+  height: 18px;
+}
+
+.ki-telefon .ki-telefon__schalter [aria-pressed="true"] {
+  background: var(--rahmen);
+  box-shadow: none;
+  color: var(--auf-rahmen);
+  transform: translate(3px, 3px);
+}
+
+.ki-telefon__vorlesehinweis {
+  flex: 1 1 14rem;
+}
+
+.ki-telefon__schalter:has([data-ki-vorlesen][hidden]) .ki-telefon__vorlesehinweis {
+  display: none;
+}
+
+/* Link zur Datenschutzerklärung: Trefferfläche auf Touch-Geräten und schmal unsichtbar 44 px hoch (wie .ki-hinweis a) */
+@media (max-width: 767px), (pointer: coarse) {
+  .ki-telefon__vorlesehinweis a {
+    display: inline-block;
+    margin-block: -12px;
+    padding-block: 12px;
+  }
+}
+
+/* Telefonnotiz nach dem Vorbild der Notiz im Hero, als eigener Container für schmale Spalten */
+.ki-telefon__notiz {
+  container: ki-notiz / inline-size;
+  display: grid;
+  gap: 14px;
+  padding: clamp(16px, 3cqi, 26px);
+  border: 1px solid var(--linie);
+  box-shadow: var(--e2);
+  font-size: var(--t-klein);
+  line-height: 1.4;
+}
+
+.ki-telefon__kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.ki-telefon__absender {
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid var(--linie);
+  color: var(--tinte-matt);
+}
+
+.ki-telefon__titel {
+  font-size: var(--t-h3);
+  font-stretch: var(--breit);
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.ki-telefon__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.ki-telefon__meta > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ki-telefon__meta dt,
+.ki-telefon__felder dt {
+  color: var(--tinte-matt);
+}
+
+.ki-telefon__meta dd,
+.ki-telefon__felder dd {
+  min-width: 0;
+  margin: 0;
+  font-stretch: var(--schmal);
+  font-weight: 520;
+  font-variant-numeric: tabular-nums;
+}
+
+.ki-telefon__meta dd {
+  min-height: 1.5em;
+  border-bottom: 1px solid var(--linie);
+}
+
+/* Felder wie ein Vordruck: Beschriftung links, Wert auf der gepunkteten Linie */
+.ki-telefon__felder {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.ki-telefon__felder > div {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 2px 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px dotted var(--linie-stark);
+}
+
+.ki-telefon__felder dd {
+  position: relative;
+  isolation: isolate;
+  overflow-wrap: anywhere;
+}
+
+.ki-telefon__offen {
+  color: var(--tinte-matt);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Neu gefülltes Feld: einmal gelb hinterlegt, in Stufen ausblendend (::after gehört dem Schreibcursor) */
+.ki-telefon__frisch::before {
+  content: "";
+  position: absolute;
+  inset: -1px -4px;
+  z-index: -1;
+  background: var(--kopie-gelb);
+  opacity: 0;
+  animation: ki-telefon-frisch 1.8s steps(6, end);
+}
+
+@keyframes ki-telefon-frisch {
+  from {
+    opacity: 1;
+  }
+}
+
+/* NOTFALL blinkt dreimal mit je 0,6 s und bleibt dann rot stehen */
+.ki-telefon__stufe.ki-tag--rot {
+  animation: ki-telefon-notfall 1.2s steps(1, end) 3;
+}
+
+@keyframes ki-telefon-notfall {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Fuß mit Stempel; der Platz für den Stempel bleibt frei, damit die Notiz beim Stempeln nicht springt (vor dem
+   Anruf gibt es weder Fuß noch Stempel, dort ist der Fuß ausgeblendet) */
+.ki-telefon__fuss {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  min-height: 76px;
+  color: var(--tinte-matt);
+}
+
+.ki-telefon__stempelfeld {
+  width: 170px;
+}
+
+.ki-telefon__stempel {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--tinte);
+  mix-blend-mode: multiply;
+  transform: rotate(-8deg);
+  overflow: visible;
+}
+
+.ki-telefon__stempel--rot {
+  color: var(--stempel);
+}
+
+.ki-telefon__stempel text {
+  font-family: var(--schrift);
+  font-stretch: var(--breit);
+}
+
+/* Landet wie der Stempel des Checks (Keyframes stempeln aus global.css) */
+.ki-telefon__stempel.ki-telefon__gestempelt {
+  animation: stempeln 0.3s cubic-bezier(0.2, 0.7, 0.3, 1.3) both;
+}
+
+@container ki-notiz (max-width: 340px) {
+  .ki-telefon__felder > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ki-telefon__fuss {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ki-telefon__stempelfeld {
+    justify-self: center;
+    width: min(170px, 70%);
+  }
+}
+
+@media (forced-colors: active) {
+  .ki-telefon:is([data-ki-telefon="klingelt"], [data-ki-telefon="verbunden"]) .ki-telefon__led {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ki-telefon[data-ki-telefon] .ki-telefon__led,
+  .ki-telefon__stufe.ki-tag--rot,
+  .ki-telefon__frisch::before,
+  .ki-telefon__stempel.ki-telefon__gestempelt {
+    animation: none;
+  }
+
+  .ki-telefon__satz {
+    transition: none;
+  }
+}

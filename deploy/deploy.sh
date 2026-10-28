@@ -26,3 +26,17 @@ npm run build
 ssh "$SERVER" "mkdir -p '$ZIEL'"
 rsync -avz --delete dist/ "$SERVER:$ZIEL/"
 echo "Hochgeladen nach $SERVER:$ZIEL"
+
+# KI-Demos: nur Bescheid geben, nie abbrechen. Ohne Weiterleitung, ohne Schlüssel im Website-Dienst oder mit
+# aufgebrauchtem Budget zeigen die Demos ihre Meldung statt des Startknopfs; der Rest der Seite bleibt unberührt.
+# Wer PUBLIC_KI_URL selbst setzt (leer = Demos aus), hat das bewusst gewählt. Die Abfrage läuft über HTTPS von
+# hier aus und prüft so DNS, TLS, Caddy und Dienst in einem Schritt.
+if [ -z "${PUBLIC_KI_URL+gesetzt}" ] && ! grep -qs '^PUBLIC_KI_URL=' .env; then
+  ki=$(curl -fsS --max-time 5 https://jtkconsulting.de/api/ki/status 2>/dev/null || true)
+  # Das erste „bereit“ gehört zu den Demos; die Stimme des Probeanrufs trägt ein eigenes
+  case "$ki" in
+    *'{"ok":true,"bereit":true'*) echo "KI-Demos: bereit." ;;
+    *'{"ok":true,"bereit":false'*) echo "Hinweis: KI-Demos nicht bereit (Website-Dienst meldet bereit=false, etwa ohne Schlüssel oder mit aufgebrauchtem Budget)." ;;
+    *) echo "Hinweis: https://jtkconsulting.de/api/ki/status antwortet nicht (Caddy-Weiterleitung fehlt? sh deploy/einrichten.sh). Die KI-Demos zeigen ihre Meldung." ;;
+  esac
+fi

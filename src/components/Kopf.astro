@@ -3,6 +3,8 @@ const links = [
   { href: "/#check", text: "Zeitfresser-Check" },
   { href: "/#leistungen", text: "Ihr Betrieb danach" },
   { href: "/#ueber-mich", text: "Ihr Ansprechpartner" },
+  // Erst ab 1320 px: Mit fünf Links passt der Kopf sonst nicht in eine Zeile
+  { href: "/#ausprobieren", text: "Ausprobieren", breit: true },
   { href: "/#ablauf", text: "Ihr Weg" },
 ];
 ---
@@ -14,7 +16,7 @@ const links = [
       <ul>
         {
           links.map((link) => (
-            <li class="nav-optional">
+            <li class:list={["nav-optional", { "nav-breit": link.breit }]}>
               <a href={link.href}>{link.text}</a>
             </li>
           ))

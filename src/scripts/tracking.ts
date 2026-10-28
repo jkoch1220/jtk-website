@@ -313,6 +313,7 @@ const BEREICHE: Record<string, string> = {
   leistungen: "Leistungen",
   "ueber-mich": "Über mich",
   projekte: "Akten",
+  ausprobieren: "Ausprobieren",
   ablauf: "Ablauf",
   kontakt: "Kontakt",
 };
@@ -582,6 +583,17 @@ function starten(): void {
           nutzungZaehlen({ bereich: "Design", aktion: dunkel ? "hell geschaltet" : "dunkel geschaltet" });
           return;
         }
+        // Feste Klickziele mit eigenem Namen (data-klickziel="Röntgenblick: Termin mit Befund"): genau ein klick,
+        // die Nutzung meldet die Komponente selbst
+        const festesZiel = start.closest<HTMLElement>("[data-klickziel]")?.dataset.klickziel;
+        if (festesZiel) {
+          melden("klick", { ziel: festesZiel });
+          return;
+        }
+        // KI-Demos: Knöpfe und Links darin zählen die Demos selbst (nutzung, feste Aktionen). Generisch erfasst
+        // würde jeder Vorlagen- und Satzknopf ein Klickziel mit seinem Text, und Text aus Eingaben oder
+        // KI-Antworten darf nie in die Messung.
+        if (start.closest("[data-ki-demo]")) return;
         // Problem-Schreibtisch: Seine Knöpfe zählt meldungen.ts selbst, nur wirksame (nicht die auf hängende
         // Fenster); als Klickziel wäre jedes „OK“ ein eigenes Ereignis. Links (zum Check) zählen wie überall.
         if (start.closest("[data-meldungen]") && !start.closest("a")) return;

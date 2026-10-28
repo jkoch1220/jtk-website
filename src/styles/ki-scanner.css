@@ -1,0 +1,663 @@
+/*
+  Auftrags-Scanner im Abschnitt 07 (components/ki/Auftragsscanner.astro, scripts/ki/scanner.ts)
+
+  Links, was bei Ihnen reinkommt: Datei-Karten als Radiogruppe (wie .team__wahl), darunter die Vorlage selbst: die
+  Mail als Papier, der Zettel als Abzug, der Export in Festbreitenschrift, der eigene Text im Feld. Darüber fährt
+  beim Start der Lichtbalken. Rechts, was die KI daraus macht, in drei Reitern (Segmentleiste wie im
+  Kontaktfenster): der Auftrag als Papier mit Stempel, die Antwort als Brief, die Tafel wie im Zeitfresser-Check.
+
+  Papiere über .ki-papier (ki.css, --insel-*). Breiten über Container-Abfragen nach der Ausgabespalte bzw. dem
+  Auftrag, nicht nach dem Browserfenster. Bewegung nur über transform und opacity: der Balken in Schritten wie ein
+  Schrittmotor, der Stempel mit dem Keyframe des Checks (stempeln, global.css); bei reduzierter Bewegung beides aus.
+  „fehlt“ und „unklar“ stehen immer als Wort mit Warnzeichen da, nie nur als Farbe.
+*/
+
+.ki-scanner {
+  --ki-mono: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.ki-scanner .ki-fenster__ausgang {
+  container: ki-scanner-ausgang / inline-size;
+}
+
+/* Datei-Karten ---------------------------------------------------------------------------------------------- */
+
+.ki-scanner__vorlagen {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ki-scanner__vorlagen legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: var(--t-klein);
+  font-weight: 600;
+}
+
+.ki-scanner__karten {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: 10px;
+}
+
+.ki-scanner__karte {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+/* Das Radio liegt unsichtbar über der Karte: Klick, Tastatur und Screenreader bleiben die des Browsers */
+.ki-scanner__karte input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ki-scanner__blatt {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 3px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px 9px;
+  border: 2px solid var(--rahmen);
+  background: var(--bogen);
+  box-shadow: 3px 3px 0 var(--versatz);
+}
+
+.ki-scanner__karte:hover .ki-scanner__blatt {
+  background: var(--papier);
+}
+
+.ki-scanner__karte input:checked + .ki-scanner__blatt {
+  background: var(--rahmen);
+  box-shadow: none;
+  color: var(--auf-rahmen);
+  transform: translate(3px, 3px);
+}
+
+.ki-scanner__karte input:focus-visible + .ki-scanner__blatt {
+  outline: 2px solid var(--fokus);
+  outline-offset: 3px;
+}
+
+.ki-scanner__datei {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--pixel);
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+/* Dateisymbol mit Eselsohr */
+.ki-scanner__datei::before {
+  content: "";
+  flex: none;
+  width: 10px;
+  height: 13px;
+  border: 1.5px solid currentColor;
+  clip-path: polygon(0 0, 60% 0, 100% 35%, 100% 100%, 0 100%);
+}
+
+.ki-scanner__kurz {
+  font-size: var(--t-klein);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ki-scanner__unter {
+  color: var(--tinte-matt);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.ki-scanner__karte input:checked + .ki-scanner__blatt .ki-scanner__unter {
+  color: inherit;
+}
+
+.ki-scanner__blatt--eigen {
+  border-style: dashed;
+}
+
+/* Vorlage und Lichtbalken ----------------------------------------------------------------------------------- */
+
+.ki-scanner__vorschau {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.ki-scanner__mail,
+.ki-scanner__csv {
+  max-height: 19rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.ki-scanner__mail {
+  display: grid;
+  align-content: start;
+  gap: 0.9em;
+  padding: 14px 16px;
+  border: 1px solid var(--linie);
+  box-shadow: var(--e1);
+  font-size: var(--t-klein);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__mailkopf {
+  padding-bottom: 0.6em;
+  border-bottom: 1px solid var(--linie-stark);
+  font-weight: 600;
+}
+
+/* Der Export sieht aus wie im alten Programm: eingelassen, Festbreite, Zeilen brechen nicht um */
+.ki-scanner__csv {
+  border: 2px solid var(--rahmen);
+  background: var(--feld);
+  box-shadow: var(--feld-schatten);
+}
+
+.ki-scanner__csv pre {
+  width: max-content;
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--ki-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.ki-scanner__zettel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+}
+
+/* Abzug unter der Lampe: nachts wie die Abzüge der Akten leicht gedämpft */
+.ki-scanner__zettel img {
+  display: block;
+  width: min(100%, 300px);
+  height: auto;
+  box-shadow: var(--e2);
+  filter: var(--abzug-filter);
+}
+
+.ki-scanner__abschrift {
+  justify-self: stretch;
+  font-size: var(--t-klein);
+}
+
+.ki-scanner__abschrift summary {
+  width: fit-content;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  cursor: pointer;
+}
+
+.ki-scanner__abschrift p {
+  margin-top: 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--linie-stark);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__vorschau textarea {
+  min-height: 12rem;
+}
+
+/* Der Balken liegt über der Vorlage und fängt keine Klicks; die Bahn schneidet ihn ab */
+.ki-scanner__lichtbahn {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ki-scanner__licht {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent calc(100% - 64px),
+    var(--kopie-gelb) calc(100% - 5px),
+    var(--rahmen) calc(100% - 5px)
+  );
+}
+
+/* Von links nach rechts wie das Panorama des Klangs, 22 Schritte in 1,1 s */
+.ki-scanner--scannt .ki-scanner__licht {
+  animation: ki-scanner-fahrt 1.1s 0.04s steps(22, end) both;
+}
+
+@keyframes ki-scanner-fahrt {
+  0% {
+    opacity: 0.8;
+    transform: translateX(-100%);
+  }
+  92% {
+    opacity: 0.8;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+}
+
+/* Reiter im Ergebnis ---------------------------------------------------------------------------------------- */
+
+.ki-scanner__ergebnis {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ki-scanner__reiter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 2px solid var(--rahmen);
+}
+
+.ki-scanner__reiter [role="tab"] {
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 0;
+  background: var(--bogen);
+  color: var(--tinte);
+  font-family: var(--pixel);
+  font-size: 18px;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ki-scanner__reiter [role="tab"] + [role="tab"] {
+  border-left: 2px solid var(--rahmen);
+}
+
+.ki-scanner__reiter [role="tab"]:hover {
+  background: var(--papier);
+}
+
+.ki-scanner__reiter [aria-selected="true"],
+.ki-scanner__reiter [aria-selected="true"]:hover {
+  background: var(--rahmen);
+  color: var(--auf-rahmen);
+}
+
+/* Fokus innen, sonst verdeckt ihn der Nachbar */
+.ki-scanner__reiter [role="tab"]:focus-visible {
+  outline-offset: -6px;
+}
+
+.ki-scanner__reiter [aria-selected="true"]:focus-visible {
+  outline-color: var(--auf-rahmen);
+}
+
+@container ki-scanner-ausgang (max-width: 479px) {
+  .ki-scanner__reiter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ki-scanner__reiter [role="tab"] + [role="tab"] {
+    border-top: 2px solid var(--rahmen);
+    border-left: 0;
+  }
+}
+
+.ki-scanner [role="tabpanel"] {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ki-scanner [role="tabpanel"] > .ki-tag {
+  justify-self: start;
+}
+
+/* Auftrag als Papier ------------------------------------------------------------------------------------------ */
+
+.ki-scanner__auftrag {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px clamp(12px, 3cqi, 22px) 18px;
+  box-shadow: var(--e1);
+  container: ki-scanner-auftrag / inline-size;
+}
+
+.ki-scanner__kopfzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ki-scanner__stempelfeld {
+  flex: none;
+  width: 124px;
+  margin: 4px 8px 0 0;
+}
+
+.ki-scanner__stempel {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  color: var(--tinte-matt);
+  mix-blend-mode: multiply;
+  transform: rotate(-8deg);
+}
+
+.ki-scanner__stempel.ist-freigegeben {
+  color: var(--tinte);
+}
+
+.ki-scanner__stempel text {
+  font-family: var(--schrift);
+  font-stretch: var(--breit);
+}
+
+.ki-scanner__stempel.ki-scanner--stempelt {
+  animation: stempeln 0.3s cubic-bezier(0.2, 0.7, 0.3, 1.3) both;
+}
+
+.ki-scanner__kopf {
+  display: grid;
+  margin: 0;
+  font-size: var(--t-klein);
+}
+
+.ki-scanner__kopf > div {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 30%) minmax(0, 1fr);
+  gap: 2px 12px;
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--linie-stark);
+}
+
+.ki-scanner__kopf dt {
+  color: var(--tinte-matt);
+}
+
+/* Werte wie vom Drucker gesetzt */
+.ki-scanner__kopf dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+  margin: 0;
+  font-stretch: var(--schmal);
+  font-weight: 520;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__kopf dd > span:first-child:empty {
+  display: none;
+}
+
+.ki-scanner .ki-tag .pixel-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.ki-scanner__zwischen {
+  margin: 8px 0 0;
+  font-family: var(--pixel);
+  font-size: 19px;
+  font-stretch: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.ki-scanner__tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-klein);
+  font-variant-numeric: tabular-nums;
+}
+
+.ki-scanner__tabelle th {
+  padding: 0 8px 6px 0;
+  border-bottom: 1px solid var(--linie-stark);
+  color: var(--tinte-matt);
+  font-family: var(--pixel);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-align: left;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+/* Lange Artikelwörter lieber trennen als mitten im Wort brechen (lang="de") */
+.ki-scanner__tabelle td {
+  padding: 7px 8px 6px 0;
+  border-bottom: 1px solid var(--linie);
+  vertical-align: baseline;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.ki-scanner__tabelle .rechts {
+  text-align: right;
+}
+
+.ki-scanner__tabelle td:last-child .ki-tag {
+  margin-right: 6px;
+}
+
+/* Schmaler Auftrag: jede Position eine kleine Karte, oben „Pos. 1 · 7 Pal.“, darunter Artikel, Art.-Nr. und Hinweis
+   (leere fallen weg). Die Kopfzeile bleibt für Screenreader im Baum, die Rollen im Markup halten die Tabelle
+   zusammen; die sichtbaren Beschriftungen sind für Screenreader stumm (content: … / ""). */
+@container ki-scanner-auftrag (max-width: 419px) {
+  .ki-scanner__tabelle,
+  .ki-scanner__tabelle tbody,
+  .ki-scanner__tabelle td {
+    display: block;
+  }
+
+  .ki-scanner__tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .ki-scanner__tabelle tr {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 2px 0.4em;
+    margin-top: 8px;
+    padding: 7px 10px 8px;
+    border: 1px solid var(--linie-stark);
+  }
+
+  .ki-scanner__tabelle td {
+    padding: 0;
+    border: 0;
+  }
+
+  .ki-scanner__tabelle .rechts {
+    text-align: left;
+  }
+
+  .ki-scanner__tabelle td:first-child {
+    margin-right: 0.5em;
+    font-family: var(--pixel);
+    font-size: 17px;
+  }
+
+  .ki-scanner__tabelle td:nth-child(4) {
+    font-weight: 600;
+  }
+
+  .ki-scanner__tabelle td:nth-child(n + 4) {
+    grid-column: 1 / -1;
+  }
+
+  .ki-scanner__tabelle td:first-child::before,
+  .ki-scanner__tabelle td:nth-child(n + 5)::before {
+    content: attr(data-spalte);
+    content: attr(data-spalte) / "";
+    margin-right: 0.4em;
+    color: var(--tinte-matt);
+  }
+
+  .ki-scanner__tabelle td:nth-child(n + 5)[data-ki-zelle-leer] {
+    display: none;
+  }
+}
+
+.ki-scanner__offen {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--t-klein);
+}
+
+.ki-scanner__offen li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__offen .pixel-icon {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+/* „Feld: Satz.“ */
+.ki-scanner__offen strong:not(:empty)::after {
+  content: ":";
+}
+
+.ki-scanner__still {
+  color: var(--tinte-matt);
+  font-size: var(--t-klein);
+}
+
+.ki-scanner__freigabe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+/* Antwort als Brief ------------------------------------------------------------------------------------------ */
+
+.ki-scanner__leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ki-scanner__brief {
+  display: grid;
+  gap: 10px;
+  padding: 14px clamp(12px, 3cqi, 22px) 18px;
+  box-shadow: var(--e1);
+  font-size: var(--t-klein);
+  line-height: 1.55;
+}
+
+.ki-scanner__betreff {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--linie-stark);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__betreff > span:first-child {
+  margin-right: 0.4em;
+  color: var(--tinte-matt);
+  font-weight: 400;
+}
+
+.ki-scanner__brieftext {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ki-scanner__brieftext:empty {
+  display: none;
+}
+
+/* Tafel wie im Check ----------------------------------------------------------------------------------------- */
+
+.ki-scanner__tafel {
+  display: grid;
+  gap: 16px;
+  padding: clamp(14px, 3cqi, 22px);
+  border: 2px solid var(--rahmen);
+  background: var(--papier);
+}
+
+.ki-scanner__regler {
+  padding-top: 12px;
+  border-top: 1px solid var(--linie);
+}
+
+.ki-scanner__fuss {
+  color: var(--tinte-matt);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.ki-scanner__weiter {
+  align-items: center;
+}
+
+/* Gewählter Reiter und Karte auch ohne Hintergrundfarben erkennbar */
+@media (forced-colors: active) {
+  .ki-scanner__reiter [aria-selected="true"],
+  .ki-scanner__karte input:checked + .ki-scanner__blatt {
+    outline: 3px solid CanvasText;
+    outline-offset: -6px;
+  }
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  .ki-scanner__abschrift summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ki-scanner--scannt .ki-scanner__licht,
+  .ki-scanner__stempel.ki-scanner--stempelt {
+    animation: none;
+  }
+}

@@ -1,0 +1,94 @@
+---
+// Abschnitt 07 „Ausprobieren“: drei kleine KI-Programme auf dem Schreibtisch (Nachtband zwischen Akteneinsicht und
+// Ablauf). Die Programmleiste ist eine Reiterleiste (scripts/ki/ki.ts), jedes Programm ein eigenes Retro-Fenster in
+// einer eigenen Komponente; ki.ts lädt das Skript eines Programms erst, wenn es gebraucht wird. Ohne Skript stehen
+// die Programme untereinander (ki.css, @media (scripting: none)); ein Inline-Skript gibt es bewusst nicht (künftige
+// CSP). Die KI läuft im Website-Dienst unter kiUrl (data/kontakt.ts), der Schlüssel liegt nur dort. Alle Texte
+// stehen in data/ki-demos.ts.
+import Rand from "../Rand.astro";
+import Rasterkante from "../Rasterkante.astro";
+import Auftragsscanner from "./Auftragsscanner.astro";
+import Roentgenblick from "./Roentgenblick.astro";
+import TelefonSimulator from "./TelefonSimulator.astro";
+import { kiUrl } from "../../data/kontakt";
+import { KI_LABOR, PROGRAMME, PROGRAMM_REIHENFOLGE } from "../../data/ki-demos";
+import "../../styles/ki.css";
+
+const programme = PROGRAMM_REIHENFOLGE.map((id) => PROGRAMME[id]);
+---
+
+<section class="ki-labor" id="ausprobieren" aria-labelledby="ausprobieren-titel" data-ki-labor data-ziel={kiUrl}>
+  <div class="bogen band--nacht">
+    <Rand nr={KI_LABOR.nr} titel={KI_LABOR.rand} />
+    <div class="satz">
+      <header class="ki-labor__kopf">
+        <p class="kicker" aria-hidden="true">{KI_LABOR.dachzeile}</p>
+        <h2 id="ausprobieren-titel">{KI_LABOR.ueberschrift}</h2>
+        <p class="ki-labor__lead">{KI_LABOR.lead}</p>
+      </header>
+
+      <div class="ki-tisch">
+        <div class="ki-wahl" role="tablist" aria-label="Programm wählen" data-ki-wahl>
+          {
+            programme.map((p, i) => (
+              <button
+                type="button"
+                class="ki-wahl__reiter"
+                role="tab"
+                id={`ki-reiter-${p.id}`}
+                aria-controls={`ki-programm-${p.id}`}
+                aria-selected={String(i === 0)}
+                tabindex={i === 0 ? 0 : -1}
+                data-ki-reiter={p.id}
+              >
+                <span class="ki-wahl__nr" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span class="ki-wahl__name">{p.reiter}</span>
+              </button>
+            ))
+          }
+        </div>
+
+        <!-- Vor den Fenstern, damit Hinweis und Rest vor dem ersten Klick zu sehen sind -->
+        <p class="ki-hinweis" data-ki-hinweis>
+          {KI_LABOR.hinweiszeile.text}{" "}
+          <a href={KI_LABOR.hinweiszeile.link.ziel}>{KI_LABOR.hinweiszeile.link.text}</a>.{" "}
+          <span class="ki-hinweis__rest" data-ki-rest-zeile hidden></span>{" "}
+          <span class="ki-tag ki-tag--gelb" data-ki-attrappe hidden>{KI_LABOR.attrappe}</span>
+        </p>
+        <noscript>
+          <p class="ki-hinweis">{KI_LABOR.noscript}</p>
+        </noscript>
+
+        {
+          programme.map((p, i) => (
+            <div
+              class="ki-programm"
+              role="tabpanel"
+              id={`ki-programm-${p.id}`}
+              aria-labelledby={`ki-reiter-${p.id}`}
+              data-ki-programm={p.id}
+              hidden={i !== 0}
+            >
+              <div class="ki-programm__kopf">
+                <h3 class="ki-programm__titel">{p.titel}</h3>
+                <p class="ki-programm__text">{p.einleitung}</p>
+              </div>
+              {p.id === "scanner" && <Auftragsscanner />}
+              {p.id === "roentgen" && <Roentgenblick />}
+              {p.id === "telefon" && <TelefonSimulator />}
+            </div>
+          ))
+        }
+
+        <p class="sr-only" role="status" data-ki-ansage></p>
+      </div>
+    </div>
+  </div>
+  <Rasterkante von="nacht" nach="papier" />
+</section>
+
+<script>
+  import "../../scripts/ki/ki";
+</script>

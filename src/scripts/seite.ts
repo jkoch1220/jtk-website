@@ -10,6 +10,7 @@ import { meldungenEinrichten } from "./meldungen";
 import { zeitfresserEinrichten } from "./zeitfresser";
 import { belegEinrichten } from "./beleg-stempel";
 import { klangEinrichten, spiele } from "./klang";
+import { blockEinsetzen, quelleVon } from "./vorbelegen";
 import { mitJahr } from "../data/akten";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -17,8 +18,70 @@ gsap.registerPlugin(ScrollTrigger);
 const bewegungReduziert = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* Weiches Scrollen. Lenis beachtet reduzierte Bewegung selbst und
-   rechnet bei Ankerlinks scroll-padding-top (html) ein. */
-const lenis = new Lenis({ autoRaf: true, anchors: true });
+   rechnet bei Ankerlinks scroll-padding-top (html) ein. Das Ziel misst Lenis nur beim Start;
+   wird unterwegs ein Abschnitt höher (etwa „Ausprobieren“, das sich beim ersten Annähern
+   einrichtet), fährt nachfahren() am Ende einmal den Rest. Wird er erst nach der Fahrt höher
+   (bei reduzierter Bewegung springt Lenis sofort), hält festhalten() das Ziel noch kurz fest. */
+let ankerZiel: HTMLElement | null = null;
+const lenis = new Lenis({
+  autoRaf: true,
+  anchors: {
+    onComplete: () => {
+      const ziel = ankerZiel;
+      nachfahren(ziel, () => {
+        if (ziel) festhalten(ziel);
+      });
+    },
+  },
+});
+
+// Das Ziel eines Ankerlinks auf dieser Seite, für nachfahren(); Lenis gibt es nicht weiter. Im Capture-Lauf, also vor
+// dem Klick-Hörer von Lenis: Bei reduzierter Bewegung springt Lenis sofort und meldet fertig noch im Klick
+window.addEventListener(
+  "click",
+  (e) => {
+    const link = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a[href*='#']") : null;
+    const hierher = link !== null && link.host === location.host && link.pathname === location.pathname && link.hash.length > 1;
+    ankerZiel = hierher ? document.getElementById(decodeURIComponent(link.hash.slice(1))) : null;
+  },
+  true,
+);
+
+/** Liegt das Ziel nach der Fahrt nicht mehr dort, wo sie es hinbringen sollte, einmal nachfahren; dann fertig() */
+function nachfahren(ziel: HTMLElement | null, fertig?: () => void): void {
+  const abstand = (wert: string) => Number.parseFloat(wert) || 0;
+  const soll = ziel
+    ? abstand(getComputedStyle(document.documentElement).scrollPaddingTop) + abstand(getComputedStyle(ziel).scrollMarginTop)
+    : 0;
+  // Am Seitenende kann das Ziel tiefer stehen bleiben; dann misst Lenis dasselbe und meldet sofort fertig
+  if (!ziel || Math.abs(ziel.getBoundingClientRect().top - soll) < 2) fertig?.();
+  else lenis.scrollTo(ziel, { onComplete: () => fertig?.() });
+}
+
+/* Wird nach einer Ankerfahrt ein Abschnitt über dem Ziel höher, rutscht das Ziel nach unten, wenn der Browser das
+   nicht selbst ausgleicht (Scroll-Anchoring; Safari tut es hier nie, Chrome nach einer weichen Fahrt nicht). Das
+   passiert, weil sich „Ausprobieren“ erst beim Annähern einrichtet (etwa mit einer Meldung, wenn die Demos nicht
+   bereit sind). Deshalb fährt die Seite danach noch kurz nach, sobald sich ihre Höhe ändert. Wer selbst scrollt, tippt
+   oder klickt, beendet das sofort; die nächste Ankerfahrt ersetzt es. */
+const FESTHALTEN_MS = 2000;
+const EINGRIFFE = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
+let festhaltenEnde: (() => void) | null = null;
+
+function festhalten(ziel: HTMLElement): void {
+  festhaltenEnde?.();
+  const beobachter = new ResizeObserver(() => nachfahren(ziel));
+  let uhr = 0;
+  const ende = () => {
+    beobachter.disconnect();
+    window.clearTimeout(uhr);
+    for (const art of EINGRIFFE) window.removeEventListener(art, ende, true);
+    if (festhaltenEnde === ende) festhaltenEnde = null;
+  };
+  uhr = window.setTimeout(ende, FESTHALTEN_MS);
+  for (const art of EINGRIFFE) window.addEventListener(art, ende, { capture: true, passive: true });
+  festhaltenEnde = ende;
+  beobachter.observe(document.body);
+}
 
 /* Liegt eine Akte auf dem Lesetisch (Abschnitt 06), steht die Seite dahinter still, auch mitten in
    einer Fahrt. Kam sie per Tiefenlink, ist der Tisch schon offen, bevor Lenis startet. */
@@ -266,18 +329,25 @@ function anfrageEinrichten(): void {
     statusSetzen(ok ? `Text kopiert. Bitte an ${email} schicken.` : "Text markiert. Bitte kopieren und per E-Mail schicken.");
   });
 
-  // Ergebnis aus dem Zeitfresser-Check übernehmen
+  // Ergebnis aus dem Zeitfresser-Check oder Befund aus dem Röntgenblick übernehmen (vorbelegen.ts): Ein neuer
+  // Block ersetzt nur den alten derselben Quelle, Eigenes im Feld bleibt
   window.addEventListener("anfrage:vorbelegen", (event) => {
     const block = (event as CustomEvent<string>).detail;
-    checkUebernommen = checkErgebnis() ?? checkUebernommen;
-    const bisher = nachricht.value.replace(/Ergebnis aus dem Zeitfresser-Check:[\s\S]*?Stunden im Jahr\.\n*/u, "").trim();
-    nachricht.value = bisher ? `${block}\n\n${bisher}` : block;
-    statusSetzen("Ergebnis aus dem Check übernommen");
-    nutzung("Anfrage", "aus dem Check vorbelegt");
-    const abschnitt = document.querySelector<HTMLElement>("#kontakt");
-    if (abschnitt) {
-      lenis.scrollTo(abschnitt, {
-        onComplete: () => name.focus({ preventScroll: true }),
+    if (typeof block !== "string" || !block) return;
+    const quelle = quelleVon(block);
+    if (quelle === "check") checkUebernommen = checkErgebnis() ?? checkUebernommen;
+    nachricht.value = blockEinsetzen(nachricht.value, block);
+    statusSetzen(quelle === "check" ? "Ergebnis aus dem Check übernommen" : "Befund aus dem Röntgenblick übernommen");
+    // Bereich „Anfrage“ ist kein Trichterschritt der Buchung; nie „Termin: …“ von hier
+    nutzung("Anfrage", quelle === "check" ? "aus dem Check vorbelegt" : "aus dem Röntgenblick vorbelegt");
+    // Der Röntgenblick verspricht den Kalender: zum Fenster statt zum Abschnitt, auf dem Handy läge er sonst unter
+    // Überschrift und Einleitung. Der Check scrollt wie bisher zum Abschnitt.
+    const ziel =
+      (quelle === "roentgen" ? document.querySelector<HTMLElement>(".kontakt__formular") : null) ??
+      document.querySelector<HTMLElement>("#kontakt");
+    if (ziel) {
+      lenis.scrollTo(ziel, {
+        onComplete: () => nachfahren(ziel, () => name.focus({ preventScroll: true })),
       });
     }
   });

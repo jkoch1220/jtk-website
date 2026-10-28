@@ -32,6 +32,12 @@ export const anfrageUrl: string = import.meta.env.PUBLIC_ANFRAGE_URL ?? "/api/an
 // passiert dasselbe von selbst (Antwort aktiv=false).
 export const terminUrl: string = import.meta.env.PUBLIC_TERMIN_URL ?? "/api/termine";
 
+// Basisadresse der KI-Demos im Website-Dienst (GET {kiUrl}/status, POST {kiUrl}/scanner, /roentgen, /telefon;
+// Abschnitt 07 „Ausprobieren“, scripts/ki/). Überschreiben in .env:  PUBLIC_KI_URL=https://...  Eine andere Domain
+// bräuchte CORS im Dienst. Leer (PUBLIC_KI_URL=) = die Demos zeigen nur einen Hinweis statt des Startknopfs, etwa
+// solange der Dienst die Demos noch nicht kennt.
+export const kiUrl: string = import.meta.env.PUBLIC_KI_URL ?? "/api/ki";
+
 // Öffentlicher Site-Key für Cloudflare Turnstile (Spam-Schutz der Buchung, scripts/turnstile.ts). Das Geheimnis
 // dazu steht nur auf dem Server (TURNSTILE_SECRET des Website-Dienstes). Lokal gilt Cloudflares Test-Schlüssel,
 // der immer besteht. Überschreiben in .env:  PUBLIC_TURNSTILE_SITE_KEY=...  Leer = ohne Prüfung.

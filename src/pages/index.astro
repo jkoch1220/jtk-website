@@ -2,7 +2,8 @@
 // Aufbau nach StoryBrand (siehe docs/brandscript.md):
 // Der Besucher ist der Held: Kopf mit seinem Wunsch, Problem (außen, innen, grundsätzlich) und
 // Folgen, weicher Handlungsaufruf (Check), Erfolg und Wandel, Begleiter (Empathie und Erfahrung),
-// Plan mit Zusagen, direkter Handlungsaufruf.
+// Belege aus der Praxis, Ausprobieren am eigenen Fall (drei KI-Demos, Abschnitt 07), Plan mit
+// Zusagen, direkter Handlungsaufruf.
 import Base from "../layouts/Base.astro";
 import Beleg from "../components/Beleg.astro";
 import Problem from "../components/Problem.astro";
@@ -12,6 +13,7 @@ import Anfrage from "../components/Anfrage.astro";
 import Rand from "../components/Rand.astro";
 import Rasterkante from "../components/Rasterkante.astro";
 import Praxis from "../components/praxis/Praxis.astro";
+import KiLabor from "../components/ki/KiLabor.astro";
 import { kontakt } from "../data/kontakt";
 import { erfolge, schritte } from "../data/zusagen";
 
@@ -131,11 +133,13 @@ import { erfolge, schritte } from "../data/zusagen";
 
   <Praxis />
 
+  <KiLabor />
+
   <section class="ablauf-abschnitt" id="ablauf" aria-labelledby="ablauf-titel">
     <div class="bogen band--papier ablauf-band">
-      <Rand nr="07" titel="Ihr Weg" />
+      <Rand nr="08" titel="Ihr Weg" />
       <div class="satz">
-        <p class="kicker" aria-hidden="true">07 · Ihr Weg</p>
+        <p class="kicker" aria-hidden="true">08 · Ihr Weg</p>
         <h2 id="ablauf-titel">In drei Schritten zu weniger Büroarbeit</h2>
       </div>
       <div class="ablauf__linie voll" aria-hidden="true">

@@ -3,6 +3,7 @@
    gespeichert: Nach einem Seitenwechsel ist er wieder aus. Erst ein Klick auf einen
    [data-ton-schalter] erzeugt den AudioContext, synchron in der Geste (sonst bleibt iOS stumm),
    und lädt das Klangwerk (klang-werk.ts) nach. Solange der Ton aus ist, ist spiele() ein No-op.
+   Den Kontext nutzt auch die Stimme des Probeanrufs; sie spielt nur bei eingeschaltetem Ton.
    Kein Ton trägt allein eine Information: Was klingt, ist auch sichtbar und wird angesagt. */
 
 import { nutzung } from "./nutzung";
@@ -15,15 +16,15 @@ declare global {
 
 export type KlangId =
   | "anmelden" | "abmelden" | "erfolg" // Momente
-  | "hinweis" | "achtung" | "frage" | "stopp" | "ding" // Meldungen
-  | "stempel" | "papier" | "drucker" // Rückmeldungen
-  | "plopp" | "klick" | "umschalten"; // Mikro
+  | "hinweis" | "achtung" | "frage" | "stopp" | "ding" | "freiton" | "roentgen" // Meldungen
+  | "stempel" | "papier" | "drucker" | "scanner" | "hoerer" // Rückmeldungen
+  | "plopp" | "klick" | "umschalten" | "taste" | "tippen"; // Mikro
 
 export interface KlangOpt {
   pan?: number; // −1 bis 1
   db?: number; // Abschwächung in dB (positiv = leiser)
   in?: number; // Verzögerung in s, sampelgenau im Zeitplan des AudioContext
-  variante?: string; // etwa "tief", "hoch", "rast", "kurz", "dunkel", "hell"
+  variante?: string; // etwa "tief", "hoch", "rast", "kurz", "dunkel", "hell", "ab", "auf", "besetzt", bei "taste" die Ziffer
   anim?: boolean; // an eine Animation gekoppelt: bei reduzierter Bewegung die Kurzfassung
   einzeln?: boolean; // laufende und geplante Stimmen desselben Klangs vorher ausblenden
 }
@@ -43,19 +44,28 @@ const DROSSEL: Partial<Record<KlangId, number>> = {
   erfolg: 3000,
   anmelden: 3000,
   abmelden: 3000,
+  tippen: 90, // Streaming: höchstens etwa elf Anschläge je Sekunde
+  taste: 60, // Wählfolge im Abstand von 110 ms passt durch
+  hoerer: 250,
+  freiton: 900,
+  scanner: 800,
+  roentgen: 1500,
 };
 // Ein Folgeklang innerhalb dieser Zeit (ms) kommt 3 dB leiser
 const FOLGE = 400;
 // So lange nach einem Klick auf den Nachtmodus (ms) gilt ein theme-Event als vom Nutzer
 const MODUS_FENSTER = 600;
-// Knöpfe, die ohne eigenen Klang leise klicken
-const KNOEPFE = ".retro-knopf, .knopf, .taskleiste__feierabend, .taskleiste__eintrag, [data-berge-neu]";
+// Knöpfe, die ohne eigenen Klang leise klicken; dazu die Reiter der KI-Programme (Abschnitt 07), sonst bliebe der
+// Wechsel stumm
+const KNOEPFE =
+  ".retro-knopf, .knopf, .taskleiste__feierabend, .taskleiste__eintrag, [data-berge-neu], .ki-wahl__reiter";
 // Nie generisch klicken: Schalter mit eigenem Klang, Absenden (das submit-Event und damit „ding“
 // kommt erst nach dem Klick), Kopieren (der Plopp kommt erst nach dem await), das stille
-// Zurücksetzen und das hängende Fenster, dessen Klicks verpuffen
+// Zurücksetzen, das hängende Fenster, dessen Klicks verpuffen, und Knöpfe, deren Klang erst
+// nach einem await kommt (data-klang-still)
 const STILL =
   "[data-ton-schalter], [data-modus-schalter], [type=submit], [data-kopiere], [data-anfrage-kopieren], " +
-  "[data-meldungen-zurueck], .meldung--haengt";
+  "[data-meldungen-zurueck], .meldung--haengt, [data-klang-still]";
 const LAUTSTAERKE = 0.6;
 
 let an = false;
@@ -71,8 +81,9 @@ export const tonIstAn = (): boolean => an;
 /** Spielt einen Klang, wenn der Ton an ist. Sonst passiert nichts. */
 export function spiele(id: KlangId, o: KlangOpt = {}): void {
   const jetzt = performance.now();
-  // Schon der Wunsch zählt: Ein gedrosselter spezifischer Klang unterdrückt trotzdem den Klick
-  if (id !== "klick") spezifisch = jetzt;
+  // Schon der Wunsch zählt: Ein gedrosselter spezifischer Klang unterdrückt trotzdem den Klick.
+  // Tippen nicht: Beim Streaming kommt es laufend, jeder Knopfklick in dieser Zeit bliebe sonst stumm
+  if (id !== "klick" && id !== "tippen") spezifisch = jetzt;
   if (!an || !ctx || ctx.state !== "running" || document.visibilityState !== "visible") return;
   // Gedrosselt wird nach dem geplanten Beginn, sonst bliebe von einer Folge (in: i · 0,07) nur der erste
   const soll = jetzt + (o.in ?? 0) * 1000;
@@ -97,10 +108,14 @@ function stilleAbspielen(c: AudioContext): void {
   }
 }
 
-function einschalten(): void {
-  // SYNCHRON in der Geste, vor jedem await, sonst bleibt iOS stumm
+/**
+ * Der eine AudioContext der Seite, SYNCHRON in einer Geste angelegt bzw. fortgesetzt (sonst bleibt iOS stumm).
+ * Schaltet den Ton nicht ein. Auch die Stimme des Probeanrufs (ki/stimme.ts) spielt darüber, aber nur bei
+ * eingeschaltetem Ton; das Vorlesen setzt den Kontext in seinem Klick fort.
+ */
+export function kontextImKlick(): AudioContext | null {
   const Kontext = window.AudioContext ?? window.webkitAudioContext;
-  if (!Kontext) return;
+  if (!Kontext) return null;
   try {
     // Stummschalter respektieren, NIE "playback". Vor dem ersten Ton, danach legt WebKit sich fest
     const sitzung = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
@@ -112,12 +127,22 @@ function einschalten(): void {
     try {
       ctx = new Kontext({ latencyHint: "interactive" });
     } catch {
-      return;
+      return null;
     }
   }
-  const c = ctx;
+  void ctx.resume().catch(() => {});
+  stilleAbspielen(ctx);
+  return ctx;
+}
+
+/** Der AudioContext, falls ihn schon eine Geste angelegt hat (Ton- oder Vorlesen-Schalter), sonst null */
+export const audioKontext = (): AudioContext | null => ctx;
+
+function einschalten(): void {
+  // SYNCHRON in der Geste, vor jedem await, sonst bleibt iOS stumm
+  const c = kontextImKlick();
+  if (!c) return;
   const bereit = c.resume().catch(() => {});
-  stilleAbspielen(c);
   an = true;
   zustandSetzen();
   if (!laden) {
@@ -167,7 +192,10 @@ export function klangEinrichten(): void {
   document.addEventListener("click", (e) => {
     const schalter = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-ton-schalter]") : null;
     if (!schalter) return;
-    nutzung("Ton", an ? "ausgeschaltet" : "eingeschaltet", { detail: schalter.classList.contains("taskleiste__ton") ? "Taskleiste" : "Kopf" });
+    // Ort aus dem Markup (data-ton-schalter="Telefonassistent"); die beiden alten Schalter tragen keinen
+    nutzung("Ton", an ? "ausgeschaltet" : "eingeschaltet", {
+      detail: schalter.dataset.tonSchalter || (schalter.classList.contains("taskleiste__ton") ? "Taskleiste" : "Kopf"),
+    });
     (an ? ausschalten : einschalten)();
   });
 
@@ -209,8 +237,10 @@ export function klangEinrichten(): void {
     if (t.closest(KNOEPFE)) spiele("klick");
   });
 
+  // Verborgen hält der Kontext an, auch wenn ihn nur die Stimme des Probeanrufs angelegt hat; fortgesetzt wird nur
+  // mit Ton, die Stimme setzt ihn selbst fort
   document.addEventListener("visibilitychange", () => {
-    if (!an || !ctx) return;
+    if (!ctx) return;
     if (document.hidden) void ctx.suspend().catch(() => {});
     else fortsetzen();
   });

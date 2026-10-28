@@ -1,0 +1,267 @@
+---
+// Programm 3 im Abschnitt 07: Probeanruf. Besucher rufen bei einem erfundenen Betrieb an; ein KI-Telefonassistent
+// führt das Gespräch (höchstens fünf Antworten), daneben füllt sich die Telefonnotiz. Links der Hörer (Wahl des
+// Betriebs, Anzeige der Leitung, Verlauf, Eingabe, Sätze), rechts die Notiz auf Papier. Welche Teile zu sehen sind,
+// hängt an der Phase des Anrufs (data-ki-telefon am Fenster, ki-telefon.css). Die Begrüßung mit dem KI-Satz kommt
+// fest von der Seite (data/ki-demos.ts), nie von der KI. Alles, was das Skript nur ein- und ausblendet (Sätze beider
+// Betriebe, Felder der Notiz, Stempel), steht schon hier im Markup; scripts/ki/telefon.ts setzt nur Texte aus festen
+// Quellen. Die Markup-Konvention der gemeinsamen Steuerung (scripts/ki/anzeige.ts) gilt: Formular mit
+// Turnstile-Aktion, [data-ki-start], [data-ki-anhalten], [data-ki-stand], [data-ki-meldung], [data-ki-ausgang].
+// Der Ton-Schalter steht statisch hier, weil klang.ts nur beim Start vorhandene Schalter freischaltet. Neben dem
+// Vorlesen stehen beide Hinweise; sprache.ts zeigt den zur Computerstimme oder, wenn der Dienst seine Stimme anbietet,
+// den zum Sprachdienst, bevor etwas übertragen wird.
+import Fenster from "../Fenster.astro";
+import { turnstileSiteKey } from "../../data/kontakt";
+import { mitJahr } from "../../data/akten";
+import { BETRIEBE, BETRIEB_REIHENFOLGE, HINWEISE, PROGRAMME, SPRACHE, TELEFON, TELEFONNOTIZ } from "../../data/ki-demos";
+import "../../styles/ki-telefon.css";
+
+const programm = PROGRAMME.telefon;
+const betriebe = BETRIEB_REIHENFOLGE.map((id) => BETRIEBE[id]);
+// Jahr der Vorgangsnummer vom Bauen; das Skript setzt es beim Laden auf heute (wie data-jahr-nr im Hero)
+const vorgang = mitJahr(TELEFONNOTIZ.vorgang, new Date().getFullYear());
+const felder = Object.entries(TELEFONNOTIZ.felder);
+---
+
+<Fenster
+  titel={programm.fenstertitel}
+  class="ki-fenster ki-telefon"
+  data-ki-demo="telefon"
+  data-gesehen="Telefonassistent: Demo gesehen"
+  data-ki-telefon="frei"
+>
+  <form class="ki-fenster__buehne" method="post" data-turnstile-aktion={programm.aktion} novalidate>
+    <div class="ki-fenster__eingang">
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">1</span>Ihr Anruf</h4>
+
+      <div class="ki-telefon__wahl">
+        <fieldset class="team ki-telefon__betriebe">
+          <legend>{TELEFON.wahl}</legend>
+          <div class="team__knoepfe">
+            {
+              betriebe.map((b, i) => (
+                <label class="team__wahl">
+                  <input type="radio" name="betrieb" value={b.id} checked={i === 0} />
+                  <span>{TELEFON.karte(b)}</span>
+                </label>
+              ))
+            }
+          </div>
+        </fieldset>
+        <p class="ki-telefon__klein">{TELEFON.hinweis} {TELEFON.grenze}</p>
+      </div>
+
+      <div class="ki-telefon__leitung">
+        <span class="ki-telefon__led" aria-hidden="true"></span>
+        <p class="ki-telefon__anzeige">
+          <span class="ki-telefon__zeile" data-ki-telefon-zeile></span>
+          <span class="ki-telefon__anschluss" data-ki-telefon-anschluss></span>
+        </p>
+        <button type="button" class="retro-knopf ki-telefon__auflegen" data-ki-telefon-auflegen>{TELEFON.auflegen}</button>
+      </div>
+
+      <ol class="ki-telefon__verlauf" aria-label={TELEFON.verlauf} tabindex="0" data-ki-verlauf data-lenis-prevent hidden></ol>
+      <p class="ki-telefon__satzhinweis" data-ki-telefon-satzhinweis hidden></p>
+
+      <div class="feld ki-telefon__feld">
+        <label for="ki-telefon-text">{TELEFON.eingabe.label}</label>
+        <p class="ki-feldhinweis" id="ki-telefon-hinweis">
+          <span class="ki-tag">KI</span>{" "}
+          <span>{programm.kiHinweis}</span>
+        </p>
+        <input
+          id="ki-telefon-text"
+          name="text"
+          type="text"
+          maxlength={TELEFON.grenzen.textMax}
+          autocomplete="off"
+          enterkeyhint="send"
+          placeholder={TELEFON.eingabe.platzhalter}
+          aria-describedby="ki-telefon-hinweis"
+          data-ki-eingabe
+        />
+      </div>
+
+      <div class="ki-meldung" data-ki-meldung hidden></div>
+
+      <div class="check__aktionen ki-telefon__aktionen">
+        <button type="button" class="retro-knopf retro-knopf--voll ki-telefon__anrufen" data-ki-telefon-anrufen disabled>
+          {TELEFON.anrufen}
+        </button>
+        <button type="submit" class="retro-knopf retro-knopf--voll ki-telefon__sagen" data-ki-start disabled>
+          {TELEFON.eingabe.senden}
+        </button>
+        <button type="button" class="retro-knopf ki-telefon__mikro" data-ki-sprache hidden>
+          <span data-ki-sprache-text>{SPRACHE.knopf}</span>
+        </button>
+        <button type="button" class="retro-knopf" data-ki-anhalten hidden>{TELEFON.anhalten}</button>
+      </div>
+
+      <div class="ki-telefon__sprache">
+        <p class="feld__hilfe" data-ki-sprache-zeile></p>
+        <div class="ki-meldung" data-ki-sprache-hinweis hidden></div>
+      </div>
+
+      <div class="ki-telefon__saetze">
+        <p class="ki-telefon__saetze-titel" id="ki-telefon-saetze-titel">{TELEFON.saetze}</p>
+        <div class="ki-telefon__chips" role="group" aria-labelledby="ki-telefon-saetze-titel">
+          {
+            betriebe.map((b) =>
+              [...b.saetze.map((s) => ({ s, art: "anfang" })), ...b.folgesaetze.map((s) => ({ s, art: "folge" }))].map(
+                ({ s, art }) => (
+                  <button
+                    type="button"
+                    class="ki-telefon__satz"
+                    data-ki-betrieb={b.id}
+                    data-ki-satz={s.id}
+                    data-ki-satzart={art}
+                    hidden
+                  >
+                    {s.text}
+                  </button>
+                ),
+              ),
+            )
+          }
+        </div>
+      </div>
+
+      <div class="ki-telefon__ende">
+        <p class="ki-telefon__endtext" tabindex="-1" data-ki-telefon-endtext>{TELEFON.ende}</p>
+        <p class="ki-telefon__klein" data-ki-telefon-grenze hidden>{TELEFON.grenze}</p>
+        <p class="ki-telefon__rechnung">{TELEFON.rechnung}</p>
+        <p>{TELEFON.ctaHinweis}</p>
+        <div class="ki-telefon__endknoepfe">
+          <a class="retro-knopf retro-knopf--voll ki-telefon__cta" href="#kontakt" data-klickziel="Telefonassistent: Assistent anfragen">
+            {TELEFON.cta}
+          </a>
+          <button type="button" class="retro-knopf" data-ki-telefon-nochmal>{TELEFON.nochmal}</button>
+        </div>
+      </div>
+
+      {turnstileSiteKey && <div class="ki-turnstile" data-turnstile data-sitekey={turnstileSiteKey}></div>}
+
+      <div class="ki-telefon__schalter">
+        <button type="button" class="retro-knopf ki-telefon__ton" data-ton-schalter="Telefonassistent" aria-pressed="false" hidden>
+          <svg class="ton-symbol" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <path d="M1 4h3v4H1zM4 3h1v6H4zM5 2h1v8H5zM6 1h1v10H6z"></path>
+            <path
+              class="ton-symbol__wellen"
+              d="M8 4h1v1H8zM9 5h1v2H9zM8 7h1v1H8zM9 2h1v1H9zM10 3h1v1h-1zM11 4h1v4h-1zM10 8h1v1h-1zM9 9h1v1H9z"></path>
+            <path class="ton-symbol__aus" d="M8 4h1v1H8zM11 4h1v1h-1zM9 5h2v2H9zM8 7h1v1H8zM11 7h1v1h-1z"></path>
+          </svg>
+          <span>{TELEFON.tonSchalter}</span>
+        </button>
+        <button
+          type="button"
+          class="retro-knopf"
+          data-ki-vorlesen
+          aria-pressed="false"
+          aria-describedby="ki-telefon-vorlesen-hinweis"
+          hidden
+        >
+          {SPRACHE.vorlesen.schalter}
+        </button>
+        <p class="ki-telefon__klein ki-telefon__vorlesehinweis" id="ki-telefon-vorlesen-hinweis">
+          <span data-ki-vorlesen-geraet>{SPRACHE.vorlesen.hinweis}</span>
+          <span data-ki-vorlesen-dienst hidden>
+            {SPRACHE.vorlesen.extern.hinweis}{" "}{SPRACHE.vorlesen.extern.mehr}{" "}<a
+              href={SPRACHE.vorlesen.extern.link.ziel}>{SPRACHE.vorlesen.extern.link.text}</a
+            >.
+          </span>
+        </p>
+      </div>
+    </div>
+
+    <div class="ki-fenster__ausgang" aria-busy="false" data-ki-ausgang>
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">2</span>{TELEFONNOTIZ.ueberschrift}</h4>
+      <div class="ki-papier ki-telefon__notiz">
+        <div class="ki-telefon__kopf">
+          <p class="ki-telefon__absender">{TELEFONNOTIZ.absender}</p>
+          <span class="ki-tag">{TELEFONNOTIZ.plakette}</span>
+        </div>
+        <p class="ki-telefon__titel">{TELEFONNOTIZ.titel}</p>
+        <dl class="ki-telefon__meta">
+          <div>
+            <dt>{TELEFONNOTIZ.meta.vorgang}</dt>
+            <dd data-ki-notiz-vorgang>{vorgang}</dd>
+          </div>
+          <div>
+            <dt>{TELEFONNOTIZ.meta.anrufAm}</dt>
+            <dd data-ki-notiz-datum>{TELEFONNOTIZ.ohneWert}</dd>
+          </div>
+          <div>
+            <dt>{TELEFONNOTIZ.meta.uhrzeit}</dt>
+            <dd data-ki-notiz-uhrzeit>{TELEFONNOTIZ.ohneWert}</dd>
+          </div>
+          <div data-ki-notiz-dauer hidden>
+            <dt>{TELEFONNOTIZ.meta.dauer}</dt>
+            <dd data-ki-notiz-dauerwert></dd>
+          </div>
+        </dl>
+        <dl class="ki-telefon__felder">
+          {
+            felder.map(([name, beschriftung]) => (
+              <div>
+                <dt>{beschriftung}</dt>
+                <dd class="ki-telefon__offen" data-ki-notiz-feld={name}>
+                  {TELEFONNOTIZ.leer}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+        <div class="ki-telefon__fuss">
+          <p data-ki-notiz-fuss></p>
+          <div class="ki-telefon__stempelfeld">
+            <svg class="ki-telefon__stempel" viewBox="0 0 260 104" aria-hidden="true" focusable="false" data-ki-notiz-stempel hidden>
+              <defs>
+                <filter id="ki-telefon-tinte" x="-6%" y="-12%" width="112%" height="124%" color-interpolation-filters="sRGB">
+                  <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="11" result="fein"></feTurbulence>
+                  <feDisplacementMap in="SourceGraphic" in2="fein" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="rau"
+                  ></feDisplacementMap>
+                  <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed="31" result="flecken"></feTurbulence>
+                  <feColorMatrix in="flecken" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05" result="maske"
+                  ></feColorMatrix>
+                  <feComposite in="rau" in2="maske" operator="in"></feComposite>
+                </filter>
+              </defs>
+              <g filter="url(#ki-telefon-tinte)">
+                <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"></rect>
+                <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+                <text
+                  x="130"
+                  y="60"
+                  text-anchor="middle"
+                  fill="currentColor"
+                  font-size="40"
+                  font-weight="800"
+                  textLength="214"
+                  lengthAdjust="spacingAndGlyphs"
+                  data-ki-stempel-oben>{TELEFONNOTIZ.stempel.sonst.oben}</text
+                >
+                <text
+                  x="130"
+                  y="82"
+                  text-anchor="middle"
+                  fill="currentColor"
+                  font-size="13"
+                  font-weight="650"
+                  textLength="196"
+                  lengthAdjust="spacingAndGlyphs"
+                  data-ki-stempel-unten>{TELEFONNOTIZ.stempel.sonst.unten}</text
+                >
+              </g>
+            </svg>
+            <span class="sr-only" data-ki-stempel-text></span>
+          </div>
+        </div>
+      </div>
+      <p class="ki-pruefhinweis">{HINWEISE.unterErgebnis}</p>
+    </div>
+  </form>
+  <Fragment slot="status">
+    <span data-ki-stand>Wird vorbereitet …</span>
+    <span data-ki-zuege></span>
+  </Fragment>
+</Fenster>

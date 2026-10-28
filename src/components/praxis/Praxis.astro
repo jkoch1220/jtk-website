@@ -3,6 +3,7 @@
 // Besucher. Ein Klick legt eine Akte auf den Lesetisch (Dialog, scripts/praxis-lesetisch.ts);
 // ohne Skript klappt man die Geschichte unter der Mappe auf. Inhalte: src/data/praxis/.
 import Rand from "../Rand.astro";
+import Rasterkante from "../Rasterkante.astro";
 import Akte from "./Akte.astro";
 import { akten, aktenPruefen, protokoll, monatKurz } from "../../data/praxis";
 import "../../styles/praxis.css";
@@ -68,6 +69,8 @@ const angelegt = new Date().toLocaleDateString("de-DE", { day: "2-digit", month:
         </article>
       </div>
     </div>
+    <!-- Naht zum Abschnitt 07 „Ausprobieren“, der auf dem Nachtband liegt -->
+    <Rasterkante von="papier" nach="nacht" />
   </div>
 
   <!-- Tinte der Stempel und die Paraphe, einmal für alle Akten. Nicht display: none, sonst fehlt der Filter in Firefox. -->

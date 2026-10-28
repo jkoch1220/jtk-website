@@ -1,0 +1,366 @@
+---
+// Programm 1 im Abschnitt 07: Auftrags-Scanner. Links, was bei Ihnen reinkommt: vier Datei-Karten (Kundenmail,
+// Zettel vom Monteur, alter Export, eigener Text) als Radiogruppe und darunter die gewählte Vorlage, über die beim
+// Start der Lichtbalken des Scanners fährt. Rechts, was die KI daraus macht, in drei Reitern: der Auftrag als Papier
+// mit Stempel „ENTWURF“ (Positionen, „Was Sie noch klären müssen“), die Antwort an den Kunden und die Tafel „Was Sie
+// das Abtippen kostet“ wie im Zeitfresser-Check.
+// Feste Teile für die gemeinsame Steuerung (scripts/ki/anzeige.ts, demoSteuerung): Formular mit Turnstile-Ort,
+// Startknopf, Anhalten, Meldungsort, Ausgabefläche, Statusleiste. Logik in scripts/ki/scanner.ts, Texte in
+// data/ki-demos.ts, eigenes CSS in styles/ki-scanner.css. Alles, was das Skript füllt, liegt hier schon als leerer
+// Platz bereit (Werte, Zeilenkörper, Warnzeichen als <template>), damit die Antworten der KI nur als Text ins DOM
+// gehen.
+import { Image } from "astro:assets";
+import Fenster from "../Fenster.astro";
+import PixelIcon from "../PixelIcon.astro";
+import zettelBild from "../../assets/ki/werkstatt-zettel.webp";
+import { turnstileSiteKey } from "../../data/kontakt";
+import { ARBEITSWOCHEN, STUNDENSATZ } from "../../data/richtwerte";
+import { HINWEISE, PROGRAMME, SCANNER, VORLAGEN, VORLAGEN_REIHENFOLGE, VORLAGE_EIGEN } from "../../data/ki-demos";
+import "../../styles/ki-scanner.css";
+
+const programm = PROGRAMME.scanner;
+const zaehler = SCANNER.eingabe.zaehler("0", SCANNER.grenzen.textMax.toLocaleString("de-DE"));
+const vorlagen = VORLAGEN_REIHENFOLGE.map((id) => VORLAGEN[id]);
+const mail = VORLAGEN["baustellen-mail"];
+const zettel = VORLAGEN["werkstatt-zettel"];
+const csv = VORLAGEN["altsystem-csv"];
+// Kopfzeilen der Mail (Von, Betreff) bis zur ersten Leerzeile, darunter der Text
+const [mailKopf = "", ...mailRumpf] = mail.text.split("\n\n");
+// Dateinamen dürfen nach „_“ und vor der Endung umbrechen, nicht mitten im Wort
+const dateiTeile = (name: string) => name.split(/(?<=_)|(?=\.)/);
+
+// Kopf des Auftrags in der Reihenfolge des Ergebnisses; der Pfad sagt dem Skript, welches Feld hier steht
+const kopf = [
+  { pfad: "vorgang", label: SCANNER.vorgang },
+  { pfad: "kunde.firma", label: SCANNER.kopf.firma },
+  { pfad: "kunde.ansprechpartner", label: SCANNER.kopf.ansprechpartner },
+  { pfad: "kunde.telefon", label: SCANNER.kopf.telefon },
+  { pfad: "kunde.email", label: SCANNER.kopf.email },
+  { pfad: "kunde.kundennummer", label: SCANNER.kopf.kundennummer },
+  { pfad: "lieferung.adresse", label: SCANNER.kopf.adresse },
+  { pfad: "lieferung.termin", label: SCANNER.kopf.termin },
+  { pfad: "lieferung.hinweise", label: SCANNER.kopf.hinweise },
+];
+const spalten = SCANNER.positionen.spalten;
+const reiter = [
+  { id: "auftrag", text: SCANNER.reiter.auftrag },
+  { id: "antwort", text: SCANNER.reiter.antwort },
+  { id: "kosten", text: SCANNER.reiter.kosten },
+];
+const { reglerMin, reglerMax, reglerStart } = SCANNER.kosten;
+---
+
+<Fenster
+  titel={programm.fenstertitel}
+  class="ki-fenster ki-scanner"
+  data-ki-demo="scanner"
+  data-gesehen="Auftrags-Scanner: Demo gesehen"
+>
+  <!-- Nur der Eingang ist ein Formular: Enter im Regler oder in den Reitern des Ergebnisses darf keinen Lauf starten -->
+  <div class="ki-fenster__buehne">
+    <form class="ki-fenster__eingang" method="post" data-turnstile-aktion={programm.aktion} novalidate>
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">1</span>{SCANNER.schritte.eingang}</h4>
+
+      <fieldset class="ki-scanner__vorlagen">
+        <legend>{SCANNER.vorlagenLegende}</legend>
+        <div class="ki-scanner__karten">
+          {
+            vorlagen.map((v, i) => (
+              <label class="ki-scanner__karte">
+                <input type="radio" name="vorlage" value={v.id} checked={i === 0} />
+                <span class="ki-scanner__blatt">
+                  <span class="ki-scanner__datei">
+                    {dateiTeile(v.dateiname).map((teil, j) => (
+                      <>
+                        {j > 0 && <wbr />}
+                        {teil}
+                      </>
+                    ))}
+                  </span>
+                  <span class="ki-scanner__kurz">{v.kurzname}</span>
+                  <span class="ki-scanner__unter">{v.unterzeile}</span>
+                </span>
+              </label>
+            ))
+          }
+          <label class="ki-scanner__karte">
+            <input type="radio" name="vorlage" value="eigen" />
+            <span class="ki-scanner__blatt ki-scanner__blatt--eigen">
+              <span class="ki-scanner__kurz">{VORLAGE_EIGEN.kurzname}</span>
+              <span class="ki-scanner__unter">{VORLAGE_EIGEN.unterzeile}</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <p class="ki-feldhinweis" id="ki-scanner-hinweis">
+        <span class="ki-tag">KI</span>{" "}
+        <span>{programm.kiHinweis} {HINWEISE.keineEchtenDaten}</span>
+      </p>
+
+      <!-- Die gewählte Vorlage; darüber fährt beim Start der Lichtbalken (ki-scanner--scannt) -->
+      <div class="ki-scanner__vorschau" data-ki-scanner-vorschau>
+        <div
+          class="ki-papier ki-scanner__mail"
+          role="region"
+          aria-label={SCANNER.vorschau(mail.kurzname)}
+          tabindex="0"
+          data-lenis-prevent
+          data-ki-ansicht={mail.id}
+        >
+          <p class="ki-scanner__mailkopf">{mailKopf}</p>
+          <p>{mailRumpf.join("\n\n")}</p>
+        </div>
+        <figure class="ki-scanner__zettel" data-ki-ansicht={zettel.id} hidden>
+          <Image
+            src={zettelBild}
+            alt={zettel.alt}
+            width={600}
+            widths={[300, 450, 600]}
+            sizes="(min-width: 480px) 300px, 70vw"
+            quality={70}
+            loading="lazy"
+            decoding="async"
+          />
+          <details class="ki-scanner__abschrift">
+            <summary>{zettel.abschriftTitel}</summary>
+            <p>{zettel.abschrift}</p>
+          </details>
+        </figure>
+        <div
+          class="ki-scanner__csv"
+          role="region"
+          aria-label={SCANNER.vorschau(csv.kurzname)}
+          tabindex="0"
+          data-lenis-prevent
+          data-ki-ansicht={csv.id}
+          hidden
+        >
+          <pre>{csv.text}</pre>
+        </div>
+        <div class="feld" data-ki-ansicht="eigen" hidden>
+          <label for="ki-scanner-text">{SCANNER.eingabe.label}</label>
+          <textarea
+            id="ki-scanner-text"
+            name="text"
+            rows="9"
+            maxlength={SCANNER.grenzen.textMax}
+            placeholder={SCANNER.eingabe.platzhalter}
+            aria-describedby="ki-scanner-hinweis ki-scanner-zaehler"
+            data-ki-eingabe></textarea>
+          <p class="feld__hilfe ki-zaehler" id="ki-scanner-zaehler" data-ki-zaehler>{zaehler}</p>
+        </div>
+        <span class="ki-scanner__lichtbahn" aria-hidden="true"><span class="ki-scanner__licht"></span></span>
+      </div>
+
+      {turnstileSiteKey && <div class="ki-turnstile" data-turnstile data-sitekey={turnstileSiteKey}></div>}
+      <div class="ki-meldung" data-ki-meldung hidden></div>
+      <div class="check__aktionen">
+        <button type="submit" class="retro-knopf retro-knopf--voll" data-ki-start disabled>{SCANNER.start}</button>
+        <button type="button" class="retro-knopf" data-ki-anhalten hidden>{SCANNER.anhalten}</button>
+      </div>
+    </form>
+
+    <div class="ki-fenster__ausgang" aria-busy="false" data-ki-ausgang>
+      <h4 class="check__titel"><span class="check__nr" aria-hidden="true">2</span>{SCANNER.schritte.ausgang}</h4>
+      <div class="ki-platz" data-ki-leer>
+        <p class="ki-platz__leer">{SCANNER.leer}</p>
+      </div>
+      <!-- Kein Auftrag im Text: nur der Hinweis der KI (als Text) -->
+      <div data-ki-hinweisort hidden></div>
+
+      <div class="ki-scanner__ergebnis" data-ki-ergebnis hidden>
+        <div class="ki-scanner__reiter" role="tablist" aria-label={SCANNER.ergebnisReiter} data-ki-reiterleiste>
+          {
+            reiter.map((r, i) => (
+              <button
+                type="button"
+                role="tab"
+                id={`ki-scanner-reiter-${r.id}`}
+                aria-controls={`ki-scanner-panel-${r.id}`}
+                aria-selected={String(i === 0)}
+                tabindex={i === 0 ? 0 : -1}
+              >
+                {r.text}
+              </button>
+            ))
+          }
+        </div>
+
+        <div role="tabpanel" id="ki-scanner-panel-auftrag" aria-labelledby="ki-scanner-reiter-auftrag" tabindex="0">
+          <div class="ki-papier ki-scanner__auftrag">
+            <div class="ki-scanner__kopfzeile">
+              <span class="ki-tag">{SCANNER.kiMarke}</span>
+              <div class="ki-scanner__stempelfeld">
+                <svg class="ki-scanner__stempel" viewBox="0 0 260 104" aria-hidden="true" focusable="false" data-ki-stempel>
+                  <defs>
+                    <!-- Tinte wie beim Stempel des Checks, mit eigener id (keine doppelten ids im Dokument) -->
+                    <filter
+                      id="ki-scanner-stempel-tinte"
+                      x="-6%"
+                      y="-12%"
+                      width="112%"
+                      height="124%"
+                      color-interpolation-filters="sRGB"
+                    >
+                      <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="11" result="fein"
+                      ></feTurbulence>
+                      <feDisplacementMap
+                        in="SourceGraphic"
+                        in2="fein"
+                        scale="2.6"
+                        xChannelSelector="R"
+                        yChannelSelector="G"
+                        result="rau"></feDisplacementMap>
+                      <feTurbulence type="fractalNoise" baseFrequency="0.045 0.11" numOctaves="3" seed="31" result="flecken"
+                      ></feTurbulence>
+                      <feColorMatrix
+                        in="flecken"
+                        type="matrix"
+                        values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -2.6 0 0 0 2.05"
+                        result="maske"></feColorMatrix>
+                      <feComposite in="rau" in2="maske" operator="in"></feComposite>
+                    </filter>
+                  </defs>
+                  <g filter="url(#ki-scanner-stempel-tinte)">
+                    <rect x="4" y="4" width="252" height="96" rx="7" fill="none" stroke="currentColor" stroke-width="5"
+                    ></rect>
+                    <rect x="12" y="12" width="236" height="80" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"
+                    ></rect>
+                    <text
+                      x="130"
+                      y="60"
+                      text-anchor="middle"
+                      fill="currentColor"
+                      font-size="40"
+                      font-weight="800"
+                      textLength="189"
+                      lengthAdjust="spacingAndGlyphs"
+                      data-ki-stempel-wort>{SCANNER.stempel.entwurf}</text
+                    >
+                    <text
+                      x="130"
+                      y="82"
+                      text-anchor="middle"
+                      fill="currentColor"
+                      font-size="13"
+                      font-weight="650"
+                      lengthAdjust="spacingAndGlyphs"
+                      data-ki-stempel-datum></text>
+                  </g>
+                </svg>
+                <span class="sr-only" data-ki-stempel-text>{SCANNER.stempelText.entwurf}</span>
+              </div>
+            </div>
+            <dl class="ki-scanner__kopf">
+              {
+                kopf.map((k) => (
+                  <div>
+                    <dt>{k.label}</dt>
+                    <dd>
+                      <span data-ki-wert={k.pfad} />
+                      <span class="ki-tag ki-tag--gelb" data-ki-fehlt hidden>
+                        <PixelIcon name="warnung" />
+                        {SCANNER.fehlt}
+                      </span>
+                    </dd>
+                  </div>
+                ))
+              }
+            </dl>
+            <h5 class="ki-scanner__zwischen">{SCANNER.positionen.titel}</h5>
+            <table class="ki-scanner__tabelle" role="table">
+              <caption class="sr-only">{SCANNER.positionen.titel}</caption>
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th role="columnheader" scope="col" class="rechts">{spalten.pos}</th>
+                  <th role="columnheader" scope="col" class="rechts">{spalten.menge}</th>
+                  <th role="columnheader" scope="col">{spalten.einheit}</th>
+                  <th role="columnheader" scope="col">{spalten.artikel}</th>
+                  <th role="columnheader" scope="col">{spalten.artikelnummer}</th>
+                  <th role="columnheader" scope="col">{spalten.anmerkung}</th>
+                </tr>
+              </thead>
+              <tbody role="rowgroup" data-ki-positionen></tbody>
+            </table>
+            <h5 class="ki-scanner__zwischen">{SCANNER.offen}</h5>
+            <ul class="ki-scanner__offen" data-ki-offen></ul>
+            <p class="ki-scanner__still" data-ki-offen-leer hidden>{SCANNER.offenLeer}</p>
+          </div>
+          <div class="ki-scanner__freigabe" data-ki-freigabe hidden>
+            <button type="button" class="retro-knopf retro-knopf--voll" data-ki-freigeben>{SCANNER.freigeben}</button>
+            <p class="ki-scanner__still" data-ki-freigegeben hidden>{SCANNER.freigegeben}</p>
+          </div>
+        </div>
+
+        <div role="tabpanel" id="ki-scanner-panel-antwort" aria-labelledby="ki-scanner-reiter-antwort" tabindex="0" hidden>
+          <div class="ki-scanner__leiste">
+            <span class="ki-tag">{SCANNER.antwortMarke}</span>
+            <!-- Der Plopp kommt erst nach dem Kopieren (await), deshalb kein generischer Klick -->
+            <button type="button" class="retro-knopf" data-ki-kopieren data-klang-still hidden>{SCANNER.antwort.kopieren}</button>
+          </div>
+          <div class="ki-papier ki-scanner__brief">
+            <p class="ki-scanner__betreff">
+              <span>{SCANNER.antwort.betreff}</span>{" "}
+              <span data-ki-wert="antwort.betreff"></span>
+            </p>
+            <p class="ki-scanner__brieftext" data-ki-wert="antwort.text"></p>
+            <p class="ki-scanner__still" data-ki-antwort-warten>{SCANNER.antwortWarten}</p>
+          </div>
+        </div>
+
+        <div role="tabpanel" id="ki-scanner-panel-kosten" aria-labelledby="ki-scanner-reiter-kosten" tabindex="0" hidden>
+          <span class="ki-tag">{SCANNER.kosten.marke}</span>
+          <p class="ki-scanner__still" data-ki-kosten-warten>{SCANNER.kosten.warten}</p>
+          <div class="ki-scanner__tafel" data-ki-tafel hidden>
+            <p class="ergebnis__zahl">
+              <span>{SCANNER.kosten.vor}</span>
+              <span class="ergebnis__euro" data-ki-kosten-euro></span>
+              <span>{SCANNER.kosten.nach}</span>
+            </p>
+            <p class="ergebnis__unter" data-ki-kosten-unter></p>
+            <div class="ki-scanner__regler">
+              <div class="regler__kopf">
+                <label class="regler__name" for="ki-scanner-regler">{SCANNER.kosten.regler}</label>
+                <span class="regler__wert" aria-hidden="true">
+                  <span class="regler__zahl" data-ki-regler-zahl>{reglerStart}</span>{" "}
+                  <span data-ki-regler-einheit>{SCANNER.kosten.reglerEinheit(reglerStart)}</span>
+                </span>
+              </div>
+              <input
+                class="regler__eingabe"
+                type="range"
+                id="ki-scanner-regler"
+                min={reglerMin}
+                max={reglerMax}
+                step="1"
+                value={reglerStart}
+                aria-valuetext={SCANNER.kosten.reglerWert(reglerStart)}
+                aria-describedby="ki-scanner-rechenweg"
+                data-ki-regler
+              />
+              <p class="regler__rechnung" id="ki-scanner-rechenweg" data-ki-rechenweg></p>
+            </div>
+            <p class="ki-scanner__fuss" data-ki-fuss-ki></p>
+            <p class="ki-scanner__fuss" data-ki-fuss-minuten></p>
+            <p class="ki-scanner__fuss">{SCANNER.kosten.fussGrundlage(String(STUNDENSATZ), String(ARBEITSWOCHEN))}</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="ki-pruefhinweis">{HINWEISE.unterErgebnis}</p>
+      <div class="check__aktionen ki-scanner__weiter" data-ki-weiter hidden>
+        <a class="retro-knopf retro-knopf--voll" href="#kontakt" data-klickziel="Auftrags-Scanner: Meinen Fall besprechen"
+          >{SCANNER.cta}</a
+        >
+        <button type="button" class="check__link" data-ki-andere>{SCANNER.andereVorlage}</button>
+        <button type="button" class="check__link" data-ki-eigen>{SCANNER.eigenerText}</button>
+      </div>
+    </div>
+  </div>
+  <template data-ki-warnzeichen><PixelIcon name="warnung" /></template>
+  <Fragment slot="status">
+    <span data-ki-stand>Wird vorbereitet …</span>
+    <span>{HINWEISE.statusleiste}</span>
+  </Fragment>
+</Fenster>
