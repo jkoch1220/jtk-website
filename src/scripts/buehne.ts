@@ -77,18 +77,25 @@ function ueberschriftenDrucken(): void {
   const drucken = (h: HTMLElement) =>
     gsap.to(h, { clipPath: "inset(0 0% 0 -0.1em)", duration: 0.5, ease: "steps(14)", clearProps: "clipPath" });
 
-  const trigger = ScrollTrigger.create({
+  const pruefen = (self: ScrollTrigger) => {
+    const linie = window.scrollY + grenze();
+    const jetzt = offen.filter((h) => (lagen.get(h) ?? Infinity) < linie);
+    if (!jetzt.length) return;
+    offen = offen.filter((h) => !jetzt.includes(h));
+    jetzt.forEach(drucken);
+    if (!offen.length) self.kill();
+  };
+  // Nach jedem Messen einmal prüfen: Ein Aufruf mit Anker (/#kontakt, /datenschutz/#ki-demos) springt ohne
+  // Scroll-Ereignis an die Stelle, sonst bliebe die Überschrift dort verdeckt, bis jemand scrollt. Im nächsten Bild,
+  // damit der Trigger nicht mitten im Refresh endet.
+  ScrollTrigger.create({
     start: 0,
     end: "max",
-    onRefresh: messen,
-    onUpdate: () => {
-      const linie = window.scrollY + grenze();
-      const jetzt = offen.filter((h) => (lagen.get(h) ?? Infinity) < linie);
-      if (!jetzt.length) return;
-      offen = offen.filter((h) => !jetzt.includes(h));
-      jetzt.forEach(drucken);
-      if (!offen.length) trigger.kill();
+    onRefresh: (self) => {
+      messen();
+      requestAnimationFrame(() => pruefen(self));
     },
+    onUpdate: pruefen,
   });
   messen();
 }
