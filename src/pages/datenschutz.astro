@@ -274,40 +274,29 @@ import { kontakt } from "../data/kontakt";
         sie nur auf, wenn ein Gesetz es verlangt oder wenn ein automatischer Prüffilter einen Verstoß gegen die
         Nutzungsrichtlinien vermutet: dann die Texte bis zu zwei Jahre und die Bewertung des Filters bis zu sieben
         Jahre.
-        {/* [PRÜFEN] Stand privacy.claude.com, Artikel 7996866, zuletzt aktualisiert 01.07.2026. Vor Veröffentlichung
-            gegenlesen.
-            Vorschlag (gegengelesen am 28.10.2026): Satz so lassen. Der Artikel nennt weiter 30 Tage („we
-            automatically delete inputs and outputs on our backend within 30 days of receipt or generation“), bei
-            einem Verdacht der Prüffilter bis zu 2 Jahre für Ein- und Ausgaben und bis zu 7 Jahre für deren
-            Bewertungen, dazu Aufbewahrung, wo ein Gesetz sie verlangt. Datum auf der Seite weiterhin 1. Juli 2026.
-            Quelle: https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data */}
+        {/* Quelle: https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data;
+            Stand 04.11.2026. */}
       </p>
 
       <h3>Übermittlung in die USA</h3>
       <p>
         Anthropic speichert und verarbeitet die Texte in den USA.
-        {/* Gilt mit KI_INFERENZ_GEO=us, dem Standard des Website-Dienstes. Mit „global“ ersetzen durch: „Anthropic
-            speichert die Texte in den USA; berechnet werden die Antworten je nach Auslastung in Rechenzentren in den
-            USA oder in anderen Ländern außerhalb der EU.“
-            [PRÜFEN] Ob das Ausweichmodell der Sonnet-Aufrufe (fallbacks) den Inferenzort übernimmt, klärt die Probe
-            gegen die echte API (npm run ki:probe im Website-Dienst).
-            Vorschlag (Stand 28.10.2026): Die Probe lief mit inference_geo „us“ und fallbacks ohne Fehler und meldete
-            als Inferenzort „us“; ausgewichen wurde dabei nicht. Die Doku sagt nur, das Ausweichmodell laufe „on the
-            same request“, zum Inferenzort nichts ausdrücklich. Sicher geht es über den Workspace der Demos in der
-            Console (oder per Admin API, Feld data_residency): allowed_inference_geos nur „us“, default_inference_geo
-            „us“. Eine Anfrage mit anderem Inferenzort lehnt die API dann ab; dass das auch den Ausweichlauf erfasst,
-            folgt daraus, dass er Teil derselben Anfrage ist, steht aber nicht wörtlich da. Danach kann der Satz
-            bleiben. Quellen: https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback,
-            https://platform.claude.com/docs/en/manage-claude/data-residency (Workspace-level restrictions) */}
+        {/* Gilt mit KI_INFERENZ_GEO=us, dem Standard des Website-Dienstes, und nur, solange der Anthropic-Key aus
+            einem Arbeitsbereich (Workspace, hier „Website-Demos“) stammt, der als Inferenzort nur „us“ erlaubt
+            (allowed_inference_geos und default_inference_geo „us“). Die Grenze gilt dann für alle Anfragen mit
+            diesem Key, auch wenn ein Sonnet-Aufruf auf das Ausweichmodell (fallbacks) ausweicht, denn das läuft in
+            derselben Anfrage (gefolgert, wörtlich steht es nicht in der Doku). Mit „global“ ersetzen durch:
+            „Anthropic speichert die Texte in den USA; berechnet werden die Antworten je nach Auslastung in
+            Rechenzentren in den USA oder in anderen Ländern außerhalb der EU.“ Stand 04.11.2026.
+            Quellen: https://platform.claude.com/docs/en/manage-claude/data-residency (Workspace-level restrictions),
+            https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback (Server-side fallback) */}
         Grundlage der Übermittlung sind die EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO), die Teil des
         Vertrags zur Auftragsverarbeitung sind. Auch damit ist nicht ganz auszuschließen, dass US-Behörden auf die
         Daten zugreifen; auch deshalb bitte keine echten Kundendaten.
-        {/* [PRÜFEN] Vor Veröffentlichung auf dataprivacyframework.gov/list nachsehen. Steht Anthropic dort, ergänzen:
-            „Anthropic ist außerdem nach dem EU-US Data Privacy Framework zertifiziert; für die USA liegt damit ein
-            Angemessenheitsbeschluss der EU-Kommission vor (Art. 45 DSGVO).“
-            Vorschlag (Stand 28.10.2026): ohne diesen Satz lassen. Die Suche nach „Anthropic“ in der offiziellen Liste
-            ergibt weder unter den aktiven noch unter den inaktiven Teilnehmern einen Treffer (zum Vergleich: Eleven
-            Labs Inc. steht dort als aktiv). Kurz vor dem Livegang noch einmal suchen.
+        {/* Ohne Satz zum Data Privacy Framework: Anthropic steht nicht in der offiziellen Liste, weder unter den
+            aktiven noch unter den inaktiven Teilnehmern (Stand 04.11.2026). Steht Anthropic dort später als aktiv,
+            ergänzen: „Anthropic ist außerdem nach dem EU-US Data Privacy Framework zertifiziert; für die USA liegt
+            damit ein Angemessenheitsbeschluss der EU-Kommission vor (Art. 45 DSGVO).“
             Quelle: https://www.dataprivacyframework.gov/list */}
       </p>
 
@@ -341,17 +330,13 @@ import { kontakt } from "../data/kontakt";
         den Zugriff auf das Mikrofon entziehen. Ihr Ja merkt sich die Seite nur, bis Sie sie neu laden. Soweit der
         Zugriff auf das Mikrofon unter § 25 TDDDG fällt, ist er nach § 25 Abs. 2 Nr. 2 TDDDG erlaubt, weil Sie die
         Spracheingabe ausdrücklich anfordern.
-        {/* [PRÜFEN] Wer für die Übermittlung an den Browser-Hersteller verantwortlich ist, ist ungeklärt (vorsichtige
-            Analogie: EuGH „Fashion ID“, C-40/17); die Einwilligung ist die vorsichtige Lösung. Ob § 25 TDDDG bei
-            Live-Audio überhaupt greift, ist ebenfalls offen. Entscheidung Julian, am besten zusammen mit der Prüfung
-            der Reichweitenmessung.
-            Vorschlag (Stand 28.10.2026): beides so lassen. Nach „Fashion ID“ (Urteil vom 29.07.2019) ist, wer eine
-            Übermittlung an einen Dritten in seine Seite einbaut, nur für das Erheben und Übermitteln mitverantwortlich,
-            nicht für die Verarbeitung beim Dritten danach; die Einwilligung vor der ersten Aufnahme deckt diesen Teil.
-            Zu § 25 TDDDG: Die EDPB-Leitlinien 2/2023 zu Art. 5 Abs. 3 der ePrivacy-Richtlinie (Fassung 2.0 vom
-            16.10.2024, Rn. 37 bis 39 und 60) zählen auch nur kurz im Arbeitsspeicher liegende Informationen aus
-            Sensoren des Geräts als gespeichert; die Vorschrift greift also eher. Dann trägt die Ausnahme nach § 25
-            Abs. 2 Nr. 2 TDDDG, weil die Aufnahme nur auf Klick startet, und die Formulierung „Soweit …“ passt.
+        {/* Einwilligung, weil ich nach EuGH „Fashion ID“ (C-40/17, Urteil vom 29.07.2019) für das Erheben und
+            Übermitteln an den Browser-Hersteller mitverantwortlich sein kann, wenn die Seite es auslöst (nicht für
+            die Verarbeitung beim Hersteller danach); die Einwilligung vor der ersten Aufnahme deckt diesen Teil.
+            § 25 TDDDG greift eher, weil die EDPB-Leitlinien 2/2023 zu Art. 5 Abs. 3 der ePrivacy-Richtlinie
+            (Fassung 2.0 vom 07.10.2024, Rn. 37 bis 39 und 60) auch nur kurz im Arbeitsspeicher liegende
+            Informationen aus Sensoren des Geräts als gespeichert zählen; dann trägt die Ausnahme nach § 25 Abs. 2
+            Nr. 2 TDDDG, weil die Aufnahme nur auf Klick startet, daher „Soweit …“.
             Quellen: https://curia.europa.eu/juris/liste.jsf?num=C-40/17,
             https://edpb.europa.eu/system/files/documents/2024-10/edpb_guidelines_202302_technical_scope_art_53_eprivacydirective_v2_en_0.pdf */}
       </p>
@@ -397,60 +382,55 @@ import { kontakt } from "../data/kontakt";
       </p>
       <p>
         Zweck ist, Ihnen zu zeigen, wie ein Telefonassistent mit einer natürlich klingenden Stimme spricht.
-        Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO): Sie geben sie, indem Sie das Vorlesen
-        einschalten, während daneben der Hinweis auf den Sprachdienst steht. Sie können sie jederzeit widerrufen,
-        indem Sie das Vorlesen wieder ausschalten; danach geht nichts mehr an ElevenLabs. Was bis dahin vertont wurde,
-        bleibt davon unberührt.
-        {/* [PRÜFEN] Einwilligung per Schalter: Eine körperliche Handlung wie ein Schalter kann eine eindeutige
-            bestätigende Handlung sein, wenn daneben klar steht, wofür sie gilt, und der Widerruf so leicht ist wie
-            die Erteilung (EDPB-Leitlinien 05/2020 zur Einwilligung, Fassung 1.1, Rn. 83 bis 85 und 113 bis 114).
-            Offen: Art. 7 Abs. 1 DSGVO verlangt den Nachweis der Einwilligung; der Dienst speichert bewusst nichts
-            über Besucher, nachweisbar ist nur der Ablauf (ohne Schalter keine Anfrage an die Stimme, ohne Hinweis
-            daneben kein Wechsel zur künstlichen Stimme). Alternative wäre Art. 6 Abs. 1 lit. f DSGVO (Vorlesen auf
-            ausdrücklichen Wunsch, Widerspruch durch Ausschalten), wie bei den Demos selbst. Entscheidung Julian,
-            zusammen mit der Spracheingabe.
+        Vorgelesen wird nur, wenn Sie das Vorlesen ausdrücklich einschalten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f
+        DSGVO; mein berechtigtes Interesse liegt darin, Ihnen die Funktion auf Ihren Wunsch vorzuführen. Widersprechen
+        können Sie jederzeit, indem Sie das Vorlesen wieder ausschalten; danach geht nichts mehr an ElevenLabs.
+        {/* Berechtigtes Interesse statt Einwilligung: Eine Einwilligung müsste nach Art. 7 Abs. 1 DSGVO nachweisbar
+            sein (EDPB-Leitlinien 05/2020, Fassung 1.1, Rn. 104 bis 106), der Dienst speichert aber bewusst nichts
+            über Besucher. Vorgelesen wird nur auf ausdrücklichen Wunsch, und der Widerspruch ist so leicht wie das
+            Einschalten.
             Quelle: https://www.edpb.europa.eu/system/files/documents/files/file1/edpb_guidelines_202005_consent_en.pdf */}
       </p>
       <p>
         Die Stimme erzeugt die Eleven Labs Inc., 169 Madison Ave #2484, New York, NY 10016, USA. ElevenLabs verarbeitet
         die Texte in meinem Auftrag; der Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO ist Teil der
-        Geschäftsbedingungen, die für meine Nutzung gelten. ElevenLabs speichert die Daten in den USA. Eleven Labs
-        Inc. ist nach dem EU-US Data Privacy Framework zertifiziert; für die USA liegt damit ein
-        Angemessenheitsbeschluss der EU-Kommission vor (Art. 45 DSGVO). Ergänzend gelten die
+        Geschäftsbedingungen, die für meine Nutzung gelten. Die Anfragen bearbeitet ElevenLabs nach eigenen Angaben
+        im nächstgelegenen Rechenzentrum, von Deutschland aus derzeit meist in den Niederlanden, und speichert die
+        Daten in den USA. Eleven Labs Inc. ist nach dem EU-US Data Privacy Framework zertifiziert; für die USA liegt
+        damit ein Angemessenheitsbeschluss der EU-Kommission vor (Art. 45 DSGVO). Ergänzend gelten die
         EU-Standardvertragsklauseln, die Teil des Vertrags zur Auftragsverarbeitung sind.
-        {/* [PRÜFEN] Stand 28.10.2026: Vertragspartner nach den Nutzungsbedingungen für EWR-Kunden ist Eleven Labs Inc.
-            (Stand 09.10.2026). Der Vertrag zur Auftragsverarbeitung gilt für Self-Serve-Kunden über diese
-            Bedingungen (Stand 08.04.2026; Datenschutzrahmen oder Standardvertragsklauseln, irisches Recht), aber nur,
-            wenn das Konto als Unternehmen geführt wird; bitte im Konto prüfen. DPF-Eintrag „Eleven Labs Inc.“ aktiv
-            seit 09.02.2026, nächste Erneuerung bis 09.02.2027; laut Datenschutzerklärung von ElevenLabs gilt die
-            Zertifizierung nur für die US-Gesellschaft. Verarbeitet werden die Anfragen im nächstgelegenen
-            Rechenzentrum (laut Doku derzeit USA, Niederlande, Singapur), weil der Dienst https://api.elevenlabs.io
-            nutzt; mit https://api.us.elevenlabs.io blieben sie in den USA. Ein Testabruf am 28.10.2026 von einem
-            Rechner in Deutschland kam mit der Kopfzeile x-region „europe-west4“ zurück (Niederlande). Die Liste der
-            Unterauftragsverarbeiter (compliance.elevenlabs.io) ist nicht ausgewertet.
+        {/* Voraussetzung: Das Konto bei ElevenLabs wird als Unternehmen geführt. Nur dann gilt der Vertrag zur
+            Auftragsverarbeitung (Fassung vom 08.04.2026; Datenschutzrahmen oder Standardvertragsklauseln, irisches
+            Recht) für Self-Serve-Kunden über die Nutzungsbedingungen; Vertragspartner für EWR-Kunden ist danach
+            Eleven Labs Inc. DPF-Eintrag „Eleven Labs Inc.“ aktiv seit 09.02.2026, Erneuerung bis 09.02.2027; laut
+            Datenschutzerklärung von ElevenLabs (Fassung vom 09.10.2026) gilt die Zertifizierung nur für die
+            US-Gesellschaft, gespeichert wird in den USA („transferred to the United States for storage“). Die Doku
+            nennt als Rechenzentren derzeit USA, Niederlande und Singapur, gewählt nach Nähe, weil der Dienst
+            https://api.elevenlabs.io nutzt; mit https://api.us.elevenlabs.io blieben die Anfragen in den USA.
+            Testanfragen an die Sprachausgabe aus Deutschland (dort steht auch der Server) kamen am 28.10. und
+            04.11.2026 mit der Kopfzeile x-region „europe-west4“ (Niederlande) zurück. Die Liste der Unterauftragsverarbeiter
+            (compliance.elevenlabs.io) ist nicht ausgewertet. Stand 04.11.2026.
             Quellen: https://elevenlabs.io/terms-of-use-eu, https://elevenlabs.io/dpa, https://elevenlabs.io/privacy-policy,
             https://www.dataprivacyframework.gov/list,
             https://elevenlabs.io/docs/eleven-api/guides/how-to/best-practices/latency-optimization */}
       </p>
       <p>
         ElevenLabs legt jede Vertonung, also Text und Audio, im Verlauf meines Kontos ab. Mein Server lässt den Eintrag
-        dort gleich nach dem Abruf löschen. In Sicherungskopien bleibt er danach bis zu 30 Tage, und Protokolle zur
+        dort gleich nach dem Abruf löschen. Gelingt das ausnahmsweise nicht, lösche ich den Eintrag von Hand,
+        spätestens nach 30 Tagen. In Sicherungskopien bleibt er danach bis zu 30 Tage, und Protokolle zur
         Fehlersuche und Missbrauchskontrolle können noch Angaben dazu enthalten. Die Nutzung meiner Texte zum
         Verbessern der Modelle von ElevenLabs habe ich abgeschaltet.
         {/* Gilt, solange der Website-Dienst jeden Eintrag nach dem Abruf löschen lässt (verlaufLoeschen in
             src/lib/server/ki/stimme.ts, zweiter Schlüssel KI_ELEVENLABS_VERLAUF_KEY; ohne ihn bleibt die Stimme in
-            Produktion aus; Stand 28.10.2026).
-            [PRÜFEN] Verlauf: Für Text-to-Speech ist die Aufbewahrung im Verlauf standardmäßig an. Per API gelöscht,
-            sind Audio und Text laut ElevenLabs sofort aus der Datenbank; Sicherungskopien halten sie bis zu 30 Tage,
-            Protokolle zur Fehlersuche und Moderation können Daten behalten (eine Frist dafür nennt ElevenLabs nicht).
-            Ganz abschalten (Zero Retention Mode) können nur ausgewählte Enterprise-Kunden. Gelöscht wird einmal, ohne
-            Wiederholung: Scheitert das Löschen (Netz, Fehler bei ElevenLabs oder 404, falls der Eintrag beim Ende des
-            Streams noch nicht angelegt ist), bleibt der Eintrag liegen und steht nur im Protokoll des Dienstes
-            (ki_stimme_verlauf). Vorschlag: nach dem ersten echten Gespräch prüfen, dass das Protokoll „ok“ meldet und
-            der Verlauf im Konto leer ist; sonst eine Wiederholung bauen oder hier eine Frist für das Löschen von Hand
-            nennen. Training: Vor dem Livegang im Konto unter Profil, „Terms and privacy“, „Data use“ den Schalter
-            „Improve the models for everyone“ ausschalten; das wirkt nur für die Zukunft. Erst dann stimmt der letzte
-            Satz.
+            Produktion aus; Stand 28.10.2026). Gelöscht wird einmal, ohne Wiederholung. Scheitert das (Netz, Fehler
+            bei ElevenLabs oder 404, falls der Eintrag beim Ende des Streams noch nicht angelegt ist), zeigt das
+            Protokoll des Dienstes es im Ereignis ki_stimme_verlauf (ausgang nicht „ok“); dann den Eintrag im Konto
+            von Hand löschen, spätestens nach 30 Tagen. Per API gelöscht, sind Audio und Text laut ElevenLabs sofort
+            aus der Datenbank; Sicherungskopien halten sie bis zu 30 Tage, Protokolle zur Fehlersuche und Moderation
+            können Daten behalten (eine Frist dafür nennt ElevenLabs nicht). Ganz abschalten (Zero Retention Mode)
+            können nur ausgewählte Enterprise-Kunden. Der letzte Satz gilt, solange im Konto unter Profil, „Terms and
+            privacy“, „Data use“ der Schalter „Improve the models for everyone“ aus ist; das wirkt nur für die
+            Zukunft.
             Quellen: https://elevenlabs.io/docs/eleven-api/resources/zero-retention-mode,
             https://elevenlabs.io/docs/api-reference/history/delete,
             https://elevenlabs.io/docs/help-center/legal/is-my-data-used-to-improve-eleven-labs-ai-models */}
@@ -472,18 +452,13 @@ import { kontakt } from "../data/kontakt";
         und unkontrollierten Kosten zu schützen. Sie können der Verarbeitung widersprechen (siehe „Ihre Rechte“); am
         einfachsten, indem Sie die Demos nicht nutzen. Wie Sie die Demos bedienen, fließt ohne Inhalte in die
         Reichweitenmessung ein (siehe dort). Mit Ihrem Namen verbunden wird ein Ergebnis erst, wenn Sie es in eine
-        Anfrage oder Terminbuchung übernehmen und diese absenden. Für die künstlich erzeugte Stimme im Probeanruf
-        gilt Ihre Einwilligung (siehe „Vorlesen“).
-        {/* [PRÜFEN] Alternativ Art. 6 Abs. 1 lit. b DSGVO (Bereitstellung einer angeforderten Funktion). Die
-            EDPB-Leitlinien 2/2019 (Rn. 22, 30) verlangen dafür, dass die Verarbeitung für einen Vertrag mit Ihnen
-            objektiv erforderlich ist; bei einer kostenlosen Demo ohne Vertrag ist lit. f belastbarer. Die dritte
-            Möglichkeit wäre eine Einwilligung per Klick vor dem ersten Lauf. Entscheidung Julian.
-            Vorschlag (Stand 28.10.2026): bei lit. f bleiben. Lit. b setzt einen Vertrag oder vorvertragliche
-            Schritte auf Anfrage voraus und dass die Verarbeitung dafür objektiv erforderlich ist (Leitlinien 2/2019,
-            Fassung 2.0 vom 08.10.2019, Rn. 22 und 30); eine kostenlose Demo ohne Vertrag erfüllt das kaum. Eine
-            Einwilligung vor dem ersten Lauf müsste nach Art. 7 Abs. 1 DSGVO nachweisbar sein (EDPB-Leitlinien 05/2020,
-            Rn. 85), ohne dass der Dienst etwas über Besucher speichern soll. Die Abwägung für lit. f (Interesse,
-            Erforderlichkeit, Abwägung) sollte Julian kurz schriftlich festhalten.
+        Anfrage oder Terminbuchung übernehmen und diese absenden. Auch für die künstlich erzeugte Stimme im
+        Probeanruf gilt Art. 6 Abs. 1 lit. f DSGVO (siehe „Vorlesen“).
+        {/* Lit. f statt lit. b oder Einwilligung: Lit. b setzt einen Vertrag oder vorvertragliche Schritte auf Anfrage
+            voraus, für die die Verarbeitung objektiv erforderlich ist (EDPB-Leitlinien 2/2019, Fassung 2.0 vom
+            08.10.2019, Rn. 22 und 30); eine kostenlose Demo ohne Vertrag erfüllt das kaum. Eine Einwilligung vor dem
+            ersten Lauf müsste nach Art. 7 Abs. 1 DSGVO nachweisbar sein (EDPB-Leitlinien 05/2020, Fassung 1.1,
+            Rn. 104 bis 106), ohne dass der Dienst etwas über Besucher speichern soll.
             Quellen: https://www.edpb.europa.eu/system/files/documents/files/file1/edpb_guidelines-art_6-1-b-adopted_after_public_consultation_en.pdf,
             https://www.edpb.europa.eu/system/files/documents/files/file1/edpb_guidelines_202005_consent_en.pdf */}
       </p>
@@ -612,10 +587,9 @@ import { kontakt } from "../data/kontakt";
         automatisch, entscheiden aber nichts über Sie (Art. 22 DSGVO).
       </p>
 
-      {/* [PRÜFEN] Stand auf den Monat setzen, in dem die KI-Demos live gehen. Mit der Stimme im Probeanruf zusätzlich:
-          Ist beim Livegang kein Schlüssel für ElevenLabs gesetzt, bietet die Seite die künstlich erzeugte Stimme
-          nicht an; der Abschnitt „Vorlesen“ bleibt trotzdem richtig, nennt dann aber einen Dienst, der nicht läuft. */}
-      <p><em>Stand: Oktober 2026</em></p>
+      {/* Ist kein Schlüssel für ElevenLabs gesetzt, bietet die Seite die künstlich erzeugte Stimme nicht an; der
+          Abschnitt „Vorlesen“ bleibt trotzdem richtig, nennt dann aber einen Dienst, der nicht läuft. */}
+      <p><em>Stand: November 2026</em></p>
     </div>
   </section>
 </Base>
