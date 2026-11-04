@@ -1,0 +1,4 @@
+Contact: mailto:julian@koch.consulting
+Expires: 2027-10-25T00:00:00.000Z
+Preferred-Languages: de, en
+Canonical: https://jtkconsulting.de/.well-known/security.txt

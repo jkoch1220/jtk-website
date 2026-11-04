@@ -236,6 +236,7 @@ dorthin (`deploy/Caddyfile`), Mail und `app.koch.consulting` betrifft das nicht.
 | E-Mail, Telefon, Ort, Profile für Suchmaschinen | `src/data/kontakt.ts` |
 | Strukturierte Daten (JSON-LD) | `src/data/strukturdaten.ts` |
 | Sitemap, robots.txt | `astro.config.mjs`, `public/robots.txt` |
+| Meldestelle für Sicherheitslücken (RFC 9116; vor `Expires` erneuern, spätestens Oktober 2027) | `public/.well-known/security.txt` |
 | Texte der Startseite (Erfolg, Begleiter, Projekte, Plan) | `src/pages/index.astro` |
 | Problem-Meldungen | `src/components/Problem.astro` |
 | Zeitfresser-Check | `src/components/Zeitfresser.astro` |
