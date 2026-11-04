@@ -56,6 +56,24 @@
 	}
 }
 
+# Unverschlüsseltes HTTP (Port 80) leitet auf HTTPS desselben Namens um. Das täte Caddy auch von selbst, dann aber
+# mit Server-Kennung, weil seine eigene Weiterleitung an den Blöcken hier vorbeiläuft. Die Namen müssen einzeln
+# dastehen: Für jeden Namen ohne eigenen http://-Block setzt Caddy seine Weiterleitung vor den Sammelblock. Die
+# Bestätigungen für Let's Encrypt (HTTP-01) beantwortet Caddy weiterhin vorher selbst.
+(nach_https) {
+	import ohne_kennung
+	redir https://{host}{uri} 308
+}
+
+http://jtkconsulting.de, http://www.jtkconsulting.de, http://koch.consulting, http://www.koch.consulting, http://app.koch.consulting {
+	import nach_https
+}
+
+# Alle anderen Namen und die IP
+http:// {
+	import nach_https
+}
+
 www.jtkconsulting.de {
 	import ohne_kennung
 	import hsts
@@ -91,6 +109,10 @@ jtkconsulting.de {
 		request_body {
 			max_size 32KB
 		}
+		# keepalive 60s gehört mit dem keepAliveTimeout des Dienstes zusammen: Der muss länger sein (65 s geplant),
+		# sonst schließt der Dienst eine ruhende Verbindung, während Caddy sie gerade wiederverwendet, und es gibt
+		# vereinzelt eine 502. Solange der Dienst den Node-Standard (5 s) hat, ist das Fenster kleiner als mit Caddys
+		# Standard (2 min) zuvor.
 		reverse_proxy 127.0.0.1:3100 {
 			transport http {
 				keepalive 60s
@@ -165,6 +187,7 @@ app.koch.consulting {
 		request_body {
 			max_size 64KB
 		}
+		# keepalive wie oben bei jtkconsulting.de
 		reverse_proxy 127.0.0.1:3100 {
 			transport http {
 				keepalive 60s
@@ -173,5 +196,17 @@ app.koch.consulting {
 	}
 	handle {
 		respond 404
+	}
+
+	handle_errors {
+		# Fehler aus den Handlern (502, solange der Dienst neu startet, 413 bei zu großem Körper) laufen an den
+		# Kopfzeilen oben vorbei: Kennung und Kopfzeilen hier noch einmal, und nie cachen
+		import ohne_kennung
+		header {
+			Strict-Transport-Security "max-age=31536000; includeSubDomains"
+			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+			Cross-Origin-Resource-Policy "same-site"
+			Cache-Control "no-store"
+		}
 	}
 }
