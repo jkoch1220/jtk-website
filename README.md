@@ -44,6 +44,30 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
    Nach dem Hochladen fragt es `https://jtkconsulting.de/api/ki/status` ab und meldet nur, ob die KI-Demos bereit
    sind; daran scheitert kein Deploy, denn ohne Dienst zeigen die Demos ihre Meldung statt des Startknopfs.
 
+## Server härten
+
+`deploy/haerten.sh` ist Stufe 1 der Server-Härtung: SSH nur noch per Schlüssel (root bleibt mit Schlüssel erlaubt,
+weil alle Deploy-Skripte als root laufen), höchstens 3 Versuche je Verbindung, automatische Sicherheitsupdates,
+fail2ban für SSH und die Firewall ufw (eingehend nur SSH, 80/tcp, 443/tcp und 443/udp). Es läuft auf dem Server, nicht
+hier, und ändert nichts, wenn root keinen Schlüssel hinterlegt hat. Mehrfach ausführen schadet nicht.
+
+Wann: einmal jetzt, danach nur nach einem Neuaufsetzen des VPS. Wie:
+
+1. Eine SSH-Sitzung zum Server öffnen und offen lassen (Rückweg, falls etwas schiefgeht).
+2. In einem zweiten Terminal im Projektordner, Adresse wie `SERVER` in `deploy/deploy.sh`:
+   `ssh root@<VPS> 'sh -s' < deploy/haerten.sh`
+3. In einem dritten Terminal prüfen: `ssh root@<VPS> true` klappt per Schlüssel,
+   `ssh -o PubkeyAuthentication=no root@<VPS>` endet mit „Permission denied (publickey)“. Erst dann die Sitzung aus
+   Schritt 1 schließen.
+4. `curl -sI https://jtkconsulting.de` liefert 200; im Portal und in einer KI-Demo prüfen, dass der Website-Dienst
+   weiter nach außen kommt (Google, Anthropic).
+
+Gut zu wissen: Mit vielen Schlüsseln im ssh-agent zählt jeder angebotene Schlüssel als Versuch; deshalb in
+`~/.ssh/config` für den VPS `IdentityFile` und `IdentitiesOnly yes` setzen. Sperrt fail2ban die eigene Adresse (5
+Fehlversuche in 10 Minuten, eine Stunde lang), hilft die Konsole im Hostinger-Panel:
+`fail2ban-client set sshd unbanip <eigene IP>`. Hat das Hostinger-Panel eine eigene Firewall, dort dieselben Ports
+freigeben. Erst in Stufe 2, mit einem eigenen Deploy-Nutzer: root-Login ganz aus und Docker-Einstellungen.
+
 ## Eigenes Foto einbinden
 
 Ein Foto als `public/julian.jpg` ablegen und neu bauen. Es erscheint im Abschnitt „Ihr Ansprechpartner“
