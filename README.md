@@ -47,11 +47,16 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
 `deploy/haerten.sh` ist Stufe 1 der Server-Härtung: SSH nur noch per Schlüssel (root bleibt mit Schlüssel erlaubt,
 weil alle Deploy-Skripte als root laufen), höchstens 3 Versuche je Verbindung, automatische Sicherheitsupdates,
 fail2ban für SSH und die Firewall ufw (eingehend nur SSH, 80/tcp, 443/tcp und 443/udp). Es läuft auf dem Server, nicht
-hier, und ändert nichts, wenn root keinen Schlüssel hinterlegt hat. Mehrfach ausführen schadet nicht.
+hier, und ändert nichts, wenn root keinen Schlüssel hinterlegt hat oder die Sitzung, in der es läuft, laut Journal
+per Passwort kam; es zeigt die hinterlegten Schlüssel und den der Sitzung. Greift die Härtung danach nicht (ein früher
+gelesener Eintrag in der sshd-Konfiguration gewinnt), endet es mit einer Warnung und Fehlercode statt mit „Fertig“.
+Mehrfach ausführen schadet nicht.
 
 Wann: einmal jetzt, danach nur nach einem Neuaufsetzen des VPS. Wie:
 
-1. Eine SSH-Sitzung zum Server öffnen und offen lassen (Rückweg, falls etwas schiefgeht).
+1. Eine SSH-Sitzung zum Server öffnen und offen lassen (Rückweg, falls etwas schiefgeht). In einem zweiten Terminal
+   prüfen, dass der Schlüssel allein genügt: `ssh -o PreferredAuthentications=publickey root@<VPS> true` muss ohne
+   Passwortfrage durchlaufen. Sonst erst den Schlüssel hinterlegen; nach der Härtung gäbe es kein Passwort mehr.
 2. In einem zweiten Terminal im Projektordner, Adresse wie `SERVER` in `deploy/deploy.sh`:
    `ssh root@<VPS> 'sh -s' < deploy/haerten.sh`
 3. In einem dritten Terminal prüfen: `ssh root@<VPS> true` klappt per Schlüssel,
@@ -61,7 +66,11 @@ Wann: einmal jetzt, danach nur nach einem Neuaufsetzen des VPS. Wie:
    weiter nach außen kommt (Google, Anthropic).
 
 Gut zu wissen: Mit vielen Schlüsseln im ssh-agent zählt jeder angebotene Schlüssel als Versuch; deshalb in
-`~/.ssh/config` für den VPS `IdentityFile` und `IdentitiesOnly yes` setzen. Sperrt fail2ban die eigene Adresse (5
+`~/.ssh/config` für den VPS `IdentityFile` und `IdentitiesOnly yes` setzen. Der `Host`-Eintrag muss dabei die Adresse
+treffen, die die Skripte aufrufen (`SERVER`, also die IP), nicht nur einen Alias: `Host vps <VPS>` statt `Host vps`.
+Sonst bietet ssh beim Deploy die Schlüssel aus dem Agent und die Standarddateien an; nach der Härtung kommt dann statt
+der Passwortfrage „Permission denied (publickey)“, jede Verbindung zählt bei fail2ban als Fehlversuch, und ein Deploy
+öffnet mehrere. Sperrt fail2ban die eigene Adresse (5
 Fehlversuche in 10 Minuten, eine Stunde lang), hilft die Konsole im Hostinger-Panel:
 `fail2ban-client set sshd unbanip <eigene IP>`. Hat das Hostinger-Panel eine eigene Firewall, dort dieselben Ports
 freigeben. Erst in Stufe 2, mit einem eigenen Deploy-Nutzer: root-Login ganz aus und Docker-Einstellungen.

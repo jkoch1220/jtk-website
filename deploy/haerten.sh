@@ -8,7 +8,8 @@
 #
 #  - SSH: Anmeldung nur per Schlüssel, root weiter erlaubt (alle Deploy-Skripte laufen als root), höchstens
 #    3 Versuche je Verbindung, 30 s für die Anmeldung, kein X11. Bricht ab, bevor etwas geändert wird, wenn root keinen
-#    Schlüssel hinterlegt hat oder sshd die Datei aus sshd_config.d nicht liest.
+#    Schlüssel hinterlegt hat, die Sitzung, in der das Skript läuft, laut Journal per Passwort angemeldet ist, oder
+#    sshd die Datei aus sshd_config.d nicht liest. Endet mit Fehler, wenn sshd danach trotzdem Passwörter annähme.
 #  - Sicherheitsupdates automatisch (unattended-upgrades), fail2ban für SSH
 #  - Firewall ufw: eingehend nur SSH (der Port der laufenden Sitzung und alle Ports aus sshd -T), 80/tcp, 443/tcp und
 #    443/udp (HTTP/3), sonst alles zu; ausgehend frei
@@ -38,6 +39,27 @@ haerten() {
     echo "Abbruch, nichts verändert."
     exit 1
   fi
+  echo "Für root hinterlegte Schlüssel (zum Vergleich: ssh-add -l oder ssh-keygen -lf <Schlüssel>.pub):"
+  ssh-keygen -lf "$SCHLUESSEL" || true
+  # Die Sitzung, in der dieses Skript läuft, ist der beste Beleg: Kam sie per Schlüssel, klappt das auch danach.
+  # sshd protokolliert „Accepted <Verfahren> for root from <IP> port <Port> ssh2“ (ab OpenSSH 9.8 als sshd-session).
+  SITZUNG=$(echo "${SSH_CONNECTION:-}" | awk 'NF == 4 {print $1 " port " $2}')
+  ANMELDUNG=""
+  if [ -n "$SITZUNG" ] && command -v journalctl >/dev/null 2>&1; then
+    ANMELDUNG=$(journalctl -q --no-pager -b -t sshd -t sshd-session 2>/dev/null \
+      | grep -F " for root from $SITZUNG ssh2" | grep -F "Accepted " | tail -n 1 || true)
+  fi
+  case "$ANMELDUNG" in
+    *"Accepted publickey "*)
+      echo "Diese Sitzung kam per Schlüssel:${ANMELDUNG#*ssh2:}" ;;
+    *"Accepted "*)
+      echo "Diese Sitzung kam nicht per Schlüssel, sondern so: ${ANMELDUNG#*Accepted }"
+      echo "Erst prüfen, dass der Schlüssel genügt (README „Server härten“), dann per Schlüssel neu verbinden."
+      echo "Abbruch, nichts verändert."
+      exit 1 ;;
+    *)
+      echo "Hinweis: Wie diese Sitzung angemeldet ist, steht nicht im Journal. Vorher selbst prüfen (README)." ;;
+  esac
   if ! grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' /etc/ssh/sshd_config; then
     echo "/etc/ssh/sshd_config bindet /etc/ssh/sshd_config.d/*.conf nicht ein; die Härtung würde nicht greifen."
     echo "Abbruch, nichts verändert."
@@ -86,7 +108,10 @@ EOF
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -q
   # python3-systemd: fail2ban liest die SSH-Anmeldungen aus dem Journal (Debian 12 hat kein auth.log mehr)
-  apt-get install -y -q unattended-upgrades fail2ban python3-systemd ufw
+  # Geänderte Konfigurationsdateien bei einem Update behalten, statt dass dpkg nachfragt: Ohne Eingabe bräche das
+  # Skript sonst hier ab, nach der SSH-Härtung und vor der Firewall
+  apt-get install -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+    unattended-upgrades fail2ban python3-systemd ufw
 
   # Sicherheitsupdates täglich einspielen (ausdrücklich statt per debconf-Voreinstellung). Neu gestartet wird der
   # Server dabei nicht; Caddy und Docker aus fremden Paketquellen aktualisiert das nicht.
@@ -134,12 +159,32 @@ EOF
 
   echo ""
   echo "Wirksame SSH-Einstellungen:"
-  sshd -T | grep -Ei '^(port|passwordauthentication|kbdinteractiveauthentication|permitrootlogin|maxauthtries|logingracetime|x11forwarding) '
+  WIRKSAM=$(sshd -T)
+  echo "$WIRKSAM" | grep -Ei '^(port|passwordauthentication|kbdinteractiveauthentication|permitrootlogin|maxauthtries|logingracetime|x11forwarding) '
   echo ""
   ufw status verbose
   echo ""
   fail2ban-client status sshd || true
   echo ""
+
+  # Bei sshd gilt der erste Treffer: Steht dieselbe Einstellung in sshd_config vor der Include-Zeile oder in einer Datei,
+  # die vor 10-haertung.conf gelesen wird, wirkt die Härtung still nicht. Deshalb hier die wirksamen Werte prüfen.
+  # sshd -T schreibt prohibit-password als without-password.
+  GREIFT=1
+  echo "$WIRKSAM" | grep -qx 'passwordauthentication no' || GREIFT=""
+  echo "$WIRKSAM" | grep -qxE 'permitrootlogin (prohibit-password|without-password)' || GREIFT=""
+  if echo "$WIRKSAM" | grep -q '^kbdinteractiveauthentication '; then
+    echo "$WIRKSAM" | grep -qx 'kbdinteractiveauthentication no' || GREIFT=""
+  fi
+  if [ -z "$GREIFT" ]; then
+    echo "WARNUNG: Die SSH-Härtung greift nicht, sshd nimmt weiter Passwörter an oder behandelt root anders als"
+    echo "vorgesehen (Werte oben). Ein früher gelesener Eintrag gewinnt; suchen mit:"
+    echo "  grep -niE 'PasswordAuthentication|KbdInteractive|PermitRootLogin|^Include' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf"
+    exit 1
+  fi
+  if grep -qiE '^[[:space:]]*Match[[:space:]]' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null; then
+    echo "Hinweis: Es gibt Match-Blöcke; sie können für einzelne Nutzer oder Adressen anderes erlauben (sshd -T -C …)."
+  fi
   echo "Fertig. Jetzt in einem NEUEN Terminal per Schlüssel anmelden, erst danach die alte Sitzung schließen."
 }
 
