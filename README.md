@@ -25,19 +25,16 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
 
 1. Bei GoDaddy unter DNS die A-Records für `@` durch einen einzigen A-Record mit der IP des VPS ersetzen.
    `www` zeigt per CNAME schon auf `@`.
-2. Einmalig: `npm run einrichten`. Das Skript installiert Caddy auf dem VPS, legt den Ordner an,
-   trägt die Seite ein (HTTPS kommt automatisch) und lädt sie hoch. Ist Port 80/443 schon von einem
-   anderen Programm belegt, bricht es ab, ohne etwas zu ändern. Dann stattdessen `deploy/nginx.conf` nutzen.
-   Steht `jtkconsulting.de` dort schon ohne Weiterleitung von `/api/anfrage` und `/api/e`, bricht es ab: den Block in
-   `/etc/caddy/Caddyfile` durch den aus `deploy/Caddyfile` ersetzen und erneut ausführen. Fehlt in einem
-   bestehenden Block nur `/api/termine` (Fassung vor der Terminbuchung), ergänzt es die `@plattform`-Zeile
-   selbst (vorher gesichert, danach `caddy validate`, sonst zurück zum alten Stand). Fehlt `/api/ki/*` (Fassung vor
-   den KI-Demos), ergänzt es die `@plattform`-Zeile ebenso und nimmt den Pfad von der Kompression aus; ist Caddy
-   älter als 2.11.7, sagt es Bescheid (siehe „KI-Demos“). Leitet `koch.consulting`
-   dort noch nicht per 301 auf `jtkconsulting.de` um (auch die Fassung vom 22.10.2026, in der es dieselbe Website
-   zeigte), stellt es das um. Fehlt im `handle_errors` das `encode`, ergänzt es die Zeile, damit die 404-Seite
-   komprimiert rausgeht. Außerdem
-   begrenzt es das System-Journal (Caddys Fehlermeldungen mit IP-Adressen) auf 7 Tage.
+2. Beim ersten Mal und nach jeder Änderung an `deploy/Caddyfile`: `npm run einrichten`. Das Skript installiert
+   Caddy auf dem VPS, legt den Ordner an, spielt `deploy/Caddyfile` als komplette `/etc/caddy/Caddyfile` ein
+   (HTTPS kommt automatisch) und lädt die Seite hoch. `deploy/Caddyfile` ist die einzige Quelle, auch für
+   `app.koch.consulting`: Blöcke, die nur auf dem Server stehen, vorher dorthin übernehmen. Findet das Skript auf dem
+   Server Adressen, die `deploy/Caddyfile` nicht kennt, bricht es ab, ohne etwas zu ändern (bewusst ersetzen:
+   `CADDY_ERSETZEN=1 npm run einrichten`). Ebenso bei belegtem Port 80/443, bei Caddy älter als 2.11.7 (siehe
+   „KI-Demos“; unter 2.11.8 gibt es einen Hinweis) und wenn `caddy validate` die Datei ablehnt. Die alte Datei sichert
+   es als `/etc/caddy/Caddyfile.vorher`; nimmt Caddy die neue beim Neuladen nicht an, kommt sie zurück. Außerdem
+   begrenzt es das System-Journal (Caddys Fehlermeldungen mit IP-Adressen) auf 7 Tage und gibt bei aktivem ufw
+   80/tcp, 443/tcp und 443/udp (HTTP/3) frei.
 3. Bei jeder Änderung danach: `npm run deploy`. Vor dem Hochladen prüft das Skript, ob der Server `/api/anfrage`
    und `/api/e` weiterleitet und der Website-Dienst antwortet; sonst bricht es ab, weil das Formular ins Leere ginge.
    Übergangsweise ohne Dienst: `PUBLIC_ANFRAGE_URL= npm run deploy` (Formular öffnet das E-Mail-Programm).
@@ -120,8 +117,8 @@ nicht in Adressen, die in Fehlermeldungen des Webservers landen können.
   Einschalten neben dem Schalter, und erst das Einschalten schickt Antworttext an den Sprachdienst. Scheitert sie,
   liest die Stimme des Geräts, ohne Meldung. „Ton aus“ heißt Stille: Ohne Ton liest keine Stimme vor, und der
   Telefonzug fordert die Stimme des Dienstes nicht an (`vorlesen: true` nur mit Vorlesen und Ton, sonst hält der
-  Dienst keinen Antworttext bereit). Setzt Caddy später eine `Permissions-Policy`, muss sie
-  `microphone=(self)` erlauben, sonst geht die Spracheingabe nicht.
+  Dienst keinen Antworttext bereit). Die `Permissions-Policy` in `deploy/Caddyfile` erlaubt
+  deshalb `microphone=(self)`; ohne das geht die Spracheingabe nicht.
 - **Kennzeichnung (KI-VO Art. 50):** „KI“ in jeder Titelleiste, ein eigener KI-Hinweis an jedem Eingabefeld, „Die KI
   kann sich irren …“ unter jedem Ergebnis, Ansagen für Screenreader beginnen mit „Antwort der KI:“. Das Befund-PDF
   trägt Metadaten (Author „KI-Assistent von JTK Consulting“, Keywords „KI-generiert; AI-generated“). Den Anbieter
@@ -232,8 +229,17 @@ Auf dem Server leitet `deploy/Caddyfile` (bzw. `npm run einrichten`) nur `/api/a
 Portal-API des Dienstes ist nur über `app.koch.consulting` erreichbar. `/api/ki/*` geht unkomprimiert durch
 (`@komprimieren`) und bewusst ohne `flush_interval`: Server-Sent Events reicht Caddy von selbst sofort durch, und nur
 so bricht er die Anfrage an den Dienst ab, wenn der Besucher geht (dann endet auch der Aufruf bei Anthropic). Auf dem
-VPS muss mindestens Caddy 2.11.7 laufen, denn 2.11.6 bricht Streams auf POST über HTTP/1.1 nach 60 s ab. Für nginx
-steht dasselbe in `deploy/nginx.conf` (`proxy_buffering off`, `gzip off`, `proxy_read_timeout 120s`).
+VPS muss mindestens Caddy 2.11.7 laufen, denn 2.11.6 bricht Streams auf POST über HTTP/1.1 nach 60 s ab; 2.11.8
+beendet außerdem zu langsame Uploads sauber. Die Fristen in `deploy/Caddyfile` (`read_header`, `read_body`) gelten nur
+für die Anfrage, nicht für die Antwort; eine Frist für die ganze Antwort (`write`) ist bewusst nicht gesetzt.
+
+Außerdem setzt `deploy/Caddyfile` die Sicherheitskopfzeilen der statischen Seite (HSTS zunächst 300 s,
+`X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP, CORP), entfernt `Server` und `Via`,
+erlaubt den Jahres-Cache nur für vorhandene Dateien unter `/_astro/`, schickt HTML mit `no-cache` und Fehlerseiten mit
+`no-store` und liefert versteckte Dateien (`.git`, `.env*`, `.DS_Store`) und Source Maps nicht aus. Nutzt die Seite
+eine neue Browser-Funktion (Kamera, Standort, Bewegungssensoren …), muss sie dort aus der `Permissions-Policy` raus.
+Für `app.koch.consulting` reicht Caddy nur `/api/portal(/*)`, `/api/google/rueckruf` und `/api/gesundheit` an den
+Dienst weiter, alles andere ist 404.
 
 ## Suchmaschinen
 
@@ -292,7 +298,7 @@ dorthin (`deploy/Caddyfile`), Mail und `app.koch.consulting` betrifft das nicht.
       (DPA) mit Datum ablegen; DPF-Status von Anthropic auf dataprivacyframework.gov nachsehen
 - [ ] Anthropic Console: eigener Workspace für die Demos mit eigenem Schlüssel und einem Ausgabenlimit über dem
       Monatsbudget des Website-Dienstes, Inferenzort `us`
-- [ ] Caddy auf dem VPS mindestens 2.11.7 (`caddy version`), danach `npm run einrichten` für `/api/ki/*`
+- [ ] Caddy auf dem VPS mindestens 2.11.7, besser 2.11.8 (`caddy version`), danach `npm run einrichten`
 - [ ] Neue Klänge (freiton, taste, hoerer, scanner, roentgen, tippen) abgehört, am besten auch am Handy; danach den
       Herkunftsnachweis in `src/scripts/klang-rezepte.ts` anpassen
 - [ ] Musterbild Werkstatt-Zettel: gerendert lassen oder durch ein echtes, abgeschriebenes Foto ersetzen (gleiche

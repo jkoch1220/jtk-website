@@ -1,139 +1,64 @@
 #!/usr/bin/env sh
-# Einmalig ausführen (im Projektordner): sh deploy/einrichten.sh
+# Ausführen im Projektordner: sh deploy/einrichten.sh (npm run einrichten). Beim ersten Mal und nach jeder Änderung
+# an deploy/Caddyfile.
+#
+# Ersetzt /etc/caddy/Caddyfile vollständig durch deploy/Caddyfile; fremde Site-Blöcke vorher ins Repo übernehmen.
+# Stehen in der Datei auf dem Server Adressen, die deploy/Caddyfile nicht kennt, bricht das Skript ab, bevor etwas
+# geändert wird (bewusst trotzdem ersetzen: CADDY_ERSETZEN=1 sh deploy/einrichten.sh).
 #
 # Richtet den VPS für die Website ein und lädt sie danach hoch:
 #  - prüft, ob Port 80/443 frei ist, und bricht sonst ab, ohne etwas zu ändern
 #  - installiert Caddy aus der offiziellen Paketquelle, falls noch nicht vorhanden
-#  - legt /var/www/jtkconsulting an und trägt die Seite in die Caddy-Konfiguration ein
-#    (eine bestehende Konfiguration wird gesichert und ergänzt, nicht überschrieben)
-#  - trägt zusätzlich app.koch.consulting für den Website-Dienst ein (Docker auf 127.0.0.1:3100,
-#    Deployment über website-dienst/deploy/deploy.sh im Portal-Repo; dort liegt auch die Portal-API);
-#    von der Website gehen nur /api/anfrage, /api/e, /api/gesundheit, /api/termine(/*) und /api/ki/* dorthin
-#  - ergänzt in einer bestehenden Konfiguration ohne Terminbuchung den Matcher um /api/termine
-#    (gesichert, danach caddy validate, sonst zurück zum alten Stand)
-#  - ergänzt in einer bestehenden Konfiguration ohne KI-Demos den Matcher um /api/ki/* und nimmt den Pfad von der
-#    Kompression aus (Server-Sent Events); gesichert, danach caddy validate, sonst zurück zum alten Stand
-#  - sagt Bescheid, wenn Caddy älter als 2.11.7 ist (die KI-Demos brauchen es, siehe unten)
-#  - stellt eine bestehende Konfiguration, in der koch.consulting dieselbe Website zeigte, auf eine
-#    301-Weiterleitung nach jtkconsulting.de um und lässt die 404-Seite komprimiert ausliefern (ebenso gesichert)
+#  - bricht ab, wenn Caddy älter als 2.11.7 ist (die KI-Demos brauchen es, siehe unten), und sagt Bescheid, wenn es
+#    älter als 2.11.8 ist
+#  - legt /var/www/jtkconsulting an und spielt deploy/Caddyfile ein: erst caddy validate, dann Sicherung der alten
+#    Datei als /etc/caddy/Caddyfile.vorher, dann reload; nimmt Caddy die neue Datei nicht, kommt die alte zurück
 #  - begrenzt die Aufbewahrung des System-Journals auf 7 Tage (dort landen Caddys Fehlermeldungen
 #    mit IP-Adressen, siehe Datenschutzerklärung „Server-Protokolle“)
-#  - gibt Port 80/443 in der Firewall ufw frei, falls ufw aktiv ist
-# Steht jtkconsulting.de schon in der Caddy-Konfiguration, aber ohne die Weiterleitung von /api/anfrage,
-# /api/e und /api/gesundheit (auch der alte Block, der alles unter /api/* weiterreichte), bricht das Skript
-# ab, bevor etwas geändert oder hochgeladen wird.
+#  - gibt Port 80/tcp, 443/tcp und 443/udp (HTTP/3) in der Firewall ufw frei, falls ufw aktiv ist
+# deploy/Caddyfile enthält auch app.koch.consulting für den Website-Dienst (Docker auf 127.0.0.1:3100, Deployment
+# über website-dienst/deploy/deploy.sh im Portal-Repo); von der Website gehen nur /api/anfrage, /api/e,
+# /api/gesundheit, /api/termine(/*) und /api/ki/* dorthin.
 set -e
 
 SERVER="root@76.13.5.157"
 ZIEL="/var/www/jtkconsulting"
 DOMAIN="jtkconsulting.de"
 ZWEIT_DOMAIN="koch.consulting"
-
-# Gleicher Inhalt wie deploy/Caddyfile (Website-Teil)
-KONFIG='www.jtkconsulting.de {
-	redir https://jtkconsulting.de{uri} permanent
-}
-
-# koch.consulting leitet auf jtkconsulting.de um (301 samt Pfad): Google soll nur eine Adresse der Website
-# kennen. Mail und app.koch.consulting betrifft das nicht.
-koch.consulting, www.koch.consulting {
-	redir https://jtkconsulting.de{uri} permanent
-}
-
-jtkconsulting.de {
-	root * /var/www/jtkconsulting
-	# Komprimiert wird alles außer den KI-Demos: Deren Antworten sind Server-Sent Events und sollen Ereignis für
-	# Ereignis ankommen. Caddy vor 2.11.7 hielt sie hinter encode zurück (caddyserver/caddy#6293); die Ereignisse
-	# sind ohnehin klein.
-	@komprimieren not path /api/ki/*
-	encode @komprimieren zstd gzip
-
-	# Kontaktformular, Terminbuchung, KI-Demos, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
-	# nur lokal erreichbar). Nur diese Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
-	# Bewusst ohne flush_interval: Server-Sent Events reicht Caddy von selbst sofort durch, und nur so bricht Caddy
-	# die Anfrage an den Dienst ab, wenn der Besucher geht (der Dienst beendet dann den Aufruf bei Anthropic).
-	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/* /api/ki/*
-	handle @plattform {
-		reverse_proxy 127.0.0.1:3100
-	}
-
-	# Alle anderen /api-Pfade gibt es auf der Website nicht
-	handle /api/* {
-		respond 404
-	}
-
-	handle {
-		file_server
-	}
-
-	# Dateien mit Hash im Namen dürfen lange im Cache bleiben
-	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
-
-	handle_errors {
-		# Fehlerseiten gehen nicht durch das encode oben; ohne diese Zeile käme die 404-Seite unkomprimiert
-		encode zstd gzip
-		@nichtGefunden expression `{err.status_code} == 404`
-		handle @nichtGefunden {
-			rewrite * /404.html
-			file_server
-		}
-	}
-}'
-
-# Gleicher Inhalt wie deploy/Caddyfile (Plattform-Teil) bzw. website-dienst/deploy/Caddyfile.dienst im Portal-Repo
 APP_DOMAIN="app.koch.consulting"
-APP_KONFIG='# Website-Dienst (Portal-API, Formular, Tracking)
-app.koch.consulting {
-	encode zstd gzip
-	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
-	reverse_proxy 127.0.0.1:3100
-}'
 
-if [ ! -f package.json ] || [ ! -f deploy/deploy.sh ]; then
+if [ ! -f package.json ] || [ ! -f deploy/deploy.sh ] || [ ! -f deploy/Caddyfile ]; then
   echo "Bitte im Projektordner ausführen (dort, wo package.json liegt)."
   exit 1
 fi
 
 echo "Lade Caddy-Konfiguration hoch ..."
-printf '%s\n' "$KONFIG" | ssh "$SERVER" "cat > /tmp/jtk.caddy"
-printf '%s\n' "$APP_KONFIG" | ssh "$SERVER" "cat > /tmp/plattform.caddy"
+# Nach /root statt /tmp: Dort kann kein anderer Nutzer die Datei vorher anlegen
+ssh "$SERVER" "cat > /root/jtk.caddy" < deploy/Caddyfile
 
 echo "Richte den Server ein ..."
-ssh "$SERVER" "ZIEL='$ZIEL' DOMAIN='$DOMAIN' ZWEIT_DOMAIN='$ZWEIT_DOMAIN' APP_DOMAIN='$APP_DOMAIN' sh -s" <<'REMOTE'
+ssh "$SERVER" "ZIEL='$ZIEL' CADDY_ERSETZEN='${CADDY_ERSETZEN:-}' sh -s" <<'REMOTE'
 set -e
-DATEI="${CADDYFILE:-/etc/caddy/Caddyfile}"
-NEU="${NEUE_KONFIG:-/tmp/jtk.caddy}"
-APP_NEU="${NEUE_APP_KONFIG:-/tmp/plattform.caddy}"
+DATEI=/etc/caddy/Caddyfile
+NEU=/root/jtk.caddy
 
-# Matcher der Website für den Website-Dienst: ALT ohne Terminbuchung (bis Oktober 2026), NEU mit Terminbuchung,
-# KI wie in deploy/Caddyfile. Jede Fassung ist der Anfang der nächsten, die Abbruch-Prüfung erkennt so alle drei.
-MATCHER_ALT="@plattform path /api/anfrage /api/e /api/gesundheit"
-MATCHER_NEU="@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/*"
-MATCHER_KI="$MATCHER_NEU /api/ki/*"
-
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_ALT" "$DATEI"; then
-  echo "$DOMAIN steht schon in $DATEI, aber nicht mit der Weiterleitung von /api/anfrage, /api/e und"
-  echo "/api/gesundheit an den Website-Dienst (ältere Fassung oder von Hand angelegt). Ohne sie scheitert das"
-  echo "Formular, mit der alten Fassung wäre die Portal-API auch über $DOMAIN erreichbar. Bitte den Block"
-  echo "für $DOMAIN dort von Hand durch den aus deploy/Caddyfile ersetzen und dieses Skript erneut ausführen."
+abbrechen() {
+  rm -f "$NEU"
   echo "Abbruch. Auf dem Server wurde nichts verändert."
-  rm -f "$NEU" "$APP_NEU"
   exit 1
-fi
+}
 
 belegt=$(ss -tlnpH '( sport = :80 or sport = :443 )' | grep -v '"caddy"' || true)
 if [ -n "$belegt" ]; then
   echo "Port 80 oder 443 ist schon von einem anderen Programm belegt:"
   echo "$belegt"
-  echo "Abbruch. Auf dem Server wurde nichts verändert."
-  rm -f "$NEU" "$APP_NEU"
-  exit 1
+  abbrechen
 fi
 
 if ! command -v caddy >/dev/null 2>&1; then
   if ! command -v apt-get >/dev/null 2>&1; then
     echo "Kein apt-get gefunden. Bitte Caddy von Hand installieren: https://caddyserver.com/docs/install"
-    exit 1
+    abbrechen
   fi
   echo "Installiere Caddy ..."
   export DEBIAN_FRONTEND=noninteractive
@@ -149,120 +74,67 @@ if ! command -v caddy >/dev/null 2>&1; then
 fi
 
 # Die KI-Demos streamen per Server-Sent Events auf POST. Caddy 2.11.6 bricht solche Streams über HTTP/1.1 nach
-# 60 s ab, erst 2.11.7 behebt das. Pakete aus der Caddy-Quelle aktualisiert unattended-upgrades standardmäßig
-# nicht, daher hier ein Hinweis.
+# 60 s ab, erst 2.11.7 behebt das. 2.11.8 beendet außerdem zu langsame Uploads sauber (read_body), 2.11.7 lässt
+# sie hängen. Pakete aus der Caddy-Quelle aktualisiert unattended-upgrades standardmäßig nicht.
 CADDY_VERSION=$(caddy version 2>/dev/null | awk '{print $1}' | sed 's/^v//')
-if [ -n "$CADDY_VERSION" ] && [ "$(printf '%s\n' 2.11.7 "$CADDY_VERSION" | sort -V | head -n 1)" != "2.11.7" ]; then
-  echo "Hinweis: Caddy $CADDY_VERSION ist älter als 2.11.7. Für die KI-Demos: apt-get install --only-upgrade caddy"
+aelter_als() { [ "$(printf '%s\n' "$1" "$CADDY_VERSION" | sort -V | head -n 1)" != "$1" ]; }
+if [ -z "$CADDY_VERSION" ]; then
+  echo "Hinweis: Die Caddy-Version ließ sich nicht lesen; nötig ist mindestens 2.11.7."
+elif aelter_als 2.11.7; then
+  echo "Caddy $CADDY_VERSION ist älter als 2.11.7; damit brächen die KI-Demos nach 60 s ab."
+  echo "Erst aktualisieren: apt-get update && apt-get install --only-upgrade caddy"
+  abbrechen
+elif aelter_als 2.11.8; then
+  echo "Hinweis: Caddy $CADDY_VERSION läuft, 2.11.8 ist besser (apt-get install --only-upgrade caddy)."
+fi
+
+# Top-Level-Adressen einer Caddyfile, eine je Zeile (Snippets in Klammern und der Optionsblock zählen nicht)
+adressen() {
+  awk '/^[^[:space:]#({][^{]*\{[[:space:]]*$/ {
+    sub(/[[:space:]]*\{[[:space:]]*$/, "")
+    n = split($0, teile, /[[:space:]]*,[[:space:]]*|[[:space:]]+/)
+    for (i = 1; i <= n; i++) if (teile[i] != "") print teile[i]
+  }' "$1" | sort -u
+}
+# Die Standarddatei nach der Installation (Willkommensseite aus /usr/share/caddy) darf ersetzt werden
+if [ -s "$DATEI" ] && ! grep -q "/usr/share/caddy" "$DATEI" && [ "$CADDY_ERSETZEN" != 1 ]; then
+  fremd=$(adressen "$DATEI" | while read -r a; do adressen "$NEU" | grep -qxF "$a" || echo "$a"; done)
+  if [ -n "$fremd" ]; then
+    echo "$DATEI enthält Adressen, die deploy/Caddyfile nicht kennt:"
+    echo "$fremd"
+    echo "Diese Blöcke würden verloren gehen. Erst in deploy/Caddyfile übernehmen, oder bewusst ersetzen mit"
+    echo "CADDY_ERSETZEN=1 sh deploy/einrichten.sh"
+    abbrechen
+  fi
+fi
+
+if ! caddy validate --config "$NEU" --adapter caddyfile >/dev/null 2>&1; then
+  echo "deploy/Caddyfile ist für Caddy $CADDY_VERSION ungültig:"
+  caddy validate --config "$NEU" --adapter caddyfile 2>&1 | grep -v '"level":"info"' | tail -n 5 || true
+  abbrechen
 fi
 
 mkdir -p "$ZIEL"
 
-# Vor der ersten Änderung einmal sichern
+# Einspielen: alte Datei sichern, neue an ihre Stelle, Caddy neu laden; scheitert das, alten Stand zurück
 gesichert=""
-sichern() {
-  if [ -z "$gesichert" ]; then
-    if [ -s "$DATEI" ]; then cp "$DATEI" "$DATEI.vorher"; fi
-    gesichert=1
+if [ -s "$DATEI" ]; then
+  cp "$DATEI" "$DATEI.vorher"
+  gesichert=1
+fi
+install -o root -g root -m 0644 "$NEU" "$DATEI"
+rm -f "$NEU"
+systemctl enable caddy >/dev/null 2>&1 || true
+if ! { systemctl reload caddy 2>/dev/null || systemctl restart caddy; }; then
+  echo "Caddy hat die neue Konfiguration nicht übernommen (journalctl -u caddy -n 30)."
+  if [ -n "$gesichert" ]; then
+    cp "$DATEI.vorher" "$DATEI"
+    systemctl reload caddy 2>/dev/null || systemctl restart caddy || true
+    echo "Der alte Stand ist wiederhergestellt."
   fi
-}
-
-# Hängt einen Block an; die Standard-Konfiguration nach der Installation wird ersetzt
-eintragen() {
-  sichern
-  if [ ! -s "$DATEI" ] || grep -q "/usr/share/caddy" "$DATEI"; then
-    cp "$1" "$DATEI"
-  else
-    printf '\n' >> "$DATEI"
-    cat "$1" >> "$DATEI"
-  fi
-}
-
-if grep -q "^$DOMAIN, $ZWEIT_DOMAIN {\$" "$DATEI" 2>/dev/null; then
-  # Fassung vom 22.10.2026, in der koch.consulting dieselbe Website zeigte: Ab jetzt leiten koch.consulting und
-  # www.koch.consulting per 301 auf $DOMAIN um, damit Google nur eine Adresse der Website kennt
-  sichern
-  sed -i "s/^$DOMAIN, $ZWEIT_DOMAIN {\$/$DOMAIN {/" "$DATEI"
-  sed -i "s|^www\.$ZWEIT_DOMAIN {\$|$ZWEIT_DOMAIN, www.$ZWEIT_DOMAIN {|" "$DATEI"
-  sed -i "s|redir https://$ZWEIT_DOMAIN{uri} permanent|redir https://$DOMAIN{uri} permanent|" "$DATEI"
-  sed -i "s|^# $ZWEIT_DOMAIN zeigt dieselbe Website.*|# $ZWEIT_DOMAIN leitet auf $DOMAIN um (301 samt Pfad)|" "$DATEI"
-  echo "$ZWEIT_DOMAIN leitet jetzt per 301 auf $DOMAIN um."
-elif grep -q "^$DOMAIN" "$DATEI" 2>/dev/null; then
-  echo "$DOMAIN steht schon in $DATEI, dieser Block wird nur bei Bedarf ergänzt (Weiterleitung, komprimierte 404, Terminbuchung, KI-Demos)."
-else
-  eintragen "$NEU"
+  exit 1
 fi
-
-# Fassung ganz ohne koch.consulting: die Weiterleitung anhängen
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -q "^\(www\.\)\?$ZWEIT_DOMAIN[ ,]" "$DATEI"; then
-  sichern
-  printf '\n%s, www.%s {\n\tredir https://%s{uri} permanent\n}\n' "$ZWEIT_DOMAIN" "$ZWEIT_DOMAIN" "$DOMAIN" >> "$DATEI"
-  echo "$ZWEIT_DOMAIN leitet jetzt per 301 auf $DOMAIN um."
-fi
-
-# Ältere Fassung ohne komprimierte Fehlerseiten: encode vor den 404-Matcher setzen (validiert wird unten)
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -B1 "@nichtGefunden expression" "$DATEI" | grep -q "encode"; then
-  sichern
-  sed -i "s|^\([[:space:]]*\)@nichtGefunden expression|\1encode zstd gzip\n\1@nichtGefunden expression|" "$DATEI"
-  echo "Die 404-Seite von $DOMAIN geht jetzt komprimiert raus."
-fi
-
-# Ältere Fassung ohne Terminbuchung: /api/termine zusätzlich an den Website-Dienst (nur genau die alte
-# Zeile wird ersetzt; validiert wird unten, bei Fehler kommt der gesicherte Stand zurück)
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_NEU" "$DATEI"; then
-  if grep -q "^[[:space:]]*$MATCHER_ALT[[:space:]]*\$" "$DATEI"; then
-    sichern
-    sed -i "s|^\([[:space:]]*\)$MATCHER_ALT[[:space:]]*\$|\1$MATCHER_NEU|" "$DATEI"
-    echo "$DOMAIN leitet jetzt auch /api/termine an den Website-Dienst weiter (Terminbuchung)."
-  else
-    echo "Hinweis: Die Zeile „$MATCHER_ALT“ in $DATEI wurde von Hand geändert und bleibt so."
-    echo "Für die Terminbuchung muss sie lauten: $MATCHER_NEU"
-  fi
-fi
-
-# Fassung ohne KI-Demos: /api/ki/* zusätzlich an den Website-Dienst (wie oben /api/termine: nur genau die
-# bekannte Zeile wird ersetzt) und von der Kompression ausnehmen, damit die Server-Sent Events Ereignis für
-# Ereignis ankommen. Validiert wird unten, bei Fehler kommt der gesicherte Stand zurück.
-# MATCHER_NEU endet auf „/api/termine/*“: für grep und sed den Stern maskieren
-MATCHER_NEU_MUSTER=$(printf '%s' "$MATCHER_NEU" | sed 's/\*/\\*/g')
-if grep -q "^$DOMAIN" "$DATEI" 2>/dev/null && ! grep -qF "$MATCHER_KI" "$DATEI"; then
-  if grep -q "^[[:space:]]*${MATCHER_NEU_MUSTER}[[:space:]]*\$" "$DATEI"; then
-    sichern
-    sed -i "s|^\([[:space:]]*\)${MATCHER_NEU_MUSTER}[[:space:]]*\$|\1${MATCHER_KI}|" "$DATEI"
-    echo "$DOMAIN leitet jetzt auch /api/ki/* an den Website-Dienst weiter (KI-Demos)."
-  else
-    echo "Hinweis: Die Zeile „$MATCHER_NEU“ in $DATEI wurde von Hand geändert und bleibt so."
-    echo "Für die KI-Demos muss sie lauten: $MATCHER_KI"
-  fi
-fi
-# Nur das encode direkt im Block der Website (ein Tab eingerückt); das in handle_errors und das von
-# app.koch.consulting bleiben, wie sie sind
-if grep -q "^$DOMAIN {" "$DATEI" 2>/dev/null && ! grep -q "encode @komprimieren" "$DATEI"; then
-  if sed -n "/^$DOMAIN {\$/,/^}\$/{/^\tencode zstd gzip\$/p;}" "$DATEI" | grep -q .; then
-    sichern
-    sed -i "/^$DOMAIN {\$/,/^}\$/s|^\tencode zstd gzip\$|\t@komprimieren not path /api/ki/*\n\tencode @komprimieren zstd gzip|" "$DATEI"
-    echo "Antworten unter /api/ki/* gehen jetzt unkomprimiert raus (Server-Sent Events)."
-  else
-    echo "Hinweis: „encode zstd gzip“ im Block $DOMAIN wurde von Hand geändert. Für die KI-Demos /api/ki/*"
-    echo "wie in deploy/Caddyfile von der Kompression ausnehmen (@komprimieren)."
-  fi
-fi
-
-if grep -q "^$APP_DOMAIN" "$DATEI" 2>/dev/null; then
-  echo "$APP_DOMAIN steht schon in $DATEI, dieser Block bleibt unverändert."
-else
-  eintragen "$APP_NEU"
-fi
-
-if [ -n "$gesichert" ]; then
-  if ! caddy validate --config "$DATEI" --adapter caddyfile >/dev/null 2>&1; then
-    echo "Die neue Caddy-Konfiguration ist ungültig. Der alte Stand wird wiederhergestellt."
-    if [ -f "$DATEI.vorher" ]; then cp "$DATEI.vorher" "$DATEI"; fi
-    rm -f "$NEU" "$APP_NEU"
-    exit 1
-  fi
-fi
-rm -f "$NEU" "$APP_NEU"
+echo "Caddy läuft mit der neuen Konfiguration (alter Stand: $DATEI.vorher)."
 
 # Caddy schreibt kein Zugriffsprotokoll, Fehlermeldungen (z. B. 502, solange die Plattform neu
 # startet) enthalten aber IP und User-Agent und landen im Journal: höchstens 7 Tage aufheben
@@ -270,13 +142,13 @@ mkdir -p /etc/systemd/journald.conf.d
 printf '[Journal]\nMaxRetentionSec=7day\n' > /etc/systemd/journald.conf.d/aufbewahrung.conf
 systemctl restart systemd-journald 2>/dev/null || true
 
+# 443/udp für HTTP/3, das Caddy per Alt-Svc ankündigt
 if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
   ufw allow 80/tcp >/dev/null
   ufw allow 443/tcp >/dev/null
+  ufw allow 443/udp >/dev/null
 fi
 
-systemctl enable caddy >/dev/null 2>&1 || true
-systemctl reload caddy 2>/dev/null || systemctl restart caddy
 echo "Server ist eingerichtet."
 REMOTE
 

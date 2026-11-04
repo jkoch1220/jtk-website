@@ -1,13 +1,72 @@
-# Bewusst ohne „log“: Caddy schreibt so kein Zugriffsprotokoll. Fehlermeldungen landen im
-# System-Journal, das einrichten.sh auf 7 Tage begrenzt (Datenschutzerklärung „Server-Protokolle“).
+# Vollständige /etc/caddy/Caddyfile des VPS. deploy/einrichten.sh spielt sie komplett ein (Sicherung, caddy validate,
+# reload, bei Fehler zurück zum alten Stand). Einzige Quelle auch für app.koch.consulting; Blöcke, die nur auf dem
+# Server stehen, gehen beim nächsten Einrichten verloren und gehören vorher hierher.
+# Braucht Caddy 2.11.7 oder neuer (KI-Demos, siehe unten), besser 2.11.8.
+#
+# Bewusst ohne „log“: Caddy schreibt so kein Zugriffsprotokoll. Fehlermeldungen landen im System-Journal, das
+# einrichten.sh auf 7 Tage begrenzt (Datenschutzerklärung „Server-Protokolle“).
+{
+	servers {
+		# Knappe Fristen für Kopf und Körper der Anfrage, damit langsame Verbindungen den Server nicht blockieren.
+		# read_body gilt nur für das Hochladen des Körpers (hier höchstens 20 KB), nicht für die Antwort: Die
+		# Server-Sent Events der KI-Demos (bis etwa 55 s) laufen auch auf POST weiter, lokal mit 2.11.7 und 2.11.8 über
+		# HTTP/1.1 und HTTP/2 geprüft. Bewusst kein „write“: Das wäre eine harte Grenze für die ganze Antwort und
+		# schnitte die Streams ab. write_idle bleibt auf 1 min (Standard); der Dienst sendet alle 15 s ein Lebenszeichen.
+		timeouts {
+			read_header 10s
+			read_body 15s
+			idle 2m
+		}
+		# Kein 0-RTT bei HTTP/3: Vor dem Handshake ist die Absenderadresse nicht bestätigt, und solche Anfragen ließen
+		# sich wiederholen. Der Dienst nutzt die Adresse für Drosseln und Sicherheitsprüfung.
+		0rtt off
+	}
+}
+
+# Keine Server-Kennung (Server, Via) in den Antworten
+(ohne_kennung) {
+	header {
+		-Server
+		-Via
+		defer
+	}
+}
+
+# HSTS Stufe 1: 300 s zum Ausprobieren, ein Fehler kostet so höchstens 5 Minuten.
+# Stufe 2 später: max-age=63072000; includeSubDomains; preload
+(hsts) {
+	header Strict-Transport-Security "max-age=300; includeSubDomains"
+}
+
+# Kopfzeilen der statischen Website (die Antworten des Dienstes unter /api tragen eigene).
+# Permissions-Policy sperrt nur, was die Seite nicht nutzt: microphone bleibt für die eigene Seite erlaubt
+# (Spracheingabe der KI-Demos, src/scripts/ki/sprache.ts), autoplay und clipboard-write stehen bewusst nicht drin
+# (Klänge und Stimme über den AudioContext, „Antwort kopieren“).
+# COOP same-origin verträgt sich mit Turnstile (iframe, kein Popup); COEP fehlt bewusst, es bräche das
+# Turnstile-iframe. CORP same-origin betrifft nur Einbettungen der eigenen Dateien durch fremde Seiten.
+(website_kopf) {
+	header {
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), browsing-topics=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(self), midi=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		X-Permitted-Cross-Domain-Policies "none"
+	}
+}
 
 www.jtkconsulting.de {
+	import ohne_kennung
+	import hsts
 	redir https://jtkconsulting.de{uri} permanent
 }
 
 # koch.consulting leitet auf jtkconsulting.de um (301 samt Pfad): Google soll nur eine Adresse der Website
 # kennen. Mail und app.koch.consulting betrifft das nicht.
 koch.consulting, www.koch.consulting {
+	import ohne_kennung
+	import hsts
 	redir https://jtkconsulting.de{uri} permanent
 }
 
@@ -18,6 +77,8 @@ jtkconsulting.de {
 	# sind ohnehin klein.
 	@komprimieren not path /api/ki/*
 	encode @komprimieren zstd gzip
+	import ohne_kennung
+	import hsts
 
 	# Kontaktformular, Terminbuchung, KI-Demos, Tracking und Gesundheitscheck gehen an den Website-Dienst (Docker,
 	# nur lokal erreichbar). Nur diese Pfade: Die Portal-API (/api/portal/*) gibt es nur über app.koch.consulting.
@@ -25,7 +86,16 @@ jtkconsulting.de {
 	# die Anfrage an den Dienst ab, wenn der Besucher geht (der Dienst beendet dann den Aufruf bei Anthropic).
 	@plattform path /api/anfrage /api/e /api/gesundheit /api/termine /api/termine/* /api/ki/*
 	handle @plattform {
-		reverse_proxy 127.0.0.1:3100
+		# Der Dienst nimmt höchstens 20 KB an (Anfrage, Buchung), die KI-Demos 8 KB, die Stimme 1 KB; Bilder lädt
+		# niemand hoch (das Musterbild des Scanners liegt im Dienst). Größeres weist Caddy schon hier ab (413).
+		request_body {
+			max_size 32KB
+		}
+		reverse_proxy 127.0.0.1:3100 {
+			transport http {
+				keepalive 60s
+			}
+		}
 	}
 
 	# Alle anderen /api-Pfade gibt es auf der Website nicht
@@ -33,16 +103,39 @@ jtkconsulting.de {
 		respond 404
 	}
 
-	handle {
-		file_server
+	# Dateien mit Hash im Namen dürfen lange im Cache bleiben, aber nur, wenn es sie gibt: Sonst bliebe eine 404 unter
+	# /_astro/ ein Jahr lang „immutable“ im Cache.
+	@hashed {
+		path /_astro/*
+		file
+	}
+	handle @hashed {
+		import website_kopf
+		header Cache-Control "public, max-age=31536000, immutable"
+		# Dieselbe Liste wie unten; Source Maps landen sonst gerade hier
+		file_server {
+			hide .git .env* .DS_Store *.map
+		}
 	}
 
-	# Dateien mit Hash im Namen dürfen lange im Cache bleiben
-	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
+	# Alles andere (HTML, robots.txt, security.txt …) fragt der Browser jedes Mal per ETag nach, damit nach einem
+	# Deploy keine alte Seite auf gelöschte Dateien verweist. Versteckte Dateien und Source Maps gibt es nicht.
+	handle {
+		import website_kopf
+		header Cache-Control "no-cache"
+		file_server {
+			hide .git .env* .DS_Store *.map
+		}
+	}
 
 	handle_errors {
-		# Fehlerseiten gehen nicht durch das encode oben; ohne diese Zeile käme die 404-Seite unkomprimiert
+		# Fehlerseiten laufen nicht durch die Handler oben: Kompression, Kennung und Kopfzeilen hier noch einmal,
+		# und nie cachen
 		encode zstd gzip
+		import ohne_kennung
+		import hsts
+		import website_kopf
+		header Cache-Control "no-store"
 		@nichtGefunden expression `{err.status_code} == 404`
 		handle @nichtGefunden {
 			rewrite * /404.html
@@ -51,10 +144,34 @@ jtkconsulting.de {
 	}
 }
 
-# Website-Dienst für das Portal: alles durchreichen (gleicher Inhalt wie website-dienst/deploy/Caddyfile.dienst
-# im Portal-Repo kochConsultingPlatform)
+# Website-Dienst für das Portal (kochconsulting.netlify.app): nur Portal-API, Rückruf der Google-Anmeldung und
+# Gesundheitscheck. Formular, Buchung, Tracking und KI-Demos gibt es nur über jtkconsulting.de; der Dienst selbst
+# lässt die KI-Pfade über diesen Host ohnehin nicht zu.
 app.koch.consulting {
 	encode zstd gzip
+	import ohne_kennung
+	# HSTS wie bisher ein Jahr: Der Host ist erprobt und braucht die Probezeit der Website nicht
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
-	reverse_proxy 127.0.0.1:3100
+	# Die Antworten sind JSON oder Weiterleitungen, nie eine Seite. CORP same-site stört das Portal nicht, es
+	# fragt per CORS ab. defer: ersetzt gleichnamige Kopfzeilen, falls der Dienst sie später selbst setzt.
+	header {
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+		Cross-Origin-Resource-Policy "same-site"
+		defer
+	}
+	@dienst path /api/portal /api/portal/* /api/google/rueckruf /api/gesundheit
+	handle @dienst {
+		# Die Portal-API nimmt höchstens 16 KB je Anfrage an
+		request_body {
+			max_size 64KB
+		}
+		reverse_proxy 127.0.0.1:3100 {
+			transport http {
+				keepalive 60s
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
 }

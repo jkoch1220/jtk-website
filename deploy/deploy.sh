@@ -10,9 +10,9 @@ ZIEL="/var/www/jtkconsulting"
 # Webserver oder ohne laufende Plattform würde jede Anfrage scheitern, daher vorher prüfen.
 # Wer PUBLIC_ANFRAGE_URL selbst setzt (Umgebung oder .env), hat das Ziel bewusst gewählt.
 if [ -z "${PUBLIC_ANFRAGE_URL+gesetzt}" ] && ! grep -qs '^PUBLIC_ANFRAGE_URL=' .env; then
-  # Gesucht wird die Weiterleitung selbst: `handle /api/*` bzw. `location /api/` stehen auch im
-  # 404-Block für die übrigen /api-Pfade und bewiesen deshalb nicht mehr, dass /api/anfrage ankommt.
-  if ! ssh "$SERVER" "{ grep -qsF '@plattform path /api/anfrage' /etc/caddy/Caddyfile || grep -rqsF 'location ~ ^/api/(anfrage' /etc/nginx/; } \
+  # Gesucht wird die Weiterleitung selbst: `handle /api/*` steht auch im 404-Block für die übrigen
+  # /api-Pfade und beweist deshalb nicht, dass /api/anfrage ankommt.
+  if ! ssh "$SERVER" "grep -qsF '@plattform path /api/anfrage' /etc/caddy/Caddyfile \
       && curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:3100/api/gesundheit"; then
     echo "Abbruch: Das Anfrageformular hätte kein Ziel."
     echo "Auf dem Server fehlt die Weiterleitung von /api/anfrage (siehe deploy/Caddyfile) oder die Koch-Plattform"
