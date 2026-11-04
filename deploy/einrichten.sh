@@ -3,8 +3,9 @@
 # an deploy/Caddyfile.
 #
 # Ersetzt /etc/caddy/Caddyfile vollständig durch deploy/Caddyfile; fremde Site-Blöcke vorher ins Repo übernehmen.
-# Stehen in der Datei auf dem Server Adressen, die deploy/Caddyfile nicht kennt, bricht das Skript ab, bevor etwas
-# geändert wird (bewusst trotzdem ersetzen: CADDY_ERSETZEN=1 sh deploy/einrichten.sh).
+# Bedient die Datei auf dem Server Namen, Ports oder Blöcke ohne Namen, die deploy/Caddyfile nicht kennt, bricht das
+# Skript ab, bevor etwas geändert wird (bewusst trotzdem ersetzen: CADDY_ERSETZEN=1 sh deploy/einrichten.sh). Nur die
+# unveränderte Standarddatei aus dem Caddy-Paket ersetzt es ohne diese Prüfung.
 #
 # Richtet den VPS für die Website ein und lädt sie danach hoch:
 #  - prüft, ob Port 80/443 frei ist, und bricht sonst ab, ohne etwas zu ändern
@@ -88,30 +89,70 @@ elif aelter_als 2.11.8; then
   echo "Hinweis: Caddy $CADDY_VERSION läuft, 2.11.8 ist besser (apt-get install --only-upgrade caddy)."
 fi
 
-# Top-Level-Adressen einer Caddyfile, eine je Zeile (Snippets in Klammern und der Optionsblock zählen nicht)
-adressen() {
-  awk '/^[^[:space:]#({][^{]*\{[[:space:]]*$/ {
-    sub(/[[:space:]]*\{[[:space:]]*$/, "")
-    n = split($0, teile, /[[:space:]]*,[[:space:]]*|[[:space:]]+/)
-    for (i = 1; i <= n; i++) if (teile[i] != "") print teile[i]
-  }' "$1" | sort -u
-}
-# Die Standarddatei nach der Installation (Willkommensseite aus /usr/share/caddy) darf ersetzt werden
-if [ -s "$DATEI" ] && ! grep -q "/usr/share/caddy" "$DATEI" && [ "$CADDY_ERSETZEN" != 1 ]; then
-  fremd=$(adressen "$DATEI" | while read -r a; do adressen "$NEU" | grep -qxF "$a" || echo "$a"; done)
-  if [ -n "$fremd" ]; then
-    echo "$DATEI enthält Adressen, die deploy/Caddyfile nicht kennt:"
-    echo "$fremd"
-    echo "Diese Blöcke würden verloren gehen. Erst in deploy/Caddyfile übernehmen, oder bewusst ersetzen mit"
-    echo "CADDY_ERSETZEN=1 sh deploy/einrichten.sh"
-    abbrechen
-  fi
-fi
-
 if ! caddy validate --config "$NEU" --adapter caddyfile >/dev/null 2>&1; then
   echo "deploy/Caddyfile ist für Caddy $CADDY_VERSION ungültig:"
   caddy validate --config "$NEU" --adapter caddyfile 2>&1 | grep -v '"level":"info"' | tail -n 5 || true
   abbrechen
+fi
+
+# Was eine Caddyfile bedient, eine Zeile je Eintrag: alle Namen (auch aus import-Dateien und Matchern), alle Ports
+# und jeder Block ohne Namen (etwa „:80 { … }“) samt Inhalt. Grundlage ist Caddys eigene Übersetzung nach JSON,
+# nicht der Dateitext; Kommentare, Klammern in der nächsten Zeile oder import-Zeilen führen so nicht in die Irre.
+# Der Pfad der Datei selbst (file_server versteckt sie) wird herausgenommen, damit gleiche Blöcke gleich aussehen.
+bedient() {
+  json=$(mktemp)
+  if ! caddy adapt --pretty --config "$1" --adapter caddyfile > "$json" 2>/dev/null; then
+    rm -f "$json"
+    return 1
+  fi
+  awk -v datei="$1" '
+    function ohne_datei(s,   i) {
+      while ((i = index(s, "\"" datei "\"")) > 0) s = substr(s, 1, i - 1) "\"\"" substr(s, i + length(datei) + 2)
+      return s
+    }
+    function wert(s) { gsub(/^[[:space:]]*"|",?$/, "", s); return s }
+    /^\t\t\t"servers": \{$/ { in_servern = 1; next }
+    in_servern && /^\t\t\t\}/ { in_servern = 0 }
+    /"host": \[$/ { in_namen = 1; next }
+    in_namen && /^\t*\]/ { in_namen = 0 }
+    in_namen { print "Name " wert($0); next }
+    !in_servern { next }
+    /^\t\t\t\t"[^"]*": \{$/ { ports = "" }
+    /^\t\t\t\t\t"listen": \[$/ { in_ports = 1; next }
+    in_ports && /^\t\t\t\t\t\]/ { in_ports = 0; next }
+    in_ports { ports = ports (ports == "" ? "" : ",") wert($0); print "Port " wert($0); next }
+    /^\t\t\t\t\t"routes": \[$/ { in_routen = 1; next }
+    in_routen && /^\t\t\t\t\t\]/ { in_routen = 0; next }
+    in_routen && /^\t\t\t\t\t\t\{$/ { route = ""; mit_namen = 0; next }
+    in_routen && /^\t\t\t\t\t\t\},?$/ { if (!mit_namen) print "Block ohne Namen auf " ports ": " ohne_datei(route); next }
+    in_routen && /^\t\t\t\t\t\t\t"match": / { mit_namen = 1 }
+    in_routen { s = $0; sub(/^[[:space:]]+/, "", s); route = route s }
+  ' "$json" | sort -u
+  rm -f "$json"
+}
+# Unverändert aus dem Paket (Willkommensseite aus /usr/share/caddy): darf ohne Rückfrage ersetzt werden
+standarddatei() {
+  soll=$(dpkg-query -W -f='${Conffiles}\n' caddy 2>/dev/null | awk -v f="$DATEI" '$1 == f {print $2}')
+  [ -n "$soll" ] && [ "$(md5sum < "$DATEI" | awk '{print $1}')" = "$soll" ]
+}
+if [ -s "$DATEI" ] && [ "$CADDY_ERSETZEN" != 1 ] && ! standarddatei; then
+  if ! vorher=$(bedient "$DATEI"); then
+    echo "Caddy kann $DATEI nicht lesen; ob dort fremde Blöcke stehen, ist so nicht zu prüfen."
+    echo "Datei von Hand ansehen, dann bewusst ersetzen mit CADDY_ERSETZEN=1 sh deploy/einrichten.sh"
+    abbrechen
+  fi
+  nachher=$(bedient "$NEU")
+  fremd=$(printf '%s\n' "$vorher" | while IFS= read -r a; do
+    [ -z "$a" ] || printf '%s\n' "$nachher" | grep -qxF -- "$a" || printf '%s\n' "$a" | cut -c1-110
+  done)
+  if [ -n "$fremd" ]; then
+    echo "$DATEI bedient etwas, das deploy/Caddyfile nicht kennt:"
+    echo "$fremd"
+    echo "Das ginge verloren. Erst in deploy/Caddyfile übernehmen, oder bewusst ersetzen mit"
+    echo "CADDY_ERSETZEN=1 sh deploy/einrichten.sh (ein „Block ohne Namen“ kann auch eine ältere Fassung eines"
+    echo "Blocks aus deploy/Caddyfile sein)"
+    abbrechen
+  fi
 fi
 
 mkdir -p "$ZIEL"

@@ -28,9 +28,10 @@ Das Ergebnis liegt in `dist/`: reine statische Dateien, kein Node-Server nötig.
 2. Beim ersten Mal und nach jeder Änderung an `deploy/Caddyfile`: `npm run einrichten`. Das Skript installiert
    Caddy auf dem VPS, legt den Ordner an, spielt `deploy/Caddyfile` als komplette `/etc/caddy/Caddyfile` ein
    (HTTPS kommt automatisch) und lädt die Seite hoch. `deploy/Caddyfile` ist die einzige Quelle, auch für
-   `app.koch.consulting`: Blöcke, die nur auf dem Server stehen, vorher dorthin übernehmen. Findet das Skript auf dem
-   Server Adressen, die `deploy/Caddyfile` nicht kennt, bricht es ab, ohne etwas zu ändern (bewusst ersetzen:
-   `CADDY_ERSETZEN=1 npm run einrichten`). Ebenso bei belegtem Port 80/443, bei Caddy älter als 2.11.7 (siehe
+   `app.koch.consulting`: Blöcke, die nur auf dem Server stehen, vorher dorthin übernehmen. Bedient die Datei auf dem
+   Server Namen, Ports oder Blöcke ohne Namen, die `deploy/Caddyfile` nicht kennt, bricht das Skript ab, ohne etwas zu
+   ändern (bewusst ersetzen: `CADDY_ERSETZEN=1 npm run einrichten`); geprüft wird Caddys eigene Lesart der Datei,
+   samt `import`. Nur die unveränderte Standarddatei aus dem Caddy-Paket ersetzt es ohne Prüfung. Ebenso bei belegtem Port 80/443, bei Caddy älter als 2.11.7 (siehe
    „KI-Demos“; unter 2.11.8 gibt es einen Hinweis) und wenn `caddy validate` die Datei ablehnt. Die alte Datei sichert
    es als `/etc/caddy/Caddyfile.vorher`; nimmt Caddy die neue beim Neuladen nicht an, kommt sie zurück. Außerdem
    begrenzt es das System-Journal (Caddys Fehlermeldungen mit IP-Adressen) auf 7 Tage und gibt bei aktivem ufw
