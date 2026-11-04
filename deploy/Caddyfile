@@ -1,8 +1,7 @@
 # Vollständige /etc/caddy/Caddyfile des VPS. deploy/einrichten.sh spielt sie komplett ein (Sicherung, caddy validate,
 # reload, bei Fehler zurück zum alten Stand). Einzige Quelle auch für app.koch.consulting; Blöcke, die nur auf dem
-# Server stehen, gehen beim nächsten Einrichten verloren und gehören vorher hierher. Ausnahme: Sites anderer Projekte
-# auf demselben Server liegen als Dateien in /etc/caddy/fremde/ (Import ganz unten), damit sie nicht in diesem
-# öffentlichen Repo stehen.
+# Server stehen, gehen beim nächsten Einrichten verloren und gehören vorher hierher. Ausnahme: Das Tennismehl-Backend
+# pflegt seinen Block selbst in /etc/caddy/tennismehl-backend.caddy (Import ganz unten).
 # Braucht Caddy 2.11.7 oder neuer (KI-Demos, siehe unten), besser 2.11.8.
 #
 # Bewusst ohne „log“: Caddy schreibt so kein Zugriffsprotokoll. Fehlermeldungen landen im System-Journal, das
@@ -213,5 +212,6 @@ app.koch.consulting {
 	}
 }
 
-# Sites anderer Projekte auf diesem Server, nur dort gepflegt. Passt keine Datei, meldet Caddy nur eine Warnung.
-import /etc/caddy/fremde/*.caddy
+# Tennismehl-Backend: Der Block steht in einer eigenen Datei, die dessen Einrichtungsskript pflegt
+# (tennismehl_backend/scripts/caddy-einrichten.sh). Die Zeile entspricht der, die das Skript in die Caddyfile schreibt.
+import /etc/caddy/tennismehl-backend.caddy
